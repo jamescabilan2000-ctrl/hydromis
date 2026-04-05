@@ -1,0 +1,364 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #f0f4fa 0%, #e8f0fc 100%);
+}
+
+/* ===== NAVBAR ===== */
+.navbar {
+    background: linear-gradient(120deg, #0f4fd4 0%, #0e8478 100%);
+    box-shadow: 0 4px 12px rgba(15, 79, 212, 0.15);
+    padding: 12px 0;
+}
+
+.navbar-brand {
+    font-weight: 900;
+    font-size: 20px;
+    color: white;
+}
+
+.navbar-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.navbar-user-info {
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.navbar-logout-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 6px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.navbar-logout-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+    background: white;
+    height: 100vh;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
+    padding: 25px 0;
+    position: sticky;
+    top: 0;
+    border-right: 1px solid #e5e7eb;
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-menu li {
+    list-style: none;
+    margin: 0;
+}
+
+.sidebar-menu a {
+    color: #4b5563;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-left: 3px solid transparent;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.sidebar-menu a:hover {
+    background: #f3f4f6;
+    color: #0f4fd4;
+}
+
+.sidebar-menu a.active {
+    background: linear-gradient(90deg, #f0f4fa 0%, transparent 100%);
+    color: #0f4fd4;
+    border-left-color: #0f4fd4;
+}
+
+/* ===== CONTENT ===== */
+.content {
+    padding: 30px;
+    background: transparent;
+}
+
+.page-header {
+    margin-bottom: 30px;
+}
+
+.page-header h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.page-header p {
+    font-size: 14px;
+    color: #71717a;
+    margin: 0;
+}
+
+/* ===== STAT CARDS ===== */
+.stats-row {
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-top: 3px solid #0f4fd4;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.stat-icon.green {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.stat-icon.blue {
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+}
+
+.stat-icon.teal {
+    background: linear-gradient(135deg, #0f4fd4 0%, #0e8478 100%);
+}
+
+.stat-icon.amber {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+}
+
+.stat-body {
+    flex: 1;
+}
+
+.stat-body h6 {
+    color: #71717a;
+    font-size: 12px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.stat-body .value {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+/* ===== MESSAGES ===== */
+.success-message {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+    border-left: 4px solid #10b981;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.error-message {
+    background: #fee2e2;
+    color: #7f1d1d;
+    border: 1px solid #fecaca;
+    border-left: 4px solid #ef4444;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ===== TABLE CARD ===== */
+.table-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.table {
+    margin: 0;
+    width: 100%;
+}
+
+.table thead {
+    background: linear-gradient(90deg, #0f4fd4 0%, #0e8478 100%);
+    color: white;
+}
+
+.table thead th {
+    padding: 14px;
+    font-weight: 600;
+    border: none;
+    font-size: 13px;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.table tbody td {
+    padding: 14px;
+    font-size: 13px;
+    color: #1f2937;
+    vertical-align: middle;
+}
+
+.table tbody strong {
+    font-weight: 600;
+}
+
+/* ===== BADGES ===== */
+.badge {
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-completed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-failed {
+    background: #fee2e2;
+    color: #7f1d1d;
+}
+
+.badge-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-approved {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-denied {
+    background: #fee2e2;
+    color: #7f1d1d;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 200px;
+    }
+    
+    .content {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        position: absolute;
+        left: -200px;
+        transition: left 0.3s ease;
+        z-index: 1000;
+    }
+    
+    .content {
+        padding: 15px;
+    }
+    
+    .page-header h2 {
+        font-size: 22px;
+    }
+    
+    .stat-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+    
+    .table th, .table td {
+        padding: 10px;
+    }
+}

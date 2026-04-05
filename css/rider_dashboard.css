@@ -1,0 +1,211 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background:
+        radial-gradient(1100px 580px at 100% -10%, rgba(14,132,120,0.15) 0%, transparent 58%),
+        radial-gradient(1000px 520px at -10% 100%, rgba(15,79,212,0.16) 0%, transparent 58%),
+        linear-gradient(155deg, #edf3fc 0%, #f5f9ff 52%, #eaf4f1 100%);
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* ── Navbar ── */
+.navbar {
+    background: linear-gradient(108deg, #0b1220 0%, #0f4fd4 58%, #0e8478 100%);
+    box-shadow: 0 4px 24px rgba(11,18,32,0.28);
+    padding: 0 16px;
+    height: 62px;
+    display: flex;
+    align-items: center;
+}
+.navbar-brand {
+    font-size: 20px;
+    font-weight: 800;
+    color: white !important;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+}
+.welcome-pill {
+    background: rgba(255,255,255,0.13);
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 999px;
+    padding: 5px 12px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    margin-right: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+.logout-btn {
+    background: linear-gradient(120deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.logout-btn:hover { color: white; text-decoration: none; opacity: 0.88; }
+
+/* ── Shell ── */
+.rider-shell { max-width: 1240px; margin: 0 auto; padding: 20px 16px 40px; }
+
+/* ── Stat Cards ── */
+.top-grid { margin-bottom: 18px; }
+.stat-card {
+    background: white;
+    border-radius: 16px;
+    padding: 18px 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 20px rgba(11,18,32,0.08);
+    border: 1px solid #e8f0fc;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(11,18,32,0.13); }
+.stat-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+.stat-icon.green  { background: linear-gradient(135deg,#f0fdf4,#bbf7d0); color: #15803d; }
+.stat-icon.amber  { background: linear-gradient(135deg,#fffbeb,#fde68a); color: #b45309; }
+.stat-icon.teal   { background: linear-gradient(135deg,#f0fdfa,#99f6e4); color: #0f766e; }
+.stat-body h6 {
+    font-size: 11px; font-weight: 700; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.6px; margin: 0 0 3px;
+}
+.stat-body .value { font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1; }
+
+/* ── Panels ── */
+.layout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.panel {
+    background: white;
+    border: 1px solid #e0eaf6;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(11,18,32,0.07);
+}
+.panel-title {
+    font-size: 16px; font-weight: 800; color: #0f172a;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+}
+.panel-title i { color: #0f4fd4; }
+
+/* ── Tables ── */
+.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table { margin-bottom: 0; min-width: 480px; }
+.table thead th {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: #64748b;
+    border-bottom: 2px solid #f1f5f9; padding: 10px 10px;
+    background: transparent; white-space: nowrap;
+}
+.table tbody td {
+    font-size: 13px; color: #334155; vertical-align: middle;
+    padding: 11px 10px; border-bottom: 1px solid #f8fafc; font-weight: 500;
+}
+.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr:hover td { background: #f8fbff; }
+
+/* ── Status pills ── */
+.small { font-size: 12px; color: #607089; }
+.status-pill { border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; display: inline-block; }
+.status-on_the_way { background: #dbeafe; color: #1d4ed8; }
+.status-pending    { background: #fff4dd; color: #8b5a06; }
+
+/* ── Scanner ── */
+.scanner-wrap { background: #0f172a; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+#scannerVideo { width: 100%; height: 200px; object-fit: cover; display: block; }
+.scanner-btns { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+
+/* ── Action buttons in table ── */
+.action-col { min-width: 180px; }
+.action-col form, .action-col .btn { width: 100%; margin-bottom: 4px; }
+.action-col .btn:last-child { margin-bottom: 0; }
+
+/* ── Alerts ── */
+.alert { border-radius: 12px; font-size: 14px; font-weight: 600; }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+    .navbar { height: auto; padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+    .navbar-brand { font-size: 17px; }
+    .welcome-pill { max-width: 120px; font-size: 12px; padding: 4px 10px; }
+    .logout-btn { font-size: 12px; padding: 6px 11px; }
+    .rider-shell { padding: 14px 10px 40px; }
+    .layout-grid { grid-template-columns: 1fr; gap: 0; }
+    .stat-card { padding: 14px 12px; gap: 12px; }
+    .stat-icon { width: 44px; height: 44px; font-size: 18px; border-radius: 12px; }
+    .stat-body .value { font-size: 20px; }
+    .panel { padding: 14px 12px; }
+    .panel-title { font-size: 15px; }
+    .table { min-width: 400px; }
+    .action-col { min-width: 150px; }
+    #scannerVideo { height: 170px; }
+}
+@media (max-width: 480px) {
+    .navbar-brand { font-size: 15px; }
+    .welcome-pill { display: none; }
+    .stat-body .value { font-size: 18px; }
+    .table thead th, .table tbody td { font-size: 12px; padding: 9px 8px; }
+}
+
+/* ── My Deliveries: card layout on mobile ── */
+@media (max-width: 640px) {
+    .my-del-table { min-width: unset !important; }
+    .my-del-table thead { display: none; }
+    .my-del-table tbody tr {
+        display: block;
+        margin-bottom: 14px;
+        border-radius: 14px;
+        border: 1px solid #e0eaf6;
+        padding: 14px 12px 10px;
+        box-shadow: 0 3px 12px rgba(11,18,32,0.07);
+        background: white;
+    }
+    .my-del-table tbody tr:hover td { background: transparent; }
+    .my-del-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 7px 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 13px;
+        min-width: unset;
+    }
+    .my-del-table tbody td:last-child { border-bottom: none; }
+    .my-del-table tbody td::before {
+        content: attr(data-label);
+        font-size: 11px;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        flex-shrink: 0;
+        margin-right: 10px;
+        padding-top: 2px;
+        min-width: 70px;
+    }
+    .my-del-table .action-col {
+        min-width: unset;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .my-del-table .action-col::before { display: none; }
+    .my-del-table .action-col form,
+    .my-del-table .action-col .btn { width: 100% !important; margin-bottom: 6px; }
+}

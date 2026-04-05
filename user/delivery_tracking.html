@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Delivery Tracking</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+        }
+        
+        .tracking-header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .tracking-header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+        
+        .tracking-header p {
+            font-size: 14px;
+            opacity: 0.95;
+        }
+        
+        .tracking-container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .map-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(11, 18, 32, 0.1);
+        }
+        
+        #delivery-map {
+            width: 100%;
+            height: 600px;
+        }
+        
+        .info-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .info-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(11, 18, 32, 0.08);
+        }
+        
+        .info-card h5 {
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        
+        .info-card h5 i {
+            color: #10b981;
+            font-size: 18px;
+        }
+        
+        .info-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+        
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            color: #1e293b;
+            font-weight: 700;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+            border-left: 3px solid #10b981;
+            color: #065f46;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+        
+        .countdown {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%);
+            border-left: 3px solid #3b82f6;
+            color: #1e40af;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+        
+        .countdown strong {
+            font-size: 16px;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        @media (max-width: 768px) {
+            .tracking-container {
+                grid-template-columns: 1fr;
+            }
+            
+            #delivery-map {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="tracking-header">
+        <h1><i class="fas fa-map-marker-alt mr-2"></i>Live Delivery Tracking</h1>
+        <p>Real-time tracking of your order delivery</p>
+    </div>
+    
+    <div class="tracking-container">
+        <div class="map-container">
+            <div id="delivery-map"></div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="info-card">
+                <div class="status-badge">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    <strong>ON THE WAY</strong>
+                    <small>Your order is being delivered</small>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Order Number</div>
+                    <div class="info-value" id="order-id">ORD-2026-03-22-001</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Driver Name</div>
+                    <div class="info-value" id="driver-name">Michael Green</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Driver Contact</div>
+                    <div class="info-value">
+                        <a href="tel:08012345670" style="color: #10b981; text-decoration: none;">
+                            <i class="fas fa-phone mr-1"></i> +234 801 234 5670
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Current Distance</div>
+                    <div class="info-value" id="distance-info">2.4 km away</div>
+                </div>
+                
+                <div class="countdown">
+                    <strong id="eta-time">15-20 minutes</strong>
+                    <small>Estimated Time of Arrival</small>
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <h5><i class="fas fa-map-pin"></i> Delivery Address</h5>
+                <div class="info-item">
+                    <div class="info-value" id="delivery-address">
+                        123 Main Street<br>
+                        Lagos, Nigeria
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <h5><i class="fas fa-box"></i> Order Items</h5>
+                <div class="info-item">
+                    <div class="info-value">
+                        5 Gallons Water<br>
+                        <small style="color: #64748b;">@ ₱800 per gallon</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Get rider data from sessionStorage
+        const riderData = JSON.parse(sessionStorage.getItem('riderData')) || {
+            latitude: 6.4637,
+            longitude: 3.2470,
+            name: 'Driver',
+            contact: '0800000000',
+            address: 'Lagos, Nigeria'
+        };
+        
+        // User location (destination)
+        const userLocation = {
+            lat: 6.4650,
+            lng: 3.2480
+        };
+        
+        // Initialize map with user location as center
+        const map = L.map('delivery-map').setView([userLocation.lat, userLocation.lng], 14);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // User marker (destination)
+        const userMarker = L.circleMarker([userLocation.lat, userLocation.lng], {
+            radius: 10,
+            fillColor: '#667eea',
+            color: '#fff',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(map).bindPopup('Delivery Location');
+        
+        // Driver marker (current position)
+        let driverMarker = L.circleMarker([riderData.latitude, riderData.longitude], {
+            radius: 12,
+            fillColor: '#10b981',
+            color: '#fff',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(map).bindPopup('Driver: ' + riderData.name);
+        
+        // Update driver name in UI
+        document.getElementById('driver-name').innerText = riderData.name || 'Driver';
+        document.getElementById('delivery-address').innerText = riderData.address;
+        
+        // Calculate initial distance
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+        
+        // Update distance and ETA
+        function updateDistance() {
+            const distance = calculateDistance(
+                riderData.latitude, riderData.longitude,
+                userLocation.lat, userLocation.lng
+            );
+            
+            document.getElementById('distance-info').innerText = distance.toFixed(2) + ' km away';
+            
+            // Calculate ETA (assuming 40 km/h average speed)
+            const eta = Math.max(1, Math.ceil((distance / 40) * 60));
+            document.getElementById('eta-time').innerText = eta + '-' + (eta + 5) + ' minutes';
+        }
+        
+        // Initial distance calculation
+        updateDistance();
+        
+        // Simulate driver movement towards destination
+        let step = 0;
+        const interval = setInterval(() => {
+            step++;
+            
+            // Move driver slightly towards user
+            const movementLat = riderData.latitude + (step * 0.00001);
+            const movementLng = riderData.longitude + (step * 0.00001);
+            
+            driverMarker.setLatLng([movementLat, movementLng]);
+            
+            // Update distance and ETA
+            const distance = calculateDistance(
+                movementLat, movementLng,
+                userLocation.lat, userLocation.lng
+            );
+            
+            document.getElementById('distance-info').innerText = distance.toFixed(2) + ' km away';
+            
+            const eta = Math.max(1, Math.ceil((distance / 40) * 60));
+            document.getElementById('eta-time').innerText = eta + '-' + (eta + 5) + ' minutes';
+            
+            // Stop after reaching destination
+            if (distance < 0.1) {
+                clearInterval(interval);
+                document.getElementById('eta-time').innerText = '< 1 minute';
+            }
+        }, 2000);
+        
+        // Clean up interval when window closes
+        window.addEventListener('beforeunload', () => {
+            clearInterval(interval);
+        });
+    </script>
+</body>
+</html>

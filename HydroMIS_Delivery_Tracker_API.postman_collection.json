@@ -1,0 +1,228 @@
+{
+  "info": {
+    "_postman_id": "hydromis-delivery-tracker",
+    "name": "HydroMIS Delivery Tracker API",
+    "description": "REST API for HydroMIS delivery tracking system",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Rider Location",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost/HydroMIS-1/api/delivery_tracker.php?request=get_rider_location&transaction_id=TRX123456789",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "path": [
+            "HydroMIS-1",
+            "api",
+            "delivery_tracker.php"
+          ],
+          "query": [
+            {
+              "key": "request",
+              "value": "get_rider_location"
+            },
+            {
+              "key": "transaction_id",
+              "value": "TRX123456789",
+              "description": "The transaction ID of the delivery"
+            }
+          ]
+        },
+        "description": "Get current rider location for a specific delivery"
+      },
+      "response": [
+        {
+          "name": "Success Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost/HydroMIS-1/api/delivery_tracker.php?request=get_rider_location&transaction_id=TRX123456789",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "path": [
+                "HydroMIS-1",
+                "api",
+                "delivery_tracker.php"
+              ],
+              "query": [
+                {
+                  "key": "request",
+                  "value": "get_rider_location"
+                },
+                {
+                  "key": "transaction_id",
+                  "value": "TRX123456789"
+                }
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": true,\n  \"data\": {\n    \"transaction_id\": \"TRX123456789\",\n    \"delivery_status\": \"on_the_way\",\n    \"status\": \"approved\",\n    \"destination\": \"123 Main St, City\",\n    \"customer_name\": \"John Doe\",\n    \"contact_number\": \"09123456789\",\n    \"address\": \"123 Main St, City\",\n    \"rider_location\": {\n      \"latitude\": 12.8796,\n      \"longitude\": 121.7741,\n      \"last_update\": \"2026-02-23 10:30:45\"\n    },\n    \"created_at\": \"2026-02-23 09:00:00\",\n    \"updated_at\": \"2026-02-23 10:30:45\"\n  }\n}\n"
+        }
+      ]
+    },
+    {
+      "name": "Get Delivery Details",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost/HydroMIS-1/api/delivery_tracker.php?request=get_delivery_details&transaction_id=TRX123456789",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "path": [
+            "HydroMIS-1",
+            "api",
+            "delivery_tracker.php"
+          ],
+          "query": [
+            {
+              "key": "request",
+              "value": "get_delivery_details"
+            },
+            {
+              "key": "transaction_id",
+              "value": "TRX123456789"
+            }
+          ]
+        },
+        "description": "Get complete delivery details including rider location"
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Active Deliveries",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost/HydroMIS-1/api/delivery_tracker.php?request=get_all_deliveries",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "path": [
+            "HydroMIS-1",
+            "api",
+            "delivery_tracker.php"
+          ],
+          "query": [
+            {
+              "key": "request",
+              "value": "get_all_deliveries"
+            }
+          ]
+        },
+        "description": "Get all active deliveries (pending or on_the_way status)"
+      },
+      "response": []
+    },
+    {
+      "name": "Update Rider Location",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"transaction_id\": \"TRX123456789\",\n  \"latitude\": 12.8810,\n  \"longitude\": 121.7755\n}"
+        },
+        "url": {
+          "raw": "http://localhost/HydroMIS-1/api/delivery_tracker.php?request=update_rider_location",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "path": [
+            "HydroMIS-1",
+            "api",
+            "delivery_tracker.php"
+          ],
+          "query": [
+            {
+              "key": "request",
+              "value": "update_rider_location"
+            }
+          ]
+        },
+        "description": "Update rider's current GPS location. Used by rider mobile app to send real-time location."
+      },
+      "response": []
+    },
+    {
+      "name": "Complete Delivery",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"transaction_id\": \"TRX123456789\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost/HydroMIS-1/api/delivery_tracker.php?request=complete_delivery",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "path": [
+            "HydroMIS-1",
+            "api",
+            "delivery_tracker.php"
+          ],
+          "query": [
+            {
+              "key": "request",
+              "value": "complete_delivery"
+            }
+          ]
+        },
+        "description": "Mark a delivery as completed"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/HydroMIS-1/api/delivery_tracker.php",
+      "type": "string"
+    },
+    {
+      "key": "transaction_id",
+      "value": "TRX123456789",
+      "type": "string"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+.payment-proof-thumbnail {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 2px solid #e9ecef;
+}
+.payment-proof-thumbnail:hover {
+    border-color: #667eea;
+}
+.badge-processing {
+    background: #93c5fd;
+    color: #1e40af;
+}
+.badge-paid {
+    background: #86efac;
+    color: #166534;
+}
+.badge-failed {
+    background: #fca5a5;
+    color: #7f1d1d;
+}
+.btn-verify {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.btn-verify:hover {
+    background: #059669;
+}
+.btn-reject {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.btn-reject:hover {
+    background: #dc2626;
+}
+.payment-method-badge {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.badge-gcash {
+    background: #007aff;
+    color: white;
+}
+.badge-maya {
+    background: #00d632;
+    color: white;
+}
+.badge-cash {
+    background: #34c759;
+    color: white;
+}
+
+/* Modal for viewing payment proof */
+.modal-img {
+    width: 100%;
+    max-height: 600px;
+    object-fit: contain;
+}

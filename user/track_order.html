@@ -1,0 +1,319 @@
+<main class="page-shell">
+        <section class="hero-banner">
+            <div>
+                <h1 class="hero-title"><i class="fas fa-route mr-2"></i>Order Tracking Center</h1>
+                <p class="hero-subtitle">Search by your registered mobile number to view all orders, delivery timeline, and live rider location in one place.</p>
+            </div>
+            <div class="hero-pill"><i class="fas fa-bolt mr-1"></i> Real-time Updates</div>
+        </section>
+
+        <section class="search-dashboard">
+            <div class="search-container">
+                <h3><i class="fas fa-box mr-2"></i> Track Your Orders</h3>
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="mobile_number"><i class="fas fa-phone mr-2"></i>Mobile Number</label>
+                        <input type="text" class="form-control" name="mobile_number" id="mobile_number" placeholder="e.g., 09123456789" value="<?php echo isset($_POST['mobile_number']) ? htmlspecialchars($_POST['mobile_number']) : ''; ?>" required>
+                        <small class="form-text text-muted">Use the same mobile number you registered in HydroMIS.</small>
+                    </div>
+
+                    <button type="submit" name="search_submit" value="1" class="btn-search">
+                        <i class="fas fa-search mr-2"></i> View My Orders
+                    </button>
+                </form>
+            </div>
+
+            <aside class="search-side-panel">
+                <h4><i class="fas fa-lightbulb mr-2"></i>Tracking Guide</h4>
+                <p>Quick reminders so your order appears correctly and updates in real time.</p>
+                <ul class="tip-list">
+                    <li><i class="fas fa-mobile-alt"></i> Enter your full mobile number with `09` prefix.</li>
+                    <li><i class="fas fa-clock"></i> Pending orders are waiting for staff approval.</li>
+                    <li><i class="fas fa-truck"></i> "On the Way" orders can show live GPS updates.</li>
+                    <li><i class="fas fa-check-circle"></i> Delivered orders remain in your history list.</li>
+                </ul>
+            </aside>
+        </section>
+
+        <?php if ($error): ?>
+            <div class="error-message">
+                <i class="fas fa-exclamation-circle mr-2"></i> <?php echo $error; ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="orders-container">
+        <?php if ($tracking_info): ?>
+            <?php foreach ($tracking_info as $transaction): ?>
+            <div class="transaction-card">
+                <div class="transaction-card-header">
+                    <div class="store-info">
+                        <i class="fas fa-droplet mr-2"></i> HydroMIS Water Delivery
+                    </div>
+                    <div class="status-badge">
+                        <?php 
+                        if ($transaction['status'] == 'pending') echo '⏳ Awaiting Approval';
+                        elseif ($transaction['status'] == 'approved' && $transaction['delivery_status'] == 'pending') echo '📦 Preparing';
+                        elseif ($transaction['status'] == 'approved' && $transaction['delivery_status'] == 'on_the_way') echo '🚚 On the Way';
+                        elseif ($transaction['status'] == 'approved' && $transaction['delivery_status'] == 'delivered') echo '✓ Delivered';
+                        else echo '❌ Denied';
+                        ?>
+                    </div>
+                </div>
+
+                <div class="transaction-card-body">
+                    <!-- Product Item -->
+                    <div class="product-item">
+                        <div class="product-icon">
+                            <?php echo ($transaction['water_type'] === 'nowater') ? '🏜️' : '💧'; ?>
+                        </div>
+                        <div class="product-details">
+                            <div class="product-name">
+                                <?php echo ($transaction['water_type'] === 'nowater') ? 'No-Water Delivery' : 'Regular Water'; ?>
+                            </div>
+                            <div class="product-info-row">
+                                <span>Quantity: <strong><?php echo $transaction['quantity']; ?></strong> <?php echo ($transaction['water_type'] === 'nowater') ? 'units' : 'gallons'; ?></span>
+                                <span class="product-quantity">@ ₱<?php echo number_format($transaction['price_per_unit'], 2); ?> each</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="product-price">₱<?php echo number_format($transaction['quantity'] * $transaction['price_per_unit'], 2); ?></div>
+                        </div>
+                    </div>
+
+                    <!-- Order Summary -->
+                    <div class="order-summary">
+                        <div class="summary-row">
+                            <span>Subtotal:</span>
+                            <span>₱<?php echo number_format($transaction['quantity'] * $transaction['price_per_unit'], 2); ?></span>
+                        </div>
+                        <?php if ($transaction['discount'] > 0): ?>
+                        <div class="summary-row">
+                            <span><i class="fas fa-tag mr-1"></i>Discount:</span>
+                            <span>-₱<?php echo number_format($transaction['discount'], 2); ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <div class="summary-row">
+                            <span>Total:</span>
+                            <span>₱<?php echo number_format($transaction['amount'], 2); ?></span>
+                        </div>
+                    </div>
+
+                    <!-- Order Details -->
+                    <div class="order-meta">
+                        <div class="order-meta-item">
+                            <strong>Order ID:</strong> <?php echo $transaction['transaction_id']; ?>
+                        </div>
+                        <div class="order-meta-item">
+                            <strong>Ordered:</strong> <?php echo date('M d, Y h:i A', strtotime($transaction['created_at'])); ?>
+                        </div>
+                        <div class="order-meta-item">
+                            <strong>Delivery To:</strong> <?php echo htmlspecialchars($transaction['address']); ?>
+                        </div>
+                        <div class="order-meta-item">
+                            <strong>Rider:</strong>
+                            <?php echo !empty($transaction['rider_name']) ? htmlspecialchars($transaction['rider_name']) : 'Not assigned yet'; ?>
+                        </div>
+                        <div class="order-meta-item">
+                            <strong>Rider Contact:</strong>
+                            <?php echo !empty($transaction['rider_contact']) ? htmlspecialchars($transaction['rider_contact']) : 'N/A'; ?>
+                        </div>
+                    </div>
+
+                    <!-- Status Message -->
+                    <?php if ($transaction['status'] == 'pending'): ?>
+                    <div class="status-message status-awaiting">
+                        <strong><i class="fas fa-hourglass-half mr-2"></i>Awaiting Approval</strong>
+                        <small>Your order is waiting for approval. We'll update you once it's approved.</small>
+                    </div>
+                    <?php elseif ($transaction['status'] == 'denied'): ?>
+                    <div class="status-message status-denied">
+                        <strong><i class="fas fa-times-circle mr-2"></i>Order Denied</strong>
+                        <small>Unfortunately, this order was denied. Contact support for more details.</small>
+                    </div>
+                    <?php elseif ($transaction['status'] == 'approved'): ?>
+                    <div>
+                        <?php if ($transaction['delivery_status'] == 'pending'): ?>
+                        <div class="status-message status-preparing">
+                            <strong><i class="fas fa-clock mr-2"></i>Order Preparing</strong>
+                            <small>Your order is being prepared. It will be dispatched soon.</small>
+                        </div>
+                        <?php elseif ($transaction['delivery_status'] == 'on_the_way'): ?>
+                        <div class="status-message status-transit">
+                            <strong><i class="fas fa-truck mr-2"></i>On the Way</strong>
+                            <small>Your order is out for delivery. Open details to see live GPS updates.</small>
+                        </div>
+                        <?php else: ?>
+                        <div class="status-message status-complete">
+                            <strong><i class="fas fa-check-circle mr-2"></i>Delivered</strong>
+                            <small>Order delivered successfully. Thank you for using HydroMIS.</small>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="transaction-card-footer">
+                    <button class="order-tracking-btn" onclick="toggleTracking('tracking-<?php echo $transaction['transaction_id']; ?>')">
+                        <i class="fas fa-map-marker-alt mr-2"></i> Open Tracking Panel
+                    </button>
+                    <?php if ($transaction['delivery_status'] == 'on_the_way'): ?>
+                    <button class="order-tracking-btn tracking-live-btn" onclick="openLiveTracking('<?php echo htmlspecialchars($transaction['rider_contact']); ?>', '<?php echo htmlspecialchars($transaction['address']); ?>', <?php echo $transaction['rider_latitude']; ?>, <?php echo $transaction['rider_longitude']; ?>, '<?php echo htmlspecialchars($transaction['rider_name']); ?>')">
+                        <i class="fas fa-map mr-2"></i> Live Track
+                    </button>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Detailed Tracking Section -->
+                <div id="tracking-<?php echo $transaction['transaction_id']; ?>" class="tracking-panel">
+                    <!-- GPS Live Tracking -->
+                    <?php if ($transaction['delivery_status'] == 'on_the_way'): ?>
+                    <div class="gps-tracking-container">
+                        <div>
+                            <i class="fas fa-map-marker-alt"></i>
+                            <h6>Live Delivery Tracking</h6>
+                            <span class="location-status-badge active">
+                                <i class="fas fa-circle mr-1"></i> Live GPS Active
+                            </span>
+                        </div>
+                        
+                        <div id="delivery-map-<?php echo $transaction['transaction_id']; ?>" class="delivery-map"></div>
+                        
+                        <div class="gps-info">
+                            <div class="gps-info-item">
+                                <div class="gps-info-label">Your Location</div>
+                                <div class="gps-info-value" id="user-location-<?php echo $transaction['transaction_id']; ?>">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i> Getting location...
+                                </div>
+                            </div>
+                            <div class="gps-info-item driver">
+                                <div class="gps-info-label">Driver Location</div>
+                                <div class="gps-info-value" id="driver-location-<?php echo $transaction['transaction_id']; ?>">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i> Tracking...
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="distance-display" id="distance-<?php echo $transaction['transaction_id']; ?>">
+                            <i class="fas fa-road mr-2"></i> Calculating distance...
+                        </div>
+
+                        <div>
+                            <i class="fas fa-info-circle mr-2"></i>
+                            <strong>Real-time GPS Tracking:</strong> Driver location updates every 5 seconds automatically.
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Timeline Status -->
+                    <div class="tracking-status-timeline">
+                        <div class="timeline-step <?php echo ($transaction['status'] == 'approved' || $transaction['status'] == 'denied' ? ($transaction['status'] == 'denied' ? '' : 'completed') : 'active'); ?>">
+                            <div class="timeline-dot">1</div>
+                            <div class="timeline-label">Ordered</div>
+                        </div>
+                        <div class="timeline-step <?php echo ($transaction['status'] == 'approved' ? 'completed' : ($transaction['status'] == 'denied' ? '' : 'pending')); ?>">
+                            <div class="timeline-dot"><i class="fas fa-check"></i></div>
+                            <div class="timeline-label">Approved</div>
+                        </div>
+                        <div class="timeline-step <?php echo ($transaction['delivery_status'] == 'pending' ? 'active' : ($transaction['delivery_status'] == 'on_the_way' || $transaction['delivery_status'] == 'delivered' ? 'completed' : 'pending')); ?>">
+                            <div class="timeline-dot"><i class="fas fa-box"></i></div>
+                            <div class="timeline-label">Preparing</div>
+                        </div>
+                        <div class="timeline-step <?php echo ($transaction['delivery_status'] == 'on_the_way' ? 'active' : ($transaction['delivery_status'] == 'delivered' ? 'completed' : 'pending')); ?>">
+                            <div class="timeline-dot"><i class="fas fa-truck"></i></div>
+                            <div class="timeline-label">On Way</div>
+                        </div>
+                        <div class="timeline-step <?php echo ($transaction['delivery_status'] == 'delivered' ? 'completed' : 'pending'); ?>">
+                            <div class="timeline-dot"><i class="fas fa-check-circle"></i></div>
+                            <div class="timeline-label">Delivered</div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Timeline -->
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker completed"><i class="fas fa-check"></i></div>
+                            <div class="timeline-content">
+                                <h6>Order Confirmed</h6>
+                                <p><?php echo date('M d, Y h:i A', strtotime($transaction['created_at'])); ?></p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker <?php echo ($transaction['status'] == 'approved' ? ($transaction['delivery_status'] == 'pending' ? 'active' : 'completed') : 'pending'); ?>">
+                                <i class="fas fa-<?php echo ($transaction['status'] == 'approved' ? 'check' : 'circle'); ?>"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Order Approved & Prepared</h6>
+                                <p><?php echo $transaction['status'] == 'approved' ? 'Order is ready for delivery' : 'Waiting for approval'; ?></p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker <?php echo ($transaction['delivery_status'] == 'on_the_way' || $transaction['delivery_status'] == 'delivered' ? ($transaction['delivery_status'] == 'delivered' ? 'completed' : 'active') : 'pending'); ?>">
+                                <i class="fas fa-<?php echo ($transaction['delivery_status'] == 'on_the_way' ? 'circle' : ($transaction['delivery_status'] == 'delivered' ? 'check' : 'circle')); ?>"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Out for Delivery</h6>
+                                <p><?php echo ($transaction['delivery_status'] == 'on_the_way' || $transaction['delivery_status'] == 'delivered') ? date('M d, Y h:i A') : 'Waiting to be dispatched'; ?></p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker <?php echo ($transaction['delivery_status'] == 'delivered' ? 'completed' : 'pending'); ?>">
+                                <i class="fas fa-<?php echo ($transaction['delivery_status'] == 'delivered' ? 'check' : 'circle'); ?>"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Delivered</h6>
+                                <p><?php echo ($transaction['delivery_status'] == 'delivered') ? 'Successfully delivered!' : 'Awaiting delivery'; ?></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Tracking Info Card -->
+                    <?php if ($transaction['delivery_status'] == 'on_the_way'): ?>
+                    <div class="tracking-info-card">
+                        <div class="tracking-info-row">
+                            <span class="tracking-info-label"><i class="fas fa-user-tie mr-2"></i>Driver Name</span>
+                            <span class="tracking-info-value" id="driver-name-<?php echo $transaction['transaction_id']; ?>" data-driver-id="<?php echo $transaction['rider_id'] ?? ''; ?>">
+                                <?php echo !empty($transaction['rider_name']) ? htmlspecialchars($transaction['rider_name']) : 'Loading...'; ?>
+                            </span>
+                        </div>
+                        <div class="tracking-info-row">
+                            <span class="tracking-info-label"><i class="fas fa-phone mr-2"></i>Driver Contact</span>
+                            <span class="tracking-info-value" id="driver-phone-<?php echo $transaction['transaction_id']; ?>">
+                                <?php echo !empty($transaction['rider_contact']) ? htmlspecialchars($transaction['rider_contact']) : 'Loading...'; ?>
+                            </span>
+                        </div>
+                        <div class="tracking-info-row">
+                            <span class="tracking-info-label"><i class="fas fa-star mr-2"></i>Driver Rating</span>
+                            <span class="tracking-info-value" id="driver-rating-<?php echo $transaction['transaction_id']; ?>">
+                                ⭐⭐⭐⭐⭐ (4.8/5.0)
+                            </span>
+                        </div>
+                        <div class="tracking-info-row">
+                            <span class="tracking-info-label"><i class="fas fa-road mr-2"></i>Est. Distance</span>
+                            <span class="tracking-info-value" id="est-distance-<?php echo $transaction['transaction_id']; ?>">
+                                Loading...
+                            </span>
+                        </div>
+                        <div class="tracking-info-row">
+                            <span class="tracking-info-label"><i class="fas fa-hourglass-end mr-2"></i>Est. Arrival</span>
+                            <span class="tracking-info-value" id="est-time-<?php echo $transaction['transaction_id']; ?>">
+                                15-20 minutes
+                            </span>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        <?php elseif ($search_performed && !$error): ?>
+            <div class="no-transactions">
+                <i class="fas fa-box"></i>
+                <p>No orders found for this mobile number.</p>
+            </div>
+        <?php elseif (!$search_performed): ?>
+            <div class="no-transactions">
+                <i class="fas fa-box"></i>
+                <p>Enter your details above to view your orders</p>
+            </div>
+        <?php endif; ?>
+        </div>
+    </main>

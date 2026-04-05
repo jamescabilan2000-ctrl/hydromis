@@ -1,0 +1,113 @@
+<div class="container-create">
+        <?php if ($success): ?>
+        <!-- Success Message -->
+        <div class="success-box">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="success-message">Account Created Successfully!</div>
+            
+            <div class="qr-message">
+                <p class="qr-instruction"><i class="fas fa-info-circle mr-2"></i>Your unique QR Code has been generated. Save or scan this code to log in.</p>
+            </div>
+
+            <div class="qr-code-display">
+                <p>Your QR Code</p>
+                <img id="qrCodeImage" src="qrcodes/<?php echo htmlspecialchars($new_user_id); ?>.png" alt="QR Code" style="max-width: 300px; border: 2px solid #667eea; border-radius: 8px; padding: 10px;">
+                <p style="margin-top: 10px; font-size: 12px; color: #666;"><strong>User ID:</strong> <?php echo htmlspecialchars($new_user_id); ?></p>
+            </div>
+
+            <div style="margin-top: 20px;">
+
+                <button type="button" class="btn-new" onclick="window.location.href='create_account.php';">
+                    <i class="fas fa-plus mr-2"></i> Create Another Account
+                </button>
+                <button type="button" class="btn-scan" onclick="window.location.href='user/scan_qr.php';">
+                    <i class="fas fa-qrcode mr-2"></i> Scan QR Code to Login
+                </button>
+            </div>
+
+            <div style="background-color: #e7f3ff; padding: 12px; border-left: 4px solid #667eea; margin-top: 20px; border-radius: 4px;">
+                <p style="margin: 0; font-size: 13px; color: #0046a3;">
+                    <i class="fas fa-shield-alt mr-2"></i> <strong>Important:</strong> Keep your QR code safe and secure. You'll use it to log in to your account. Your account is pending approval by the admin.
+                </p>
+            </div>
+        </div>
+
+        <?php else: ?>
+        <!-- Form -->
+        <div class="card-create">
+            <div class="header-create">
+                <h2><i class="fas fa-user-plus mr-2"></i>Create Account</h2>
+                <p>Join HydroMIS and start managing water deliveries - No password needed!</p>
+            </div>
+
+            <?php if ($error): ?>
+                <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
+                    <i class="fas fa-exclamation-circle mr-2"></i> <?php echo htmlspecialchars($error); ?>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST" id="createAccountForm">
+                <div class="form-group">
+                    <label><i class="fas fa-user mr-2"></i>Full Name <span style="color: red;">*</span></label>
+                    <input type="text" name="fullname" id="fullname" class="form-control" placeholder="Enter your full name" data-validate="required|fullname" required value="<?php echo isset($_POST['fullname']) ? htmlspecialchars($_POST['fullname']) : ''; ?>">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-map-marker-alt mr-2"></i>Barangay <span style="color: red;">*</span></label>
+                    <select name="address" id="address" class="form-control" data-validate="required" required>
+                        <option value="">-- Select Your Barangay --</option>
+                        <option value="BagongBanwa Island" <?php echo (isset($_POST['address']) && $_POST['address'] == 'BagongBanwa Island') ? 'selected' : ''; ?>>BagongBanwa Island</option>
+                        <option value="Banlasan" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Banlasan') ? 'selected' : ''; ?>>Banlasan</option>
+                        <option value="Batasan Island" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Batasan Island') ? 'selected' : ''; ?>>Batasan Island</option>
+                        <option value="BilangBilangan Island" <?php echo (isset($_POST['address']) && $_POST['address'] == 'BilangBilangan Island') ? 'selected' : ''; ?>>BilangBilangan Island</option>
+                        <option value="Bosongon" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Bosongon') ? 'selected' : ''; ?>>Bosongon</option>
+                        <option value="Buenos Aires" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Buenos Aires') ? 'selected' : ''; ?>>Buenos Aires</option>
+                        <option value="Bunacan" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Bunacan') ? 'selected' : ''; ?>>Bunacan</option>
+                        <option value="Cabulijan" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Cabulijan') ? 'selected' : ''; ?>>Cabulijan</option>
+                        <option value="Cahayag" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Cahayag') ? 'selected' : ''; ?>>Cahayag</option>
+                        <option value="Cawayanan" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Cawayanan') ? 'selected' : ''; ?>>Cawayanan</option>
+                        <option value="Centro" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Centro') ? 'selected' : ''; ?>>Centro</option>
+                        <option value="Genonocan" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Genonocan') ? 'selected' : ''; ?>>Genonocan</option>
+                        <option value="Guiwanon" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Guiwanon') ? 'selected' : ''; ?>>Guiwanon</option>
+                        <option value="Ilijan Norte" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Ilijan Norte') ? 'selected' : ''; ?>>Ilijan Norte</option>
+                        <option value="Ilijan Sur" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Ilijan Sur') ? 'selected' : ''; ?>>Ilijan Sur</option>
+                        <option value="Libertad" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Libertad') ? 'selected' : ''; ?>>Libertad</option>
+                        <option value="Macaas" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Macaas') ? 'selected' : ''; ?>>Macaas</option>
+                        <option value="Matabao" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Matabao') ? 'selected' : ''; ?>>Matabao</option>
+                        <option value="Mocaboc Island" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Mocaboc Island') ? 'selected' : ''; ?>>Mocaboc Island</option>
+                        <option value="Panadtaran" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Panadtaran') ? 'selected' : ''; ?>>Panadtaran</option>
+                        <option value="Panaytayon" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Panaytayon') ? 'selected' : ''; ?>>Panaytayon</option>
+                        <option value="Pandan" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Pandan') ? 'selected' : ''; ?>>Pandan</option>
+                        <option value="Pangapasan Island" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Pangapasan Island') ? 'selected' : ''; ?>>Pangapasan Island</option>
+                        <option value="Pinayagan Norte" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Pinayagan Norte') ? 'selected' : ''; ?>>Pinayagan Norte</option>
+                        <option value="Pinayagan Sur" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Pinayagan Sur') ? 'selected' : ''; ?>>Pinayagan Sur</option>
+                        <option value="Pooc Occidental" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Pooc Occidental') ? 'selected' : ''; ?>>Pooc Occidental</option>
+                        <option value="Pooc Oriental" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Pooc Oriental') ? 'selected' : ''; ?>>Pooc Oriental</option>
+                        <option value="Potohan" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Potohan') ? 'selected' : ''; ?>>Potohan</option>
+                        <option value="Talenceras" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Talenceras') ? 'selected' : ''; ?>>Talenceras</option>
+                        <option value="Tan-awan" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Tan-awan') ? 'selected' : ''; ?>>Tan-awan</option>
+                        <option value="Tinangnan" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Tinangnan') ? 'selected' : ''; ?>>Tinangnan</option>
+                        <option value="Ubojan" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Ubojan') ? 'selected' : ''; ?>>Ubojan</option>
+                        <option value="Ubay Island" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Ubay Island') ? 'selected' : ''; ?>>Ubay Island</option>
+                        <option value="Villanueva" <?php echo (isset($_POST['address']) && $_POST['address'] == 'Villanueva') ? 'selected' : ''; ?>>Villanueva</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-phone mr-2"></i>Phone Number <span style="color: red;">*</span></label>
+                    <input type="tel" name="phone" id="phone" class="form-control" placeholder="09171234567" data-validate="required|phone" required value="<?php echo isset($_POST['phone']) ? htmlspecialchars($_POST['phone']) : ''; ?>" oninput="HydroMISForms.formatPhoneNumber(this)">
+                </div>
+
+                <button type="submit" class="btn-create">
+                    <i class="fas fa-qrcode mr-2"></i> Create Account & Generate QR Code
+                </button>
+            </form>
+
+            <div class="footer-create">
+                <i class="fas fa-shield-alt mr-2"></i> <strong>Secure & Simple:</strong> No password needed. We'll generate a unique QR code for your secure login.<br><br>
+                Already have a QR code? <a href="user/scan_qr.php">Scan it here to login</a>
+            </div>
+        </div>
+        <?php endif; ?>

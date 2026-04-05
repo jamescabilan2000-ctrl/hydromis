@@ -1,0 +1,287 @@
+<div class="container-main">
+        <?php if ($success): ?>
+        <!-- Success Message -->
+        <div class="success-box">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="success-message">Account Created Successfully!</div>
+            
+            <div class="qr-message">
+                <p class="qr-instruction"><i class="fas fa-info-circle mr-2"></i>Your unique QR Code has been generated. Save or scan this code to log in.</p>
+            </div>
+
+            <div class="qr-code-display">
+                <p>Your QR Code</p>
+                <img id="qrCodeImage" src="../qrcodes/<?php echo htmlspecialchars($new_user_id); ?>.png" alt="QR Code" style="max-width: 300px; border: 2px solid #667eea; border-radius: 8px; padding: 10px;">
+                <p style="margin-top: 10px; font-size: 12px; color: #666;"><strong>User ID:</strong> <?php echo htmlspecialchars($new_user_id); ?></p>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button type="button" class="btn-new" onclick="window.location.href='create_account.php';">
+                    <i class="fas fa-plus mr-2"></i> Create Another Account
+                </button>
+                <button type="button" class="btn-scan" onclick="window.location.href='scan_qr.php';">
+                    <i class="fas fa-qrcode mr-2"></i> Scan QR Code to Login
+                </button>
+            </div>
+
+            <div style="background-color: #e7f3ff; padding: 12px; border-left: 4px solid #667eea; margin-top: 20px; border-radius: 4px;">
+                <p style="margin: 0; font-size: 13px; color: #0046a3;">
+                    <i class="fas fa-shield-alt mr-2"></i> <strong>Important:</strong> Keep your QR code safe and secure. You'll use it to log in to your account. Your account is pending approval by the admin.
+                </p>
+            </div>
+        </div>
+
+        <?php else: ?>
+        <!-- Form -->
+        <div class="card form-width">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-user-plus mr-2"></i> Create New Account
+                </h5>
+
+                <?php 
+                $selected_barangay = isset($_POST['address']) ? $_POST['address'] : '';
+                $barangays = [
+                    'BagongBanwa Island',
+                    'Banlasan',
+                    'Batasan Island',
+                    'BilangBilangan Island',
+                    'Bosongon',
+                    'Buenos Aires',
+                    'Bunacan',
+                    'Cabulijan',
+                    'Cahayag',
+                    'Cawayanan',
+                    'Centro',
+                    'Genonocan',
+                    'Guiwanon',
+                    'Ilijan Norte',
+                    'Ilijan Sur',
+                    'Libertad',
+                    'Macaas',
+                    'Matabao',
+                    'Mocaboc Island',
+                    'Panadtaran',
+                    'Panaytayon',
+                    'Pandan',
+                    'Pangapasan Island',
+                    'Pinayagan Norte',
+                    'Pinayagan Sur',
+                    'Pooc Occidental',
+                    'Pooc Oriental',
+                    'Potohan',
+                    'Talenceras',
+                    'Tan-awan',
+                    'Tinangnan',
+                    'Ubojan',
+                    'Ubay Island',
+                    'Villanueva'
+                ];
+                
+                if ($error): ?>
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle mr-2"></i> <?php echo htmlspecialchars($error); ?>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="full_name"><i class="fas fa-user mr-2"></i>Full Name <span style="color: red;">*</span></label>
+                        <input type="text" class="form-control" name="full_name" id="full_name" placeholder="Enter your full name" required value="<?php echo isset($_POST['full_name']) ? htmlspecialchars($_POST['full_name']) : ''; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="barangay"><i class="fas fa-map-marker-alt mr-2"></i>Barangay <span style="color: red;">*</span></label>
+                        <select class="form-control" name="address" id="barangay" required>
+                            <option value="">-- Select Your Barangay --</option>
+                            <?php foreach ($barangays as $brgy): ?>
+                                <option value="<?php echo htmlspecialchars($brgy); ?>" <?php echo ($selected_barangay == $brgy) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($brgy); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact_number"><i class="fas fa-phone mr-2"></i>Contact Number <span style="color: red;">*</span></label>
+                        <input type="tel" class="form-control" name="contact_number" id="contact_number" placeholder="09123456789" required value="<?php echo isset($_POST['contact_number']) ? htmlspecialchars($_POST['contact_number']) : ''; ?>">
+                    </div>
+
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-check mr-2"></i> Create Account & Generate QR Code
+                    </button>
+                </form>
+
+                <hr>
+
+                <div>
+                    <p><i class="fas fa-shield-alt mr-2"></i> <strong>No Password Needed!</strong> We'll generate a unique QR code for your account login.</p>
+                    <a href="scan_qr.php">
+                        <i class="fas fa-qrcode mr-2"></i> Already have a QR code? Scan it here
+                    </a>
+                </div>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="full_name"><i class="fas fa-user mr-2"></i>Full Name </label>
+                        <input type="text" class="form-control" name="full_name" id="full_name" required value="<?php echo isset($_POST['full_name']) ? htmlspecialchars($_POST['full_name']) : ''; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="barangay"><i class="fas fa-map-marker-alt mr-2"></i>Barangay </label>
+                        <select class="form-control" name="barangay" id="barangay" required>
+                            <option value="">-- Select Barangay --</option>
+                            <?php foreach ($barangays as $brgy): ?>
+                                <option value="<?php echo $brgy; ?>" <?php echo ($selected_barangay == $brgy) ? 'selected' : ''; ?>>
+                                    <?php echo $brgy; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="address"><i class="fas fa-home mr-2"></i>Street/House Number </label>
+                        <textarea class="form-control" name="address" id="address" rows="2" placeholder="Enter your street name, house number, building name" required><?php echo isset($_POST['address']) ? htmlspecialchars($_POST['address']) : ''; ?></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact_number"><i class="fas fa-phone mr-2"></i>Contact Number </label>
+                        <input type="tel" class="form-control" name="contact_number" id="contact_number" placeholder="09171234567" required>
+                    </div>
+
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-check mr-2"></i> Create Account
+                    </button>
+                </form>
+
+                <hr>
+
+                <div>
+                    <p>Already have an account?</p>
+                    <a href="scan_qr.php">
+                        <i class="fas fa-qrcode mr-2"></i> Scan Your QR Code
+                    </a>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        // Location Picker
+        function selectLocation(location) {
+            const addressField = document.getElementById('address');
+            addressField.value = location + ', Philippines';
+            document.getElementById('locationSearch').value = location;
+            document.getElementById('locationDropdown').style.display = 'none';
+            addressField.focus();
+            addressField.setSelectionRange(addressField.value.length, addressField.value.length);
+        }
+
+        // Location Search
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('locationSearch');
+            const dropdown = document.getElementById('locationDropdown');
+            const options = dropdown.querySelectorAll('.location-option');
+
+            searchInput.addEventListener('focus', function() {
+                dropdown.style.display = 'block';
+            });
+
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                options.forEach(option => {
+                    if (option.textContent.toLowerCase().includes(searchTerm) || searchTerm === '') {
+                        option.style.display = 'block';
+                    } else {
+                        option.style.display = 'none';
+                    }
+                });
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!document.querySelector('.location-picker-wrapper').contains(e.target)) {
+                    dropdown.style.display = 'none';
+                }
+            });
+        });
+
+        // Geolocation
+        function getLocationAddress() {
+            const btn = document.getElementById('getLocationBtn');
+            const statusDiv = document.getElementById('locationStatus');
+            const addressField = document.getElementById('address');
+            
+            btn.disabled = true;
+            statusDiv.textContent = 'Getting location...';
+            statusDiv.className = 'location-status';
+            
+            if (!navigator.geolocation) {
+                statusDiv.textContent = 'Geolocation not supported by your browser';
+                statusDiv.className = 'location-status error';
+                btn.disabled = false;
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    // Use OpenStreetMap Nominatim API for reverse geocoding (free, no key needed)
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const address = data.address;
+                            let fullAddress = '';
+                            
+                            // Build address from components
+                            if (address.house_number) fullAddress += address.house_number + ' ';
+                            if (address.road) fullAddress += address.road + ', ';
+                            if (address.neighbourhood) fullAddress += address.neighbourhood + ', ';
+                            if (address.suburb) fullAddress += address.suburb + ', ';
+                            if (address.city) fullAddress += address.city + ', ';
+                            if (address.state) fullAddress += address.state + ' ';
+                            if (address.postcode) fullAddress += address.postcode + ', ';
+                            if (address.country) fullAddress += address.country;
+                            
+                            if (fullAddress.trim()) {
+                                addressField.value = fullAddress.trim();
+                                statusDiv.textContent = '✓ Location detected successfully!';
+                                statusDiv.className = 'location-status success';
+                            } else {
+                                statusDiv.textContent = 'Could not find address for this location';
+                                statusDiv.className = 'location-status error';
+                            }
+                            btn.disabled = false;
+                        })
+                        .catch(error => {
+                            statusDiv.textContent = 'Error getting address: ' + error.message;
+                            statusDiv.className = 'location-status error';
+                            btn.disabled = false;
+                        });
+                },
+                function(error) {
+                    let errorMsg = 'Location not available';
+                    if (error.code === error.PERMISSION_DENIED) {
+                        errorMsg = 'Please enable location access in your browser settings';
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        errorMsg = 'Location information is unavailable';
+                    } else if (error.code === error.TIMEOUT) {
+                        errorMsg = 'Location request timed out';
+                    }
+                    statusDiv.textContent = errorMsg;
+                    statusDiv.className = 'location-status error';
+                    btn.disabled = false;
+                }
+            );
+        }
+    </script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>

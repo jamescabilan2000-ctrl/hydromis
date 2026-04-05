@@ -1,0 +1,809 @@
+<div class="container-main" style="align-items:flex-start; padding-top: 36px;">
+        <?php if ($scanned_data): ?>
+        <!-- ===== WEB PROFILE + PURCHASE LAYOUT ===== -->
+        <?php
+            $pts      = intval($scanned_data['loyalty_points'] ?? 0);
+            $uid      = $scanned_data['user_id'];
+            $fname    = htmlspecialchars($scanned_data['full_name']);
+            $addr     = htmlspecialchars($scanned_data['address']);
+            $contact  = htmlspecialchars($scanned_data['contact_number']);
+            $email    = htmlspecialchars($scanned_data['email'] ?? '');
+            $initials = strtoupper(implode('', array_map(fn($w) => $w[0], array_slice(explode(' ', trim($scanned_data['full_name'])), 0, 2))));
+            $photo    = $scanned_data['profile_photo'] ?? '';
+            $qr_path  = '';
+            foreach (['png','jpg','jpeg','svg'] as $ext) {
+                if (file_exists("../qrcodes/$uid.$ext")) { $qr_path = "../qrcodes/$uid.$ext"; break; }
+            }
+            $code_display = implode(' ', str_split(substr(preg_replace('/[^A-Z0-9]/', '', strtoupper($uid)), -9), 3));
+        ?>
+        <div class="page-container">
+
+            <!-- Page heading -->
+            <div class="page-heading">
+                <h2><i class="fas fa-id-card mr-2" style="color:#0f4fd4;"></i> Customer Profile &amp; <span>Purchase</span></h2>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <a href="#" class="pts-badge" title="Loyalty Points"><i class="fas fa-star"></i> <?php echo $pts; ?> pts</a>
+                </div>
+            </div>
+
+            <?php if ($profile_updated): ?>
+            <div class="profile-success-toast"><i class="fas fa-check-circle"></i> Profile updated successfully!</div>
+            <?php endif; ?>
+            <?php if ($profile_error): ?>
+            <div class="profile-error-toast"><i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($profile_error); ?></div>
+            <?php endif; ?>
+
+            <div class="profile-grid">
+                <!-- ===== LEFT: Profile sidebar ===== -->
+                <div>
+                    <!-- QR + Avatar banner -->
+                    <div class="web-card">
+                        <div class="qr-banner">
+                            <div class="profile-avatar">
+                                <?php if ($photo && file_exists("../uploads/profile_photos/$photo")): ?>
+                                    <img src="../uploads/profile_photos/<?php echo htmlspecialchars($photo); ?>" alt="Profile">
+                                <?php else: ?>
+                                    <?php echo $initials; ?>
+                                <?php endif; ?>
+                            </div>
+                            <div class="qr-banner-name">
+                                <h4><?php echo $fname; ?></h4>
+                                <span><?php echo $uid; ?></span>
+                            </div>
+                            <div class="qr-image-box">
+                                <?php if ($qr_path): ?>
+                                    <img src="<?php echo $qr_path; ?>" alt="QR Code">
+                                <?php else: ?>
+                                    <div style="width:150px;height:150px;display:flex;align-items:center;justify-content:center;color:#cbd5e1;">
+                                        <i class="fas fa-qrcode" style="font-size:70px;"></i>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="qr-user-code"><?php echo $code_display; ?></div>
+                            </div>
+                            <div class="qr-caption">Scan to buy &amp; collect loyalty points</div>
+                        </div>
+
+                        <?php if ($scanned_data['status'] !== 'approved'): ?>
+                        <div style="padding:14px 20px;background:#fff8e1;border-top:1px solid #fde68a;font-size:13px;color:#92400e;font-weight:600;text-align:center;">
+                            <i class="fas fa-clock mr-1"></i> Account is <strong><?php echo ucfirst($scanned_data['status']); ?></strong> — purchases unavailable.
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Profile info card -->
+                    <div class="web-card">
+                        <div class="web-card-header">
+                            <h6><i class="fas fa-user mr-1"></i> Profile Info</h6>
+                            <button class="btn-edit-profile" onclick="openEditModal()"><i class="fas fa-pen"></i> Edit</button>
+                        </div>
+
+                        <div class="profile-row">
+                            <div class="profile-row-icon"><i class="fas fa-user"></i></div>
+                            <div class="profile-row-content">
+                                <div class="profile-row-label">Full Name</div>
+                                <div class="profile-row-value"><?php echo $fname; ?></div>
+                            </div>
+                        </div>
+                        <div class="profile-row">
+                            <div class="profile-row-icon"><i class="fas fa-map-marker-alt"></i></div>
+                            <div class="profile-row-content">
+                                <div class="profile-row-label">Address</div>
+                                <div class="profile-row-value"><?php echo $addr; ?></div>
+                            </div>
+                        </div>
+                        <div class="profile-row">
+                            <div class="profile-row-icon"><i class="fas fa-phone"></i></div>
+                            <div class="profile-row-content">
+                                <div class="profile-row-label">Contact Number</div>
+                                <div class="profile-row-value"><?php echo $contact; ?></div>
+                            </div>
+                        </div>
+                        <?php if ($email): ?>
+                        <div class="profile-row">
+                            <div class="profile-row-icon"><i class="fas fa-envelope"></i></div>
+                            <div class="profile-row-content">
+                                <div class="profile-row-label">Email</div>
+                                <div class="profile-row-value"><?php echo $email; ?></div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <div class="profile-row">
+                            <div class="profile-row-icon" style="background:#fff8e1;color:#d97706;"><i class="fas fa-star"></i></div>
+                            <div class="profile-row-content">
+                                <div class="profile-row-label">Loyalty Points</div>
+                                <div class="profile-row-value" style="color:#d97706;"><?php echo $pts; ?> pts</div>
+                            </div>
+                        </div>
+                        <div class="profile-row">
+                            <div class="profile-row-icon" style="background:#f0fdf4;color:#059669;"><i class="fas fa-calendar-alt"></i></div>
+                            <div class="profile-row-content">
+                                <div class="profile-row-label">Member Since</div>
+                                <div class="profile-row-value"><?php echo date('M d, Y', strtotime($scanned_data['created_at'])); ?></div>
+                            </div>
+                        </div>
+                        <div class="profile-row">
+                            <div class="profile-row-icon" style="background:<?php echo $scanned_data['status']==='approved' ? '#f0fdf4;color:#059669' : ($scanned_data['status']==='denied' ? '#fee2e2;color:#dc2626' : '#fef9c3;color:#d97706'); ?>;"><i class="fas fa-circle"></i></div>
+                            <div class="profile-row-content">
+                                <div class="profile-row-label">Account Status</div>
+                                <div class="profile-row-value">
+                                    <span class="status-badge badge-<?php echo $scanned_data['status']; ?>"><?php echo ucfirst($scanned_data['status']); ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== RIGHT: Purchase section ===== -->
+                <div id="purchaseSection" style="scroll-margin-top: 24px;">
+                    <div class="web-card">
+                    <?php if ($transaction_success): ?>
+                    <div class="web-card-header"><h6><i class="fas fa-receipt mr-1"></i> Transaction Receipt</h6></div>
+                    <div class="form-pad">
+            <!-- Transaction Receipt -->
+            <div class="receipt">
+                <div class="receipt-header">
+                    <i class="fas fa-receipt mr-2"></i> RECEIPT
+                </div>
+                
+                <div class="receipt-line"></div>
+                
+                <div class="receipt-section">
+                    <div class="receipt-row">
+                        <span class="receipt-label">Transaction ID:</span>
+                        <span class="receipt-value"><?php echo $transaction_data['transaction_id']; ?></span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Date & Time:</span>
+                        <span class="receipt-value"><?php echo date('M d, Y h:i A'); ?></span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Customer:</span>
+                        <span class="receipt-value"><?php echo htmlspecialchars($scanned_data['full_name']); ?></span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Customer ID:</span>
+                        <span class="receipt-value"><?php echo $scanned_data['user_id']; ?></span>
+                    </div>
+                </div>
+                
+                <div class="receipt-line"></div>
+                
+                <div class="receipt-section">
+                    <div class="receipt-header-small">Items</div>
+                    <div class="receipt-item-row">
+                        <span class="receipt-item-desc"><?php echo $transaction_data['water_type'] === 'nowater' ? 'No-Water' : 'Regular Water'; ?></span>
+                        <span class="receipt-item-qty"><?php echo $transaction_data['quantity']; ?></span>
+                        <span class="receipt-item-unit">@ ₱<?php echo number_format($transaction_data['price_per_unit'], 2); ?></span>
+                        <span class="receipt-item-total">₱<?php echo number_format($transaction_data['total_amount'], 2); ?></span>
+                    </div>
+                </div>
+                
+                <div class="receipt-line"></div>
+                
+                <div class="receipt-section">
+                    <div class="receipt-row">
+                        <span class="receipt-label">Subtotal:</span>
+                        <span class="receipt-value">₱<?php echo number_format($transaction_data['total_amount'], 2); ?></span>
+                    </div>
+                    <?php if ($transaction_data['discount'] > 0): ?>
+                    <div class="receipt-row discount-row">
+                        <span class="receipt-label"><i class="fas fa-tag mr-1"></i>Discount:</span>
+                        <span class="receipt-value">-₱<?php echo number_format($transaction_data['discount'], 2); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <div class="receipt-row amount-due">
+                        <span class="receipt-label">Amount Due:</span>
+                        <span class="receipt-value">₱<?php echo number_format($transaction_data['final_amount'], 2); ?></span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Payment Method:</span>
+                        <span class="receipt-value"><?php echo strtoupper($transaction_data['payment_method']); ?></span>
+                    </div>
+                    <?php if ($transaction_data['payment_method'] == 'cash'): ?>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Amount Tendered:</span>
+                        <span class="receipt-value">₱<?php echo number_format($transaction_data['amount_tendered'], 2); ?></span>
+                    </div>
+                    <div class="receipt-row change-row">
+                        <span class="receipt-label"><strong>Change:</strong></span>
+                        <span class="receipt-value"><strong>₱<?php echo number_format($transaction_data['change'], 2); ?></strong></span>
+                    </div>
+                    <?php else: ?>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Payment App:</span>
+                        <span class="receipt-value"><?php echo strtoupper($transaction_data['payment_method']); ?></span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Status:</span>
+                        <span class="receipt-value" style="color: #0f4fd4;">Awaiting Payment</span>
+                    </div>
+                    <div style="background: #fff8e5; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 11px; color: #5f6f86; border: 1px solid #f4d188;">
+                        <i class="fas fa-info-circle" style="color: #c97a05;"></i> Complete payment in your <?php echo strtoupper($transaction_data['payment_method']); ?> app
+                    </div>
+                    <?php endif; ?>
+                </div>
+                
+                <div class="receipt-line"></div>
+                
+                <?php if ($transaction_data['loyalty_points'] > 0): ?>
+                <div class="receipt-section">
+                    <div class="receipt-row loyalty-row">
+                        <span class="receipt-label"><i class="fas fa-star mr-1"></i>Loyalty Points Earned:</span>
+                        <span class="receipt-value">+<?php echo $transaction_data['loyalty_points']; ?></span>
+                    </div>
+                </div>
+                <div class="receipt-line"></div>
+                <?php endif; ?>
+                
+                <div class="receipt-footer">
+                    <p>Thank you for your purchase!</p>
+                    <p style="font-size: 11px; color: #5f6f86;">Status: Pending Approval</p>
+                </div>
+            </div>
+            </div><!-- /receipt padding -->
+            <?php else: ?>
+            <div class="web-card-header"><h6><i class="fas fa-shopping-basket mr-1"></i> Record Purchase</h6></div>
+            <div class="form-pad">
+            <!-- Buy Form -->
+            <div class="buy-form">
+                <h6 style="display:none;"></h6>
+                <?php if ($error): ?>
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle mr-2"></i> <?php echo $error; ?>
+                    </div>
+                <?php endif; ?>
+                <form method="POST" enctype="multipart/form-data" onchange="calculatePrice()" id="buyForm" onsubmit="return handlePaymentSubmit(event)">
+                    <input type="hidden" name="user_id" value="<?php echo $scanned_data['user_id']; ?>">
+                    <input type="hidden" name="buy_submit" value="1">
+
+                    <!-- Water Type -->
+                    <div class="form-group mb-4">
+                        <label class="d-block mb-2" style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;"><i class="fas fa-droplet mr-1" style="color:#10b981;"></i> Water Type</label>
+                        <div style="display:flex;gap:12px;">
+                            <button type="button" class="btn-water-type active" id="btn-regular" onclick="selectWaterType('regular'); calculatePrice();" style="flex:1;">
+                                <span class="wt-icon"><img src="../images/gallon-removebg-preview.png" alt="Gallon" style="width:36px;height:36px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.18));"></span>
+                                <span class="wt-label">Regular</span>
+                                <span class="wt-price">₱20 / gallon</span>
+                            </button>
+                            <button type="button" class="btn-water-type" id="btn-nowater" onclick="selectWaterType('nowater'); calculatePrice();" style="flex:1;">
+                                <span class="wt-icon" style="position:relative;display:inline-block;">
+                                    <img src="../images/gallon-removebg-preview.png" alt="Gallon" style="width:36px;height:36px;object-fit:contain;filter:grayscale(0.4) drop-shadow(0 2px 4px rgba(0,0,0,0.18));">
+                                    <i class="fas fa-ban" style="position:absolute;top:-4px;right:-6px;font-size:16px;color:#ef4444;background:white;border-radius:50%;padding:1px;line-height:1;"></i>
+                                </span>
+                                <span class="wt-label">No-Water</span>
+                                <span class="wt-price">₱30 / unit</span>
+                            </button>
+                        </div>
+                        <input type="hidden" name="water_type" id="water_type" value="regular">
+                    </div>
+
+                    <!-- Quantity -->
+                    <div class="form-group mb-4">
+                        <label class="d-block mb-2" style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;"><i class="fas fa-layer-group mr-1" style="color:#10b981;"></i> Quantity</label>
+                        <div class="qty-input-group">
+                            <button type="button" class="qty-btn" onclick="changeQty(-1)">−</button>
+                            <input type="number" name="quantity" id="quantity" min="1" value="5" required onchange="calculatePrice()" oninput="calculatePrice()">
+                            <button type="button" class="qty-btn" onclick="changeQty(1)">+</button>
+                        </div>
+                        <div class="qty-chips">
+                            <button type="button" class="qty-chip" onclick="setQty(1)">1</button>
+                            <button type="button" class="qty-chip" onclick="setQty(5)">5</button>
+                            <button type="button" class="qty-chip" onclick="setQty(10)">10</button>
+                            <button type="button" class="qty-chip" onclick="setQty(20)">20</button>
+                        </div>
+                        <small style="color:#94a3b8;font-size:11px;margin-top:6px;display:block;" id="qtyHint">Gallons for Regular water</small>
+                    </div>
+
+                    <!-- Price Breakdown -->
+                    <div class="price-breakdown mb-4" id="priceBreakdown">
+                        <div class="price-item">
+                            <span>Subtotal (<span id="displayQty">5</span> × ₱<span id="displayPrice">20</span>)</span>
+                            <span>₱<strong id="subtotal">100.00</strong></span>
+                        </div>
+                        <div class="price-item discount-row" id="discountRow" style="display:none;">
+                            <span><i class="fas fa-tag mr-1"></i> Discount (per 5 gal)</span>
+                            <span>−₱<strong id="discount">0.00</strong></span>
+                        </div>
+                        <div class="price-item final">
+                            <span><i class="fas fa-receipt mr-1"></i> Total Amount</span>
+                            <span>₱<strong id="finalAmount">100.00</strong></span>
+                        </div>
+                        <div class="price-item points" id="pointsRow" style="display:none;">
+                            <span><i class="fas fa-star mr-1"></i> Loyalty Points</span>
+                            <span>+<strong id="loyaltyPointsCalc">0</strong> pts</span>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="payment_method" id="payment_method" value="cash">
+
+                    <!-- Amount Tendered -->
+                    <div id="cashDetails" class="payment-details show">
+                        <div class="form-group mb-4">
+                            <label class="d-block mb-2" style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;"><i class="fas fa-money-bill-wave mr-1" style="color:#10b981;"></i> Amount Tendered</label>
+                            <div class="tendered-input-group">
+                                <span class="tendered-prefix">₱</span>
+                                <input type="number" name="amount_tendered" id="amount_tendered" placeholder="0.00" step="0.01" min="0" onchange="calculateChange()" oninput="calculateChange()">
+                            </div>
+                            <div id="changeDisplay"></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-buy" id="submitBtn">
+                        <i class="fas fa-shopping-cart mr-2"></i> <span id="btnText">Confirm Purchase</span>
+                    </button>
+                </form>
+            </div><!-- /buy-form -->
+            </div><!-- /padding -->
+            <?php endif; ?>
+            </div><!-- /web-card -->
+            </div><!-- /purchaseSection (right column) -->
+            </div><!-- /profile-grid -->
+        </div><!-- /page-container -->
+
+        <?php else: ?>
+        <!-- Scanner -->
+        <div style="display:flex;justify-content:center;align-items:center;min-height:70vh;">
+        <div class="card scanner-width">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-qrcode mr-2"></i> Scan QR Code
+                </h5>
+
+                <?php if ($error): ?>
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle mr-2"></i> <?php echo $error; ?>
+                    </div>
+                <?php endif; ?>
+
+                <div class="status status-waiting" id="status">
+                    <i class="fas fa-video mr-2"></i> Point your camera at a QR code
+                </div>
+
+                <div id="video-container">
+                    <video id="scanner"></video>
+                    <div class="scanner-frame">
+                        <div class="scanner-corner corner-tl"></div>
+                        <div class="scanner-corner corner-tr"></div>
+                        <div class="scanner-corner corner-bl"></div>
+                        <div class="scanner-corner corner-br"></div>
+                    </div>
+                </div>
+
+                <button type="button" class="btn-toggle" onclick="toggleCamera();">
+                    <i class="fas fa-camera mr-2"></i> Start Camera
+                </button>
+
+                <p style="color: #5f6f86; font-size: 12px; text-align: center;">
+                    <i class="fas fa-info-circle"></i> By scanning your QR code, your information will be displayed
+                </p>
+
+                <form id="qr-form" method="POST" style="display: none;">
+                    <div class="form-group">
+                        <label>QR Data:</label>
+                        <textarea name="qr_data" id="qr_data"></textarea>
+                    </div>
+                    <button type="submit" style="display: none;">Submit</button>
+                </form>
+
+                <hr>
+
+                <div style="text-align: center;">
+                    <p style="color: #5f6f86; margin-bottom: 15px;">Don't have an account yet?</p>
+                    <a href="create_account.php" style="color: #0f4fd4; text-decoration: none; font-weight: 600;">
+                        <i class="fas fa-user-plus mr-2"></i> Create New Account
+                    </a>
+                </div>
+            </div>
+        </div><!-- /card -->
+        </div><!-- /flex centering -->
+        <?php endif; ?>
+    </div>
+
+    <!-- ===== Edit Profile Modal ===== -->
+    <?php if ($scanned_data): ?>
+    <div class="edit-overlay" id="editOverlay">
+        <div class="edit-modal">
+            <h5><i class="fas fa-user-edit mr-2" style="color:#0f4fd4;"></i> Edit Profile</h5>
+            <form method="POST" enctype="multipart/form-data" id="editProfileForm">
+                <input type="hidden" name="update_profile" value="1">
+                <input type="hidden" name="upd_user_id" value="<?php echo htmlspecialchars($scanned_data['user_id']); ?>">
+
+                <!-- Photo -->
+                <div class="photo-preview-wrap">
+                    <div class="photo-preview" id="photoPreviewBox">
+                        <?php
+                            $photo = $scanned_data['profile_photo'] ?? '';
+                            if ($photo && file_exists("../uploads/profile_photos/$photo")):
+                        ?>
+                            <img src="../uploads/profile_photos/<?php echo htmlspecialchars($photo); ?>" alt="Profile" id="photoPreviewImg">
+                        <?php else: ?>
+                            <span id="photoInitials"><?php echo $initials; ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div>
+                        <label class="btn-upload-photo" for="photoInput">
+                            <i class="fas fa-camera mr-1"></i> Change Photo
+                        </label>
+                        <input type="file" name="profile_photo" id="photoInput" accept="image/*" style="display:none;" onchange="previewPhoto(this)">
+                        <div style="font-size:11px;color:#94a3b8;margin-top:4px;">JPG, PNG, WebP · max 2 MB</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" name="upd_name" id="upd_name" value="<?php echo htmlspecialchars($scanned_data['full_name']); ?>" required maxlength="255">
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <textarea name="upd_address" id="upd_address" required maxlength="500"><?php echo htmlspecialchars($scanned_data['address']); ?></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Contact Number</label>
+                    <input type="text" name="upd_contact" id="upd_contact" value="<?php echo htmlspecialchars($scanned_data['contact_number']); ?>" required maxlength="20" placeholder="09171234567">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn-save-profile">
+                        <i class="fas fa-save mr-1"></i> Save Changes
+                    </button>
+                    <button type="button" class="btn-cancel-edit" onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <script>
+        let video;
+        let cameraActive = false;
+
+        /* ===== Profile edit modal ===== */
+        function openEditModal() {
+            document.getElementById('editOverlay').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeEditModal() {
+            document.getElementById('editOverlay').classList.remove('show');
+            document.body.style.overflow = '';
+        }
+        // Close on backdrop click
+        document.getElementById('editOverlay')?.addEventListener('click', function(e) {
+            if (e.target === this) closeEditModal();
+        });
+        // Preview selected photo before upload
+        function previewPhoto(input) {
+            if (!input.files || !input.files[0]) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const box = document.getElementById('photoPreviewBox');
+                box.innerHTML = '<img src="' + e.target.result + '" id="photoPreviewImg" style="width:100%;height:100%;object-fit:cover;">';
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+        <?php if ($profile_updated): ?>
+        // Auto-scroll to profile card on successful update
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('.profile-wrapper')?.scrollIntoView({behavior:'smooth'});
+        });
+        <?php endif; ?>
+
+        async function toggleCamera() {
+            const button = document.querySelector('.btn-toggle');
+            
+            if (!cameraActive) {
+                try {
+                    video = document.getElementById('scanner');
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: "environment" }
+                    });
+                    video.srcObject = stream;
+                    video.play();
+                    cameraActive = true;
+                    button.textContent = '⏹ Stop Camera';
+                    startScanning();
+                } catch (err) {
+                    alert('Unable to access camera: ' + err.message);
+                    updateStatus('Camera access denied', false);
+                }
+            } else {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                cameraActive = false;
+                button.textContent = '📷 Start Camera';
+                updateStatus('Camera stopped', false);
+            }
+        }
+
+        function startScanning() {
+            function scan() {
+                if (!cameraActive) return;
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                video.width = video.clientWidth;
+                video.height = video.clientHeight;
+                
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, canvas.width, canvas.height, {
+                        inversionAttempts: "dontInvert",
+                    });
+
+                    if (code) {
+                        try {
+                            const data = JSON.parse(code.data);
+                            if (data.user_id) {
+                                updateStatus('QR Code detected! Processing...', 'success');
+                                document.getElementById('qr_data').value = code.data;
+                                setTimeout(() => {
+                                    document.getElementById('qr-form').submit();
+                                }, 500);
+                                return;
+                            }
+                        } catch (e) {
+                            // Not a valid JSON QR code
+                        }
+                    }
+                }
+                
+                requestAnimationFrame(scan);
+            }
+            
+            updateStatus('Scanning...', 'waiting');
+            scan();
+        }
+
+        function updateStatus(message, type = 'waiting') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            const classes = ['status-waiting', 'status-success', 'status-error'];
+            status.className = 'status status-' + type;
+        }
+
+        // Price Calculation Function
+        function calculatePrice() {
+            const waterType = document.getElementById('water_type').value;
+            const quantity = parseInt(document.getElementById('quantity').value) || 0;
+            const pricePerUnit = waterType === 'nowater' ? 30 : 20;
+            
+            // Calculate subtotal
+            const subtotal = quantity * pricePerUnit;
+            
+            // Calculate discount (5 pesos per 5 units, only for regular water)
+            // Loyalty: 1 point per gallon for regular water
+            let discount = 0;
+            let loyaltyPoints = 0;
+            if (waterType === 'regular') {
+                const discountCount = Math.floor(quantity / 5);
+                discount = discountCount * 5;
+                loyaltyPoints = quantity;
+            }
+            
+            // Calculate final amount
+            const finalAmount = subtotal - discount;
+            
+            // Update display
+            document.getElementById('displayQty').textContent = quantity;
+            document.getElementById('displayPrice').textContent = pricePerUnit;
+            document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+            document.getElementById('finalAmount').textContent = finalAmount.toFixed(2);
+            
+            // Show/hide discount row
+            const discountRow = document.getElementById('discountRow');
+            if (discount > 0) {
+                discountRow.style.display = 'flex';
+                document.getElementById('discount').textContent = discount.toFixed(2);
+            } else {
+                discountRow.style.display = 'none';
+            }
+            
+            // Show/hide loyalty points row
+            const pointsRow = document.getElementById('pointsRow');
+            if (loyaltyPoints > 0) {
+                pointsRow.style.display = 'flex';
+                document.getElementById('loyaltyPointsCalc').textContent = loyaltyPoints;
+            } else {
+                pointsRow.style.display = 'none';
+            }
+        }
+        
+        // Water Type Selection
+        function selectWaterType(type) {
+            document.getElementById('water_type').value = type;
+            
+            // Update button styles
+            const regularBtn = document.getElementById('btn-regular');
+            const nowaterBtn = document.getElementById('btn-nowater');
+            
+            if (type === 'regular') {
+                regularBtn.classList.add('active');
+                nowaterBtn.classList.remove('active');
+            } else {
+                nowaterBtn.classList.add('active');
+                regularBtn.classList.remove('active');
+            }
+
+            // Update qty hint
+            const hint = document.getElementById('qtyHint');
+            if (hint) hint.textContent = type === 'regular' ? 'Gallons for Regular water' : 'Units for No-Water service';
+        }
+
+        // Quantity helpers
+        function changeQty(delta) {
+            const input = document.getElementById('quantity');
+            const newVal = Math.max(1, (parseInt(input.value) || 0) + delta);
+            input.value = newVal;
+            calculatePrice();
+        }
+
+        function setQty(n) {
+            document.getElementById('quantity').value = n;
+            calculatePrice();
+        }
+        
+        // Payment Method Selection
+        function selectPaymentMethod(method) {
+            document.getElementById('payment_method').value = method;
+            
+            // Update button styles
+            const cashBtn = document.getElementById('btn-cash');
+            const gcashBtn = document.getElementById('btn-gcash');
+            const mayaBtn = document.getElementById('btn-maya');
+            
+            // Remove active class from all
+            cashBtn.classList.remove('active');
+            gcashBtn.classList.remove('active');
+            mayaBtn.classList.remove('active');
+            
+            // Add active to selected
+            if (method === 'cash') {
+                cashBtn.classList.add('active');
+            } else if (method === 'gcash') {
+                gcashBtn.classList.add('active');
+            } else if (method === 'maya') {
+                mayaBtn.classList.add('active');
+            }
+            
+            // Show/hide payment details
+            const cashDetails = document.getElementById('cashDetails');
+            const gcashDetails = document.getElementById('gcashDetails');
+            const mayaDetails = document.getElementById('mayaDetails');
+            const amountTendered = document.getElementById('amount_tendered');
+            const btnText = document.getElementById('btnText');
+            
+            // Hide all
+            cashDetails.classList.remove('show');
+            gcashDetails.classList.remove('show');
+            mayaDetails.classList.remove('show');
+            
+            // Show selected and set required fields
+            if (method === 'cash') {
+                cashDetails.classList.add('show');
+                amountTendered.required = true;
+                document.getElementById('gcash_number').required = false;
+                document.getElementById('maya_number').required = false;
+                if (btnText) btnText.textContent = 'Confirm Purchase';
+            } else if (method === 'gcash') {
+                gcashDetails.classList.add('show');
+                amountTendered.required = false;
+                document.getElementById('gcash_number').required = true;
+                document.getElementById('maya_number').required = false;
+                if (btnText) btnText.innerHTML = 'Pay with GCash <i class="fas fa-external-link-alt ml-1"></i>';
+            } else if (method === 'maya') {
+                mayaDetails.classList.add('show');
+                amountTendered.required = false;
+                document.getElementById('gcash_number').required = false;
+                document.getElementById('maya_number').required = true;
+                if (btnText) btnText.innerHTML = 'Pay with Maya <i class="fas fa-external-link-alt ml-1"></i>';
+            }
+        }
+        
+        // Handle payment submission and app redirection
+        function handlePaymentSubmit(event) {
+            const paymentMethod = document.getElementById('payment_method').value;
+            const finalAmount = parseFloat(document.getElementById('finalAmount').textContent) || 0;
+            
+            if (paymentMethod === 'gcash') {
+                const gcashNumber = document.getElementById('gcash_number').value;
+                if (!gcashNumber || gcashNumber.length !== 11) {
+                    alert('Please enter a valid 11-digit GCash number');
+                    event.preventDefault();
+                    return false;
+                }
+                
+                // Generate GCash deep link
+                const merchantNumber = '09939091680';
+                const note = 'HydroMIS Water Payment';
+                const gcashUrl = `gcash://pay?number=${merchantNumber}&amount=${finalAmount.toFixed(2)}&note=${encodeURIComponent(note)}`;
+                
+                // Open GCash app immediately (works better on mobile)
+                const link = document.createElement('a');
+                link.href = gcashUrl;
+                link.click();
+                
+                // Also try window.location as fallback
+                setTimeout(() => {
+                    window.location.href = gcashUrl;
+                }, 100);
+                
+                // Allow form to submit after opening app
+                return true;
+                
+            } else if (paymentMethod === 'maya') {
+                const mayaNumber = document.getElementById('maya_number').value;
+                if (!mayaNumber || mayaNumber.length !== 11) {
+                    alert('Please enter a valid 11-digit Maya number');
+                    event.preventDefault();
+                    return false;
+                }
+                
+                // Generate Maya deep link
+                const merchantNumber = '09939091680';
+                const note = 'HydroMIS Water Payment';
+                const mayaUrl = `maya://pay?number=${merchantNumber}&amount=${finalAmount.toFixed(2)}&note=${encodeURIComponent(note)}`;
+                
+                // Open Maya app immediately (works better on mobile)
+                const link = document.createElement('a');
+                link.href = mayaUrl;
+                link.click();
+                
+                // Also try window.location as fallback
+                setTimeout(() => {
+                    window.location.href = mayaUrl;
+                }, 100);
+                
+                // Allow form to submit after opening app
+                return true;
+            }
+            
+            // For cash payment, allow form submission
+            return true;
+        }
+        
+        // Calculate Change Function
+        function calculateChange() {
+            const amountTenderedInput = document.getElementById('amount_tendered');
+            const changeDisplay = document.getElementById('changeDisplay');
+            
+            if (!amountTenderedInput || !changeDisplay) return;
+            
+            const amountTendered = parseFloat(amountTenderedInput.value) || 0;
+            const finalAmountText = document.getElementById('finalAmount').textContent;
+            const finalAmount = parseFloat(finalAmountText) || 0;
+            
+            if (amountTendered > 0 && finalAmount > 0) {
+                const change = amountTendered - finalAmount;
+                
+                if (change >= 0) {
+                    changeDisplay.innerHTML = `
+                        <div style="padding: 12px; background: #dff7ea; border-radius: 10px; border-left: 4px solid #1f9b5d; margin-top: 10px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #126743; font-weight: 600;">Change:</span>
+                                <span style="color: #1f9b5d; font-weight: 700; font-size: 16px;">₱${change.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const shortage = Math.abs(change);
+                    changeDisplay.innerHTML = `
+                        <div style="padding: 12px; background: #fee9ec; border-radius: 10px; border-left: 4px solid #d92f42; margin-top: 10px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: #8f1f2a; font-weight: 600;">Still Need:</span>
+                                <span style="color: #d92f42; font-weight: 700; font-size: 16px;">₱${shortage.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                changeDisplay.innerHTML = '';
+            }
+        }
+        
+        // Initialize price calculation on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            calculatePrice();
+        });
+    </script>

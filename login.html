@@ -1,0 +1,96 @@
+<!-- Left illustration panel -->
+    <div class="illus-panel">
+        <div class="float-icon fi-1"><i class="fas fa-droplet"></i></div>
+        <div class="float-icon fi-2"><i class="fas fa-qrcode"></i></div>
+        <div class="float-icon fi-3"><i class="fas fa-star"></i></div>
+        <div class="float-icon fi-4"><i class="fas fa-truck"></i></div>
+
+        <div class="illus-brand">HydroMIS</div>
+        <div class="illus-tagline">Water Management System</div>
+
+        <div class="illus-icon-wrap">
+            <i class="fas fa-lock"></i>
+        </div>
+
+        <div class="illus-features">
+            <div class="illus-feat">
+                <i class="fas fa-shield-alt"></i>
+                <span>Secure</span>
+            </div>
+            <div class="illus-feat">
+                <i class="fas fa-bolt"></i>
+                <span>Fast</span>
+            </div>
+            <div class="illus-feat">
+                <i class="fas fa-check"></i>
+                <span>Reliable</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right form panel -->
+    <div class="form-panel">
+        <div class="form-box">
+            <div class="welcome-text">Welcome Back</div>
+            <div class="welcome-title">Sign In</div>
+            <div class="welcome-sub">Access your HydroMIS account</div>
+
+            <?php if ($success): ?>
+                <div class="success-message">
+                    <i class="fas fa-check-circle"></i>
+                    <?php echo ($email === 'admin' || $email === 'admin@hydromis.com') ? 'Admin login successful! Redirecting to dashboard...' : 'Login successful! Redirecting...'; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($error): ?>
+                <div class="error-box">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <?php echo htmlspecialchars($error); ?>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST" action="login.php" class="login-form">
+                <div class="form-group">
+                    <label class="form-label">Login As</label>
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <label style="flex: 1; text-align: center;">
+                            <input type="radio" name="role" value="admin" checked style="margin-right: 6px;">
+                            <span style="font-weight: 600; color: #0f4fd4;">👨‍💼 Admin</span>
+                        </label>
+                        <label style="flex: 1; text-align: center;">
+                            <input type="radio" name="role" value="staff" style="margin-right: 6px;">
+                            <span style="font-weight: 600; color: #667eea;">👨‍‍🔧 Staff</span>
+                        </label>
+                        <label style="flex: 1; text-align: center;">
+                            <input type="radio" name="role" value="rider" style="margin-right: 6px;">
+                            <span style="font-weight: 600; color: #f97316;">🏍️ Rider</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email" class="form-label">Username</label>
+                    <input type="text" id="email" name="email" class="form-input" placeholder="admin / staff / rider" value="<?php echo htmlspecialchars($email); ?>" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
+                </div>
+
+                <div class="form-remember">
+                    <input type="checkbox" id="remember" name="remember" <?php echo $remember ? 'checked' : ''; ?>>
+                    <label for="remember">Remember me</label>
+                </div>
+
+                <button type="submit" class="btn-login">Sign In</button>
+            </form>
+
+            <div class="form-footer">
+                Don't have an account? <a href="create_account.php">Create one</a>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
+                    <a href="#" class="forgot-link">Forgot password?</a>
+                </div>
+            </div>
+        </div>
+    </div>
