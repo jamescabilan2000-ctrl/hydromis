@@ -62,143 +62,109 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
     <title>HydroMIS - Create Account</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="css/public-ui.css" rel="stylesheet">
+    <link href="css/animations.css" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        body.public-ui {
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-            padding: 20px;
+        }
+        .create-wrap {
+            max-width: 1160px;
+            margin: 20px auto 38px;
+            padding: 0 20px;
         }
         .container-main {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            border-radius: 24px;
+            box-shadow: 0 20px 45px rgba(8, 33, 55, 0.14);
             width: 100%;
-            max-width: 520px;
+            max-width: 680px;
+            margin: 0 auto;
             overflow: hidden;
+            border: 1px solid rgba(16, 38, 58, 0.08);
         }
         .header {
             text-align: center;
-            padding: 50px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 64px 48px;
+            background: linear-gradient(135deg, #0d3657 0%, #106780 78%);
             color: white;
         }
         .header h1 {
-            font-size: 36px;
+            font-size: 56px;
             font-weight: 700;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
+            margin-bottom: 18px;
+            letter-spacing: -0.9px;
         }
         .header p {
-            font-size: 14px;
-            opacity: 0.95;
+            font-size: 20px;
+            opacity: 0.9;
             font-weight: 500;
+            letter-spacing: 0.4px;
         }
         .content {
-            padding: 40px;
+            padding: 30px;
         }
         .form-group {
-            margin-bottom: 28px;
-            display: flex;
-            flex-direction: column;
+            margin-bottom: 16px;
         }
         .form-group label {
-            display: flex;
-            align-items: center;
-            color: #1f2937;
-            font-weight: 600;
-            margin-bottom: 12px;
+            color: #10263a;
+            font-weight: 700;
+            margin-bottom: 8px;
             font-size: 15px;
-            letter-spacing: -0.3px;
         }
         .form-group label i {
-            margin-right: 8px;
-            color: #667eea;
-            width: 18px;
-            text-align: center;
-        }
-        .form-group label span {
-            color: #ef4444;
-            margin-left: 4px;
+            color: #1c75bc;
         }
         .form-control {
-            border-radius: 10px;
-            border: 1.5px solid #e5e7eb;
-            padding: 13px 16px;
+            border-radius: 12px;
+            border: 1px solid #d8e5f0;
+            padding: 12px 14px;
             font-size: 15px;
-            line-height: 1.5;
-            transition: all 0.3s ease;
-            background: #f9fafb;
-            color: #1f2937;
+            background: #f4f8fb;
+            color: #10263a;
             height: 48px;
-            display: flex;
-            align-items: center;
         }
         select.form-control {
             height: auto;
-            padding: 12px 16px;
-        }
-        select.form-control option {
-            color: #1f2937;
-            background-color: white;
-            padding: 10px;
-        }
-        select.form-control option:checked {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            padding: 12px 14px;
         }
         .form-control::placeholder {
-            color: #9ca3af;
+            color: #6a8497;
         }
         .form-control:focus {
-            outline: none;
-            border-color: #667eea;
-            background-color: white;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #6da8d8;
+            box-shadow: 0 0 0 0.18rem rgba(28, 117, 188, 0.15);
+            background: #ffffff;
         }
         .btn-submit {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(140deg, #0d9b8a 0%, #0f8f5f 100%);
             border: none;
             color: white;
-            padding: 14px 24px;
+            padding: 13px 20px;
             font-size: 16px;
-            font-weight: 600;
-            border-radius: 10px;
+            font-weight: 800;
+            border-radius: 12px;
             width: 100%;
-            margin-top: 8px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            margin-top: 10px;
+            box-shadow: 0 12px 22px rgba(15, 143, 95, 0.23);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         .btn-submit:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-        .btn-submit:active {
-            transform: translateY(0);
+            box-shadow: 0 16px 28px rgba(15, 143, 95, 0.28);
+            color: white;
         }
         .error-message {
-            color: #991b1b;
-            padding: 14px 16px;
-            background: #fee2e2;
+            color: #7f1f1f;
+            padding: 11px 13px;
+            background: #fff0f0;
             border-radius: 10px;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
             font-size: 14px;
-            border-left: 4px solid #dc2626;
-            display: flex;
-            align-items: flex-start;
-        }
-        .error-message i {
-            margin-right: 10px;
-            margin-top: 2px;
+            border: 1px solid #efb4b4;
+            border-left: 4px solid #b73333;
+            font-weight: 600;
         }
         .success-box {
             text-align: center;
@@ -215,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
             100% { transform: scale(1); opacity: 1; }
         }
         .success-message {
-            color: #065f46;
+            color: #0f8f5f;
             font-size: 22px;
             font-weight: 700;
             margin-bottom: 24px;
@@ -240,11 +206,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
             border: 3px solid white;
         }
         .qr-message {
-            background: #e0e7ff;
+            background: #edf7ff;
             padding: 14px 16px;
             border-radius: 10px;
             margin: 20px 0;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #1c75bc;
         }
         .qr-instruction {
             color: #3730a3;
@@ -259,13 +225,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
             flex-shrink: 0;
         }
         .demo-credentials {
-            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+            background: #edf7ff;
             padding: 16px 18px;
-            border-radius: 10px;
+            border-radius: 12px;
             margin-top: 24px;
             font-size: 13px;
-            color: #4f46e5;
-            border-left: 4px solid #667eea;
+            color: #1f4f77;
+            border: 1px solid #cde3f3;
         }
         .demo-credentials strong {
             display: block;
@@ -281,35 +247,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
             margin-top: 20px;
         }
         .back-link a {
-            color: #667eea;
+            color: #185f97;
             text-decoration: none;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 14px;
             transition: color 0.3s ease;
         }
         .back-link a:hover {
-            color: #5568d3;
+            color: #124c78;
         }
         .btn-action {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #145c9e 0%, #1c75bc 100%);
             color: white;
             border: none;
             padding: 12px 24px;
-            border-radius: 10px;
+            border-radius: 12px;
             cursor: pointer;
-            font-weight: 600;
+            font-weight: 700;
             width: 100%;
             margin-top: 12px;
             font-size: 15px;
             text-decoration: none;
             display: inline-block;
             text-align: center;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 10px 20px rgba(20, 92, 158, 0.26);
         }
         .btn-action:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 14px 24px rgba(20, 92, 158, 0.3);
             color: white;
             text-decoration: none;
         }
@@ -320,10 +286,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
         .btn-secondary-action:hover {
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
         }
-    </style>
+        @media (max-width: 768px) {
+            .create-wrap {
+                padding: 0 14px;
+            }
+            .content {
+                padding: 22px 16px;
+            }
+            .header h1 {
+                font-size: 32px;
+            }
+        }
     </style>
 </head>
-<body>
+<body class="public-ui">
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="home.php" aria-label="HydroMIS Home">
+                <span class="brand-icon"><img src="imagess/logosystem.png" alt="HydroMIS Logo" style="width: 100%; height: 100%; object-fit: contain;"></span>
+                <h1 class="brand-wordmark">HydroMIS</h1>
+            </a>
+        </div>
+    </header>
+
+    <main class="create-wrap">
     <div class="container-main">
         <div class="header">
             <h1>HydroMIS</h1>
@@ -434,12 +420,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
 
                     <div class="form-group">
                         <label for="street_number"><i class="fas fa-home mr-2"></i>Street Number or Purok *</label>
-                        <input type="text" class="form-control" name="street_number" id="street_number" placeholder="e.g., Blk 5 Lot 12 or Purok 3" required value="<?php echo isset($_POST['street_number']) ? htmlspecialchars($_POST['street_number']) : ''; ?>">
+                        <input type="text" class="form-control" name="street_number" id="street_number" placeholder="" required value="<?php echo isset($_POST['street_number']) ? htmlspecialchars($_POST['street_number']) : ''; ?>">
                     </div>
 
                     <div class="form-group">
                         <label for="contact_number"><i class="fas fa-phone mr-2"></i>Contact Number *</label>
-                        <input type="tel" class="form-control" name="contact_number" id="contact_number" placeholder="09171234567" required value="<?php echo isset($_POST['contact_number']) ? htmlspecialchars($_POST['contact_number']) : ''; ?>">
+                        <input type="tel" class="form-control" name="contact_number" id="contact_number" placeholder="" required value="<?php echo isset($_POST['contact_number']) ? htmlspecialchars($_POST['contact_number']) : ''; ?>">
                     </div>
 
                     <button type="submit" class="btn-submit">
@@ -447,12 +433,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                     </button>
                 </form>
 
-                <div class="demo-credentials">
-                    <strong><i class="fas fa-star mr-2"></i> Important Information:</strong>
-                    <p>✓ You'll receive a QR code immediately after registration</p>
-                    <p>✓ Your account is pending admin approval</p>
-                    <p>✓ No login required to register</p>
-                </div>
 
                 <div class="back-link">
                     <a href="home.php">
@@ -462,6 +442,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
             <?php endif; ?>
         </div>
     </div>
+    </main>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>

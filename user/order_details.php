@@ -6,7 +6,9 @@ session_start();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="../css/animations.css" rel="stylesheet">
+</head>
 <body>
     <main class="page-shell">
         <a href="track_order.php" class="back-btn">

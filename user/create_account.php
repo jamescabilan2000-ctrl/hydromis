@@ -69,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <title>Create Account - HydroMIS</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="../css/animations.css" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -338,7 +339,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="ml-auto">
                 <a href="create_account.php" class="nav-link">Create Account</a>
                 <a href="scan_qr.php" class="nav-link">Scan QR Code</a>
-                <a href="index.php" class="nav-link">Admin Login</a>
             </div>
         </div>
     </nav>

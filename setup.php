@@ -146,16 +146,20 @@ if ($conn_setup->connect_error) {
         }
         .setup-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 44px;
+            padding: 16px 0;
         }
         .setup-header h1 {
             color: #1f2937;
-            font-weight: 700;
-            margin-bottom: 10px;
+            font-weight: 800;
+            margin-bottom: 14px;
+            font-size: 44px;
+            letter-spacing: -0.6px;
         }
         .setup-header p {
             color: #6b7280;
-            font-size: 14px;
+            font-size: 16px;
+            letter-spacing: 0.3px;
         }
         .status-box {
             padding: 20px;

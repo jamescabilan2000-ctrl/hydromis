@@ -257,18 +257,18 @@ body {
 .transaction-card-header {
     background: linear-gradient(135deg, #0f4fd4 0%, #0e8478 100%);
     color: white;
-    padding: 18px 24px;
+    padding: 36px 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
+    gap: 24px;
 }
 .transaction-card-header .store-info {
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 700;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
 }
 .transaction-card-header .status-badge {
     padding: 8px 14px;

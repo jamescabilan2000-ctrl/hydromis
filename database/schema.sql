@@ -60,6 +60,20 @@ CREATE TABLE IF NOT EXISTS activity_logs (
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Feedback and Ratings Table
+CREATE TABLE IF NOT EXISTS feedback_ratings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    transaction_id VARCHAR(255) NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
+    rating INT NOT NULL,
+    feedback_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_feedback_transaction_user (transaction_id, user_id),
+    FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
 -- Insert sample admin user (password: admin123)
 INSERT INTO admin_users (admin_id, username, password, full_name, role) 
 VALUES 

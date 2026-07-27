@@ -1,14 +1,11 @@
 <?php
-session_start();
-
-// Check if user is logged in
-if (!isset($_SESSION['admin_id'])) {
-    header('Location: ../index.php');
-    exit();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
 }
 
-// Check if user has staff role
-if ($_SESSION['role'] != 'staff') {
+$has_valid_staff_session = isset($_SESSION['admin_id']) && !empty($_SESSION['admin_id']) && isset($_SESSION['role']) && $_SESSION['role'] === 'staff';
+
+if (!$has_valid_staff_session) {
     header('Location: ../index.php');
     exit();
 }

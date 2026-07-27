@@ -174,19 +174,20 @@ body {
 }
 
 .page-header {
-    margin-bottom: 32px;
-    padding-bottom: 24px;
+    margin-bottom: 40px;
+    padding-bottom: 32px;
     border-bottom: 2px solid rgba(15, 79, 212, 0.12);
 }
 
 .page-header h2 {
-    font-size: 28px;
+    font-size: 44px;
     font-weight: 900;
     color: #1e293b;
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
+    gap: 16px;
+    margin-bottom: 12px;
+    letter-spacing: -0.6px;
 }
 
 .page-header h2 i {
@@ -349,16 +350,17 @@ body {
 }
 
 .table-card-title {
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 800;
     color: #1e293b;
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
     border-bottom: 2px solid rgba(15, 79, 212, 0.12);
-}
+    letter-spacing: -0.3px;
+}}
 
 .table-card-title i {
     color: #0f4fd4;

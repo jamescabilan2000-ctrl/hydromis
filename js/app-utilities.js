@@ -72,8 +72,89 @@ const APIService = {
 // ===== Notification System =====
 const Notifications = {
     container: null,
+
+    ensureStyles() {
+        if (document.getElementById('copilot-notification-fallback-styles')) {
+            return;
+        }
+
+        const style = document.createElement('style');
+        style.id = 'copilot-notification-fallback-styles';
+        style.textContent = `
+            #notification-container {
+                position: fixed;
+                top: 16px;
+                right: 16px;
+                z-index: 9999;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                max-width: 420px;
+            }
+            .notification {
+                background: #fff;
+                border-radius: 10px;
+                padding: 12px 14px;
+                box-shadow: 0 8px 24px rgba(11, 18, 32, 0.22);
+                border-left: 4px solid #3b82f6;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            .notification-content {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: #1f2937;
+                font-size: 14px;
+                font-weight: 600;
+                line-height: 1.35;
+            }
+            .notification-close {
+                background: transparent;
+                border: none;
+                color: #64748b;
+                cursor: pointer;
+                width: 20px;
+                height: 20px;
+                border-radius: 4px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                font-size: 16px;
+                line-height: 1;
+            }
+            .notification-close:hover {
+                background: #f1f5f9;
+                color: #334155;
+            }
+            .notification-success { border-left-color: #10b981; background: #ecfdf5; }
+            .notification-success .notification-content { color: #065f46; }
+            .notification-error { border-left-color: #ef4444; background: #fef2f2; }
+            .notification-error .notification-content { color: #991b1b; }
+            .notification-warning { border-left-color: #f59e0b; background: #fffbeb; }
+            .notification-warning .notification-content { color: #78350f; }
+            .notification-info { border-left-color: #2563eb; background: #eff6ff; }
+            .notification-info .notification-content { color: #1e40af; }
+            .animate-slide-in { animation: copilotToastIn 0.25s ease-out; }
+            .animate-fade-out { animation: copilotToastOut 0.25s ease-out; }
+            @keyframes copilotToastIn {
+                from { opacity: 0; transform: translateX(16px); }
+                to { opacity: 1; transform: translateX(0); }
+            }
+            @keyframes copilotToastOut {
+                from { opacity: 1; transform: translateX(0); }
+                to { opacity: 0; transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+    },
     
     init() {
+        this.ensureStyles();
         if (!document.getElementById('notification-container')) {
             this.container = document.createElement('div');
             this.container.id = 'notification-container';
@@ -102,8 +183,8 @@ const Notifications = {
                 ${icons[type] || icons.info}
                 <span>${message}</span>
             </div>
-            <button class="notification-close" onclick="this.parentElement.remove()">
-                <i class="fas fa-times"></i>
+            <button class="notification-close" onclick="this.parentElement.remove()" aria-label="Close notification" title="Close">
+                &times;
             </button>
         `;
         

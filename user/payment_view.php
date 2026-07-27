@@ -4,15 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment - HydroMIS</title>
-            <link href="../css/payment.css" rel="stylesheet">
+    <link href="../css/payment.css" rel="stylesheet">
     <link href="../css/professional-theme.css" rel="stylesheet">
+    <link href="../css/animations.css" rel="stylesheet">
 </head>
 <body>
     <div class="payment-container">
         <div class="payment-card">
             <!-- Header -->
             <div class="payment-header">
-                <h2><i class="fas fa-water"></i> HydroMIS Payment</h2>
+                <h2><img src="../imagess/logosystem.png" alt="HydroMIS Logo" style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;"> HydroMIS Payment</h2>
                 <p>Secure Online Payment Portal</p>
             </div>
 

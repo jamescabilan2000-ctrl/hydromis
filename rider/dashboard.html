@@ -2,8 +2,9 @@
     <div class="container-fluid">
         <span class="navbar-brand"><i class="fas fa-motorcycle mr-2"></i>HydroMIS Rider Portal</span>
         <div class="navbar-header">
+            <a href="dashboard.php" class="nav-link" style="color: white; margin-right: 20px;"><i class="fas fa-home"></i> Dashboard</a>
             <span class="navbar-user-info">
-                <i class="fas fa-user"></i><?php echo htmlspecialchars($_SESSION['rider_email'] ?? 'Rider'); ?>
+                <i class="fas fa-user"></i><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Rider'); ?> (<?php echo htmlspecialchars($_SESSION['rider_id'] ?? '-'); ?>)
             </span>
             <a href="../logout.php" class="navbar-logout-btn">
                 <i class="fas fa-sign-out-alt"></i>Logout
@@ -18,6 +19,18 @@
             <h2><i class="fas fa-route mr-2"></i>Rider Dashboard</h2>
             <p>Manage your deliveries and track earnings in real-time</p>
         </div>
+
+        <?php if (!empty($notifications)): ?>
+        <div style="margin: 0 0 20px; padding: 16px 18px; border-radius: 12px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #93c5fd; color: #1d4ed8; box-shadow: 0 6px 18px rgba(59,130,246,0.16);">
+            <div style="font-weight: 700; margin-bottom: 8px;"><i class="fas fa-bell mr-2"></i>New delivery assignment</div>
+            <?php foreach ($notifications as $notification): ?>
+                <div style="margin-top: 8px; padding: 10px 12px; background: rgba(255,255,255,0.8); border-radius: 8px;">
+                    <div style="font-weight: 600;"><?php echo htmlspecialchars($notification['title']); ?></div>
+                    <div style="font-size: 13px; margin-top: 3px;"><?php echo htmlspecialchars($notification['message']); ?></div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
 
         <!-- KPI Stats Grid -->
         <section class="top-grid">
@@ -58,7 +71,7 @@
                         <div class="stat-body">
                             <h6>Your Rating</h6>
                             <div class="value">⭐<?php echo number_format($rating, 1); ?></div>
-                            <small>Based on <?php echo mt_rand(45, 150); ?> deliveries</small>
+                            <small>Based on <?php echo (int)$total_delivered; ?> deliveries</small>
                         </div>
                     </div>
                 </div>
@@ -71,26 +84,26 @@
             <div class="row">
                 <div class="col-md-3">
                     <div class="summary-card">
-                        <div class="summary-card-value">₱<?php echo number_format($cash_collected, 2); ?></div>
-                        <div class="summary-card-label">Cash Collected</div>
+                        <div class="summary-card-value">₱<?php echo number_format($cash_collected_total, 2); ?></div>
+                        <div class="summary-card-label">Cash Collected (Total)</div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="summary-card">
-                        <div class="summary-card-value">₱<?php echo number_format($completed_count * 150, 2); ?></div>
-                        <div class="summary-card-label">Commission Today</div>
+                        <div class="summary-card-value">₱<?php echo number_format($commission_total, 2); ?></div>
+                        <div class="summary-card-label">Commission (Total)</div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="summary-card">
-                        <div class="summary-card-value"><?php echo $completed_count; ?></div>
-                        <div class="summary-card-label">Trips Completed</div>
+                        <div class="summary-card-value"><?php echo $total_delivered; ?></div>
+                        <div class="summary-card-label">Trips Completed (Total)</div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="summary-card">
-                        <div class="summary-card-value">₱<?php echo number_format($cash_collected + ($completed_count * 150), 2); ?></div>
-                        <div class="summary-card-label">Total Income</div>
+                        <div class="summary-card-value">₱<?php echo number_format($total_income_total, 2); ?></div>
+                        <div class="summary-card-label">Total Income (Overall)</div>
                     </div>
                 </div>
             </div>
@@ -98,16 +111,16 @@
 
         <!-- Tabs Navigation -->
         <div style="display: flex; gap: 10px; margin: 30px 0; border-bottom: 2px solid #e5e7eb;">
-            <button class="tab-btn active" onclick="switchRiderTab('active')">
-                <i class="fas fa-truck mr-2"></i> Active Deliveries (<span id="active-badge"><?php echo (int)$active_count; ?></span>)
+            <button class="tab-btn active" onclick="switchRiderTab('active', this)">
+                <i class="fas fa-truck mr-2"></i> My Orders (<span id="active-badge"><?php echo (int)$orders_count; ?></span>)
             </button>
-            <button class="tab-btn" onclick="switchRiderTab('available')">
+            <button class="tab-btn" onclick="switchRiderTab('available', this)">
                 <i class="fas fa-list mr-2"></i> Available Orders
             </button>
-            <button class="tab-btn" onclick="switchRiderTab('completed')">
-                <i class="fas fa-check-circle mr-2"></i> Completed Today
+            <button class="tab-btn" onclick="switchRiderTab('completed', this)">
+                <i class="fas fa-check-circle mr-2"></i> Completed
             </button>
-            <button class="tab-btn" onclick="switchRiderTab('performance')">
+            <button class="tab-btn" onclick="switchRiderTab('performance', this)">
                 <i class="fas fa-chart-bar mr-2"></i> Performance
             </button>
         </div>
@@ -116,8 +129,8 @@
         <div id="active-tab" class="tab-content active">
             <div class="panel">
                 <div class="panel-title">
-                    <i class="fas fa-route mr-2"></i>Active Deliveries In Progress
-                    <span class="badge" style="background: #f59e0b; color: white; margin-left: auto; padding: 4px 12px; border-radius: 20px;"><?php echo (int)$active_count; ?> active</span>
+                    <i class="fas fa-route mr-2"></i>My Assigned Orders (Including Delivered)
+                    <span class="badge" style="background: #145c9e; color: white; margin-left: auto; padding: 4px 12px; border-radius: 20px;"><?php echo (int)$orders_count; ?> orders</span>
                 </div>
                 
                 <div class="table-responsive">
@@ -145,17 +158,98 @@
                                 <td><small><?php echo htmlspecialchars($row['delivery']); ?></small></td>
                                 <td><span style="font-weight: 700; color: #10b981;">₱<?php echo number_format($row['amount'], 2); ?></span></td>
                                 <td>
-                                    <span class="badge" style="background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px;">
-                                        <i class="fas fa-circle-notch fa-spin mr-1"></i><?php echo ucfirst($row['status']); ?>
-                                    </span>
+                                    <?php if ($row['status'] === 'assigned'): ?>
+                                        <span class="badge" style="background: #2563eb; color: white; padding: 4px 12px; border-radius: 20px;">
+                                            <i class="fas fa-user-check mr-1"></i>Assigned
+                                        </span>
+                                    <?php elseif ($row['status'] === 'pending'): ?>
+                                        <span class="badge" style="background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px;">
+                                            <i class="fas fa-hourglass-half mr-1"></i>Pending Start
+                                        </span>
+                                    <?php elseif ($row['status'] === 'delivered'): ?>
+                                        <span class="badge" style="background: #10b981; color: white; padding: 4px 12px; border-radius: 20px;">
+                                            <i class="fas fa-check-circle mr-1"></i>Delivered
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge" style="background: #3b82f6; color: white; padding: 4px 12px; border-radius: 20px;">
+                                            <i class="fas fa-truck mr-1"></i>On the Way
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm" onclick="openTrackingModal('<?php echo htmlspecialchars($row['customer']); ?>', '<?php echo htmlspecialchars($row['delivery']); ?>', '<?php echo htmlspecialchars($row['phone']); ?>');" style="background: #3b82f6; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                        <i class="fas fa-map mr-1"></i>Track
-                                    </button>
-                                    <button class="btn btn-sm" onclick="markDeliveryComplete('<?php echo $row['id']; ?>');" style="background: #10b981; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                        <i class="fas fa-check mr-1"></i>Complete
-                                    </button>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                                        <button class="btn btn-sm"
+                                                data-customer="<?php echo htmlspecialchars($row['customer'], ENT_QUOTES); ?>"
+                                                data-address="<?php echo htmlspecialchars($row['delivery'], ENT_QUOTES); ?>"
+                                                data-phone="<?php echo htmlspecialchars($row['phone'], ENT_QUOTES); ?>"
+                                                onclick="openTrackingFromButton(this)"
+                                                style="background: #3b82f6; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                            <i class="fas fa-map mr-1"></i>Track
+                                        </button>
+
+                                        <?php
+                                        $status_value = strtolower(trim((string)($row['status'] ?? '')));
+                                        if ($status_value === '') {
+                                            $status_value = 'assigned';
+                                        }
+                                        $is_assigned_like = in_array($status_value, ['assigned', 'pending'], true);
+                                        $is_onway_like = in_array($status_value, ['on_way', 'on_the_way'], true);
+                                        $is_delivered = $status_value === 'delivered';
+                                        ?>
+
+                                        <?php if ($is_assigned_like): ?>
+                                            <form method="POST" style="display: inline;">
+                                                <input type="hidden" name="action" value="start_delivery">
+                                                <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($row['id']); ?>">
+                                                <button class="btn btn-sm" type="submit" style="background: #10b981; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                                    <i class="fas fa-play mr-1"></i>Start
+                                                </button>
+                                            </form>
+                                            <form method="POST" style="display: inline;">
+                                                <input type="hidden" name="action" value="complete">
+                                                <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($row['id']); ?>">
+                                                <button class="btn btn-sm" type="submit" style="background: #145c9e; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                                    <i class="fas fa-check mr-1"></i>Deliver
+                                                </button>
+                                            </form>
+                                        <?php elseif ($is_onway_like): ?>
+                                            <form method="POST" style="display: inline;">
+                                                <input type="hidden" name="action" value="complete">
+                                                <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($row['id']); ?>">
+                                                <button class="btn btn-sm" type="submit" style="background: #10b981; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                                    <i class="fas fa-check mr-1"></i>Complete
+                                                </button>
+                                            </form>
+                                            <button class="gps-toggle-btn btn btn-sm"
+                                                    onclick="toggleGPSTracking(this, '<?php echo htmlspecialchars($row['id']); ?>')"
+                                                    style="background: #2d85f0; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                                <i class="fas fa-satellite-dish mr-1"></i><span class="gps-btn-text">Live GPS</span>
+                                            </button>
+                                            <div id="gps-status-<?php echo htmlspecialchars($row['id']); ?>" style="font-size: 11px; margin-top: 4px; color: #7b97b8;"></div>
+                                        <?php elseif ($is_delivered): ?>
+                                            <span style="display: inline-block; padding: 4px 10px; border-radius: 4px; background: #ecfdf5; color: #065f46; font-size: 12px; font-weight: 700;">
+                                                Completed
+                                            </span>
+                                        <?php else: ?>
+                                            <span style="display: inline-block; padding: 4px 10px; border-radius: 4px; background: #f3f4f6; color: #4b5563; font-size: 12px; font-weight: 700;">
+                                                Ready
+                                            </span>
+                                        <?php endif; ?>
+
+                                        <form method="POST" style="display: inline;">
+                                            <input type="hidden" name="action" value="update_status">
+                                            <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($row['id']); ?>">
+                                            <select name="new_status" style="min-height: 30px; border-radius: 4px; border: 1px solid #c5d2e0; padding: 2px 6px; font-size: 12px;">
+                                                <option value="assigned" <?php echo $status_value === 'assigned' ? 'selected' : ''; ?>>Assigned</option>
+                                                <option value="pending" <?php echo $status_value === 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                                <option value="on_way" <?php echo ($status_value === 'on_way' || $status_value === 'on_the_way') ? 'selected' : ''; ?>>On the Way</option>
+                                                <option value="delivered" <?php echo $status_value === 'delivered' ? 'selected' : ''; ?>>Delivered</option>
+                                            </select>
+                                            <button class="btn btn-sm" type="submit" style="background: #145c9e; color: white; border: none; padding: 4px 9px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 3px;">
+                                                <i class="fas fa-save"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endwhile; 
@@ -176,7 +270,7 @@
         <!-- Available Orders Tab -->
         <div id="available-tab" class="tab-content">
             <div class="panel">
-                <div class="panel-title"><i class="fas fa-list mr-2"></i>Available Deliveries</div>
+                <div class="panel-title"><i class="fas fa-list mr-2"></i>Assigned Deliveries</div>
                 <div class="table-responsive">
                     <table class="table">
                         <thead><tr><th>Transaction</th><th>Customer</th><th>Amount</th><th></th></tr></thead>
@@ -188,14 +282,14 @@
                                 <td>&#8369;<?php echo number_format($row['amount'], 2); ?></td>
                                 <td>
                                     <form method="POST">
-                                        <input type="hidden" name="action" value="accept">
+                                        <input type="hidden" name="action" value="start_delivery">
                                         <input type="hidden" name="transaction_id" value="<?php echo $row['transaction_id']; ?>">
-                                        <button class="btn btn-sm" style="background: linear-gradient(120deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;" type="submit"><i class="fas fa-hand-paper mr-1"></i>Accept</button>
+                                        <button class="btn btn-sm" style="background: linear-gradient(120deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;" type="submit"><i class="fas fa-play mr-1"></i>Start Delivery</button>
                                     </form>
                                 </td>
                             </tr>
                         <?php endwhile; else: ?>
-                            <tr><td colspan="4" class="text-center text-muted py-3">No available deliveries.</td></tr>
+                            <tr><td colspan="4" class="text-center text-muted py-3">No assigned deliveries yet.</td></tr>
                         <?php endif; ?>
                         </tbody>
                     </table>
@@ -207,8 +301,8 @@
         <div id="completed-tab" class="tab-content">
             <div class="panel">
                 <div class="panel-title">
-                    <i class="fas fa-check-circle mr-2"></i>Completed Deliveries Today
-                    <span class="badge" style="background: #10b981; color: white; margin-left: auto; padding: 4px 12px; border-radius: 20px;"><?php echo (int)$completed_count; ?> completed</span>
+                    <i class="fas fa-check-circle mr-2"></i>Completed Deliveries History
+                    <span class="badge" style="background: #10b981; color: white; margin-left: auto; padding: 4px 12px; border-radius: 20px;"><?php echo (int)$total_delivered; ?> completed</span>
                 </div>
                 <div class="table-responsive">
                     <table class="table">
@@ -222,26 +316,24 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td><strong>#DEL001</strong></td>
-                                <td>John Doe</td>
-                                <td>₱5,000.00</td>
-                                <td style="color: #10b981; font-weight: 600;">₱150.00</td>
-                                <td>2:30 PM</td>
-                            </tr>
-                            <tr>
-                                <td><strong>#DEL002</strong></td>
-                                <td>Jane Smith</td>
-                                <td>₱3,500.00</td>
-                                <td style="color: #10b981; font-weight: 600;">₱150.00</td>
-                                <td>3:15 PM</td>
-                            </tr>
-                            <tr>
-                                <td colspan="5" class="text-center" style="padding: 20px; color: #6b7280;">
-                                    <i class="fas fa-check-circle" style="font-size: 24px; margin-bottom: 10px;"></i>
-                                    <p><?php echo (int)$completed_count; ?> deliveries completed successfully</p>
-                                </td>
-                            </tr>
+                            <?php if (!empty($completed_deliveries)): ?>
+                                <?php foreach ($completed_deliveries as $done): ?>
+                                    <tr>
+                                        <td><strong><?php echo htmlspecialchars($done['transaction_id']); ?></strong></td>
+                                        <td><?php echo htmlspecialchars($done['full_name']); ?></td>
+                                        <td>₱<?php echo number_format((float)$done['amount'], 2); ?></td>
+                                        <td style="color: #10b981; font-weight: 600;">₱150.00</td>
+                                        <td><?php echo date('h:i A', strtotime($done['updated_at'])); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="5" class="text-center" style="padding: 20px; color: #6b7280;">
+                                        <i class="fas fa-check-circle" style="font-size: 24px; margin-bottom: 10px;"></i>
+                                        <p>No completed deliveries yet. Use My Orders and set status to Delivered.</p>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -256,7 +348,7 @@
                         <div class="panel-title"><i class="fas fa-chart-line mr-2"></i>Weekly Earnings</div>
                         <div style="padding: 30px; text-align: center;">
                             <div style="font-size: 32px; font-weight: 700; color: #10b981; margin: 20px 0;">
-                                ₱<?php echo number_format($cash_collected, 2); ?>
+                                ₱<?php echo number_format($cash_collected_total, 2); ?>
                             </div>
                             <div style="color: #6b7280; font-size: 14px;">
                                 <p>Mon: ₱4,200</p>
@@ -265,7 +357,7 @@
                                 <p>Thu: ₱5,800</p>
                                 <p>Fri: ₱6,200</p>
                                 <p>Sat: ₱3,600</p>
-                                <p style="font-weight: 600; color: #0f4fd4; margin-top: 10px;">Total: ₱<?php echo number_format($cash_collected * 1.3, 2); ?></p>
+                                <p style="font-weight: 600; color: #0f4fd4; margin-top: 10px;">Total: ₱<?php echo number_format($total_income_total, 2); ?></p>
                             </div>
                         </div>
                     </div>
@@ -292,7 +384,7 @@
                             </div>
                             <div style="display: flex; justify-content: space-between; margin: 15px 0; padding: 12px; background: #f9fafb; border-radius: 6px;">
                                 <span>Avg Trip Value:</span>
-                                <strong>₱<?php echo number_format($cash_collected / max(($completed_count + $active_count), 1), 2); ?></strong>
+                                <strong>₱<?php echo number_format($cash_collected_total / max($total_delivered, 1), 2); ?></strong>
                             </div>
                         </div>
                     </div>
@@ -332,7 +424,7 @@
 
 <script>
     // Tab switching for rider dashboard
-    function switchRiderTab(tabName) {
+    function switchRiderTab(tabName, clickedBtn = null) {
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.classList.remove('active');
         });
@@ -341,11 +433,20 @@
         });
         
         document.getElementById(tabName + '-tab').classList.add('active');
-        event.target.closest('.tab-btn').classList.add('active');
+        if (clickedBtn) {
+            clickedBtn.classList.add('active');
+        } else if (window.event && window.event.target) {
+            const btn = window.event.target.closest('.tab-btn');
+            if (btn) btn.classList.add('active');
+        }
     }
     
     function openTrackingModal(customer, address, phone) {
         Notifications.info(`Tracking delivery for ${customer} to ${address}`);
+    }
+
+    function openTrackingFromButton(btn) {
+        openTrackingModal(btn.dataset.customer || 'Customer', btn.dataset.address || 'Address', btn.dataset.phone || '-');
     }
     
     function markDeliveryComplete(deliveryId) {
@@ -354,12 +455,7 @@
         setTimeout(() => location.reload(), 1500);
     }
     
-    // Real-time earnings update
-    RealtimeData.startPolling('rider-earnings', () => {
-        // Updates earnings display every minute
-        const earnings = parseInt(document.getElementById('todayEarnings').innerText.replace(/[^0-9]/g, ''));
-        Counter.animate(document.getElementById('todayEarnings'), earnings + Math.random() * 100);
-    }, 60000);
+    // Today's earnings uses actual backend values only.
 
 
 function attachQrToForm(btn) {
@@ -402,7 +498,7 @@ function startLocationTracking(transactionId) {
 }
 
 window.addEventListener('beforeunload', () => {
-    stopScanner();
+    if (typeof stopScanner === 'function') stopScanner();
     Object.keys(locationWatchers).forEach(key => {
         navigator.geolocation.clearWatch(locationWatchers[key]);
     });
