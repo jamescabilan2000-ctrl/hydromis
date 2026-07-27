@@ -1,65 +1,86 @@
 <?php
 include 'check_auth.php';
+require_once '../config/database.php';
 
-// DummyPaymentsResult class - mimics database query result object
-class DummyPaymentsResult {
+class PaymentsArrayResult {
     private $data;
     private $index = 0;
-    
+    public $num_rows = 0;
+
     public function __construct($data) {
         $this->data = $data;
+        $this->num_rows = count($data);
     }
-    
+
     public function fetch_assoc() {
         if ($this->index < count($this->data)) {
             return $this->data[$this->index++];
         }
-        return null;
-    }
-    
-    public function __get($name) {
-        if ($name === 'num_rows') {
-            return count($this->data);
-        }
+
         return null;
     }
 }
 
-// Initialize variables
 $payments_data = [];
 $error = null;
 $success_message = '';
 
-// Handle payment verification
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
-    $payment_id = isset($_POST['payment_id']) ? $_POST['payment_id'] : '';
-    $action = isset($_POST['action']) ? $_POST['action'] : '';
-    
-    if ($action == 'verify' && !empty($payment_id)) {
-        $success_message = 'Payment verified successfully';
-    } elseif ($action == 'reject' && !empty($payment_id)) {
-        $success_message = 'Payment rejected';
+$conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) DEFAULT 'cash'");
+$conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_reference VARCHAR(255)");
+$conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20) DEFAULT 'pending'");
+$conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_date TIMESTAMP NULL");
+$conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_proof VARCHAR(255)");
+$conn->query("CREATE TABLE IF NOT EXISTS payments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    payment_id VARCHAR(255) UNIQUE NOT NULL,
+    transaction_id VARCHAR(255) NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    payment_method VARCHAR(20) NOT NULL,
+    payment_reference VARCHAR(255),
+    payment_status VARCHAR(20) DEFAULT 'pending',
+    payment_proof VARCHAR(255),
+    gcash_number VARCHAR(20),
+    maya_number VARCHAR(20),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+)");
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['payment_id'], $_POST['transaction_id'])) {
+    $payment_id = sanitize($_POST['payment_id']);
+    $transaction_id = sanitize($_POST['transaction_id']);
+    $action = sanitize($_POST['action']);
+
+    if ($action === 'verify') {
+        $conn->query("UPDATE payments SET payment_status = 'paid' WHERE payment_id = '$payment_id'");
+        $conn->query("UPDATE transactions SET payment_status = 'paid', payment_date = NOW() WHERE transaction_id = '$transaction_id'");
+        $success_message = 'Payment verified successfully.';
+    } elseif ($action === 'reject') {
+        $conn->query("UPDATE payments SET payment_status = 'failed' WHERE payment_id = '$payment_id'");
+        $conn->query("UPDATE transactions SET payment_status = 'failed', payment_date = NULL WHERE transaction_id = '$transaction_id'");
+        $success_message = 'Payment rejected.';
     }
 }
 
-// TODO: Replace with actual database queries
-// Simulate payments data
-$payments_data = array(
-    array('payment_id' => 'PAY001', 'order_id' => 'ORD001', 'full_name' => 'John Doe', 'amount' => 5000, 'status' => 'verified', 'created_at' => '2026-03-20', 'payment_method' => 'card', 'contact_number' => '09012345678'),
-    array('payment_id' => 'PAY002', 'order_id' => 'ORD002', 'full_name' => 'Jane Smith', 'amount' => 3500, 'status' => 'verified', 'created_at' => '2026-03-20', 'payment_method' => 'transfer', 'contact_number' => '09012345679'),
-    array('payment_id' => 'PAY003', 'order_id' => 'ORD003', 'full_name' => 'Bob Johnson', 'amount' => 2500, 'status' => 'pending', 'created_at' => '2026-03-21', 'payment_method' => 'card', 'contact_number' => '09012345680'),
-    array('payment_id' => 'PAY004', 'order_id' => 'ORD004', 'full_name' => 'Alice Brown', 'amount' => 1800, 'status' => 'verified', 'created_at' => '2026-03-19', 'payment_method' => 'transfer', 'contact_number' => '09012345681'),
-    array('payment_id' => 'PAY005', 'order_id' => 'ORD005', 'full_name' => 'Charlie Wilson', 'amount' => 4200, 'status' => 'verified', 'created_at' => '2026-03-19', 'payment_method' => 'card', 'contact_number' => '09012345682')
-);
+$payments_result = $conn->query("SELECT p.payment_id, p.transaction_id, p.transaction_id AS order_id, p.amount, p.payment_status AS status, p.created_at, p.payment_method, p.payment_reference, p.payment_proof, p.gcash_number, p.maya_number, u.full_name, u.contact_number
+    FROM payments p
+    LEFT JOIN users u ON p.user_id = u.user_id
+    ORDER BY p.created_at DESC");
 
-// Calculate statistics
+if ($payments_result) {
+    while ($row = $payments_result->fetch_assoc()) {
+        $payments_data[] = $row;
+    }
+} else {
+    $error = 'Unable to load payments: ' . $conn->error;
+}
+
 $total_payments = count($payments_data);
-$verified_payments = count(array_filter($payments_data, fn($p) => $p['status'] === 'verified'));
-$pending_payments = count(array_filter($payments_data, fn($p) => $p['status'] === 'pending'));
-$total_amount = array_sum(array_column(array_filter($payments_data, fn($p) => $p['status'] === 'verified'), 'amount'));
-
-// Create DummyPaymentsResult object
-$payments = new DummyPaymentsResult($payments_data);
+$verified_payments = count(array_filter($payments_data, fn($p) => strtolower($p['status'] ?? '') === 'paid'));
+$pending_payments = count(array_filter($payments_data, fn($p) => in_array(strtolower($p['status'] ?? ''), ['pending', 'processing'], true)));
+$total_amount = array_reduce($payments_data, fn($carry, $p) => $carry + (strtolower($p['status'] ?? '') === 'paid' ? (float) ($p['amount'] ?? 0) : 0), 0);
+$payments = new PaymentsArrayResult($payments_data);
 
 ?>
 <!DOCTYPE html>

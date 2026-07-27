@@ -1,0 +1,25 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "hydromis",
+	"main": "src/index.js",
+	"compatibility_date": "2026-07-27",
+	"workers_dev": true,
+	"assets": {
+		"directory": "./public",
+		"binding": "ASSETS",
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "hydromis",
+			"database_id": "3e45b7f7-0d93-47e6-a7c7-36b387b707fe",
+			"migrations_dir": "migrations"
+		}
+	],
+	"vars": {
+		"APP_ENV": "production"
+	}
+}

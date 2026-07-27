@@ -274,7 +274,7 @@ main.page-shell {
 .transaction-card-header {
     background: linear-gradient(135deg, #f8fafc 0%, #f0f4fa 100%);
     border-bottom: 2px solid #e2e8f0;
-    padding: 20px;
+    padding: 36px 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -283,10 +283,10 @@ main.page-shell {
 .store-info {
     font-weight: 700;
     color: #1e293b;
-    font-size: 15px;
+    font-size: 18px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
 }
 
 .store-info i {

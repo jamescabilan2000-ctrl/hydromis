@@ -1,11 +1,21 @@
 <?php
 require_once '../config/database.php';
+require_once '../config/system_settings.php';
+$systemLogo = system_logo_path($conn);
 
 $scanned_data = null;
 $error = '';
 $transaction_success = false;
 $transaction_data = null;
 $profile_success = '';
+$mobile_login_value = '';
+
+if (isset($_GET['approval_required'])) {
+    $requiredStatus = strtolower(trim((string)$_GET['approval_required']));
+    $error = $requiredStatus === 'denied'
+        ? 'This account was not approved. Please contact HydroMIS support.'
+        : 'Your account is still pending administrator approval. Ordering will be available after approval.';
+}
 
 // Handle QR Scan
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qr_data'])) {
@@ -30,135 +40,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qr_data'])) {
     }
 }
 
-// Handle Buy Transaction
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
-    $user_id = sanitize($_POST['user_id']);
-    $quantity = intval($_POST['quantity']);
-    $water_type = sanitize($_POST['water_type']); // 'regular' or 'nowater'
-    $amount_tendered = floatval($_POST['amount_tendered']);
-    
-    // Calculate price and discount
-    $price_per_unit = ($water_type === 'nowater') ? 30 : 20; // Regular: 20 pesos/gallon, No-water: 30 pesos
-    $total_amount = $quantity * $price_per_unit;
-    $discount = 0;
-    $loyalty_points = 0;
-    
-    // Apply discount for every 5 gallons
-    if ($water_type === 'regular') {
-        $discount_count = floor($quantity / 5);
-        $discount = $discount_count * 5;
-        $loyalty_points = $discount_count;
-    }
-    
-    $final_amount = $total_amount - $discount;
-    $change = $amount_tendered - $final_amount;
-    
-    if ($quantity <= 0) {
-        $error = 'Quantity must be at least 1!';
-    } elseif ($amount_tendered < $final_amount) {
-        $error = 'Amount tendered is insufficient! Amount needed: ₱' . number_format($final_amount, 2);
+// Handle Mobile Number Login (go to purchase/account area)
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mobile_login'])) {
+    $mobile_login_value = sanitize(trim($_POST['mobile_number'] ?? ''));
+    $mobileDigits = preg_replace('/\D+/', '', $mobile_login_value);
+    if (str_starts_with($mobileDigits, '63') && strlen($mobileDigits) === 12) $mobileDigits = '0' . substr($mobileDigits, 2);
+    if (strlen($mobileDigits) === 10 && str_starts_with($mobileDigits, '9')) $mobileDigits = '0' . $mobileDigits;
+
+    if (empty($mobileDigits)) {
+        $error = 'Please enter your mobile number.';
+    } elseif (!preg_match('/^09\d{9}$/', $mobileDigits)) {
+        $error = 'Enter a valid Philippine mobile number.';
     } else {
-        $transaction_id = generateID('TXN');
-        $description = $water_type === 'nowater' 
-            ? "No-Water Purchase - $quantity units @ ₱30 each" 
-            : "Water Purchase - $quantity gallons @ ₱20 each";
-        
-        $sql = "INSERT INTO transactions (transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, status, created_at) 
-                VALUES ('$transaction_id', '$user_id', '$final_amount', '$description', '$water_type', '$quantity', '$price_per_unit', '$discount', '$loyalty_points', 'pending', NOW())";
-        
-        if ($conn->query($sql) === TRUE) {
-            // Add loyalty points if applicable
-            if ($loyalty_points > 0) {
-                $sql_update = "UPDATE users SET loyalty_points = loyalty_points + $loyalty_points WHERE user_id = '$user_id'";
-                $conn->query($sql_update);
-            }
-            
-            $transaction_success = true;
-            $transaction_data = [
-                'transaction_id' => $transaction_id,
-                'user_id' => $user_id,
-                'quantity' => $quantity,
-                'water_type' => $water_type,
-                'price_per_unit' => $price_per_unit,
-                'total_amount' => $total_amount,
-                'discount' => $discount,
-                'final_amount' => $final_amount,
-                'amount_tendered' => $amount_tendered,
-                'change' => $change,
-                'loyalty_points' => $loyalty_points
-            ];
-            // Get updated scanned data
-            $sql = "SELECT * FROM users WHERE user_id = '$user_id'";
-            $result = $conn->query($sql);
-            if ($result->num_rows > 0) {
-                $scanned_data = $result->fetch_assoc();
-            }
+        $safeMobile = $conn->real_escape_string($mobileDigits);
+        $contact_lookup = sensitive_lookup($safeMobile);
+        $sql = "SELECT * FROM users WHERE contact_lookup = '$contact_lookup' LIMIT 1";
+        $result = $conn->query($sql);
+
+        if ($result && $result->num_rows > 0) {
+            $scanned_data = $result->fetch_assoc();
         } else {
-            $error = 'Error recording transaction: ' . $conn->error;
+            $error = 'Mobile number not found. Please check and try again.';
         }
     }
 }
 
-// Handle Profile Update
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
-    $user_id = sanitize($_POST['user_id']);
-    $full_name = sanitize(trim($_POST['full_name']));
-    $contact_number = sanitize(trim($_POST['contact_number']));
-    $address = sanitize(trim($_POST['address']));
-
-    if (empty($full_name) || empty($contact_number) || empty($address)) {
-        $error = 'Please complete all profile fields before saving.';
-    } else {
-        $sql_update_profile = "UPDATE users SET full_name = '$full_name', contact_number = '$contact_number', address = '$address' WHERE user_id = '$user_id'";
-        if ($conn->query($sql_update_profile) === TRUE) {
-            $profile_success = 'Profile updated successfully.';
-
-            // Optional profile image upload (stored by user_id, no DB column needed)
-            if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] !== UPLOAD_ERR_NO_FILE) {
-                if ($_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
-                    $tmp_file = $_FILES['profile_image']['tmp_name'];
-                    $original_name = $_FILES['profile_image']['name'];
-                    $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
-                    $allowed_ext = ['jpg', 'jpeg', 'png', 'webp'];
-
-                    if (!in_array($ext, $allowed_ext, true)) {
-                        $error = 'Invalid image format. Use JPG, PNG, or WEBP.';
-                    } else {
-                        $image_info = @getimagesize($tmp_file);
-                        if ($image_info === false) {
-                            $error = 'Uploaded file is not a valid image.';
-                        } else {
-                            $upload_dir = '../uploads/profile_photos/';
-                            if (!is_dir($upload_dir)) {
-                                @mkdir($upload_dir, 0755, true);
-                            }
-
-                            foreach (glob($upload_dir . $user_id . '.*') as $old_file) {
-                                @unlink($old_file);
-                            }
-
-                            $target_file = $upload_dir . $user_id . '.' . $ext;
-                            if (!move_uploaded_file($tmp_file, $target_file)) {
-                                $error = 'Failed to upload profile image.';
-                            } else {
-                                $profile_success = 'Profile and image updated successfully.';
-                            }
-                        }
-                    }
-                } else {
-                    $error = 'Error uploading image. Please try again.';
-                }
-            }
-        } else {
-            $error = 'Unable to update profile: ' . $conn->error;
-        }
-    }
-
-    $sql = "SELECT * FROM users WHERE user_id = '$user_id'";
-    $result = $conn->query($sql);
-    if ($result && $result->num_rows > 0) {
-        $scanned_data = $result->fetch_assoc();
-    }
+// Transaction and profile handling moved to purchase.php
+// Redirect to purchase page when user is scanned
+if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])) {
+    // Auto-redirect to purchase after successful scan
+    // header('Location: purchase.php?user_id=' . urlencode($scanned_data['user_id']));
+    // exit;
 }
 ?>
 <!DOCTYPE html>
@@ -166,9 +78,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php if ($scanned_data): ?><meta name="hydromis-user-id" content="<?php echo htmlspecialchars($scanned_data['user_id']); ?>"><?php endif; ?>
     <title>Scan QR Code - HydroMIS</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="../css/public-ui.css" rel="stylesheet">
+    <link href="../css/animations.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
         * {
@@ -177,30 +92,127 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             box-sizing: border-box;
         }
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(to bottom right, #f0f9ff, #f0fdf4, #f0fdfa);
             min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
         }
         .navbar {
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            padding: 15px 0;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            padding: 12px 0;
         }
         .navbar-brand {
             font-size: 24px;
-            font-weight: bold;
-            color: white !important;
-            letter-spacing: 1px;
+            font-weight: 800;
+            color: #1f2937 !important;
+            letter-spacing: -0.4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .navbar-brand i {
+            color: #2563eb;
         }
         .nav-link {
-            color: white !important;
+            color: #4b5563 !important;
             margin-left: 20px;
             transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 15px;
         }
         .nav-link:hover {
-            color: #ffc107 !important;
-            transform: translateY(-2px);
+            color: #2563eb !important;
+            transform: none;
+        }
+        .mobile-menu-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(17, 24, 39, 0.45);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0.25s ease;
+            z-index: 1050;
+        }
+        .mobile-menu-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: min(85vw, 360px);
+            height: 100%;
+            background: #ffffff;
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.18);
+            overflow-y: auto;
+        }
+        .mobile-menu-link {
+            display: block;
+            margin: 0 !important;
+            padding: 11px 14px;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            color: #185f97 !important;
+            font-size: 15px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .mobile-menu-link:hover {
+            background: #f8fafc;
+            color: #124c78 !important;
+            text-decoration: none;
+        }
+        .mobile-menu-group {
+            border-top: 1px solid #e5e7eb;
+            padding: 14px 0;
+        }
+        .mobile-menu-group:first-of-type {
+            border-top: none;
+            padding-top: 0;
+        }
+        .mobile-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 8px 2px;
+            color: #374151;
+            font-size: 18px;
+            font-weight: 700;
+            text-decoration: none;
+            border: none;
+            background: transparent;
+            text-align: left;
+            cursor: pointer;
+        }
+        .mobile-menu-item:hover {
+            color: #111827;
+            text-decoration: none;
+        }
+        .mobile-menu-item i {
+            width: 26px;
+            color: #f97316;
+            text-align: center;
+        }
+        .mobile-menu-item-secondary {
+            padding-left: 2px;
+            color: #374151;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .mobile-menu-item-secondary:hover {
+            color: #111827;
+        }
+        body.mobile-nav-open {
+            overflow: hidden;
+        }
+        body.mobile-nav-open .mobile-menu-overlay {
+            opacity: 1;
+            visibility: visible;
+        }
+        body.mobile-nav-open .mobile-menu-panel {
+            transform: translateX(0);
         }
         .container-main {
             display: flex;
@@ -211,6 +223,68 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             flex-wrap: wrap;
             gap: 30px;
         }
+        .scan-success {
+            position: relative;
+            width: min(100%, 510px);
+            overflow: hidden;
+            padding: 46px 42px 34px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, .82);
+            border-radius: 26px;
+            background: rgba(255, 255, 255, .93);
+            box-shadow: 0 24px 60px rgba(30, 64, 100, .14), 0 4px 12px rgba(30, 64, 100, .06);
+            animation: successEnter .58s cubic-bezier(.22, 1, .36, 1) both;
+        }
+        .scan-success::before {
+            content: '';
+            position: absolute;
+            width: 260px;
+            height: 260px;
+            top: -176px;
+            right: -90px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(37, 99, 235, .14), rgba(37, 99, 235, 0) 68%);
+            pointer-events: none;
+        }
+        .success-mark {
+            display: grid;
+            place-items: center;
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 19px;
+            color: #fff;
+            font-size: 27px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            box-shadow: 0 13px 25px rgba(37, 99, 235, .27);
+            animation: successMark .65s .16s cubic-bezier(.22, 1, .36, 1) both;
+        }
+        .success-eyebrow {
+            margin: 0 0 7px;
+            color: #2563eb;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .13em;
+            text-transform: uppercase;
+        }
+        .scan-success h2 { margin: 0; color: #12263f; font-size: clamp(25px, 5vw, 31px); font-weight: 800; letter-spacing: -.045em; }
+        .scan-success h2 span { color: #2563eb; }
+        .success-copy { max-width: 360px; margin: 14px auto 28px; color: #60738a; font-size: 15px; line-height: 1.65; }
+        .success-actions { display: grid; gap: 11px; max-width: 315px; margin: 0 auto; }
+        .success-action { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 13px 18px; border-radius: 14px; font-size: 15px; font-weight: 750; text-decoration: none !important; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
+        .success-action:hover { transform: translateY(-2px); }
+        .success-action:active { transform: translateY(0); }
+        .success-action.primary { color: #fff; background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 10px 20px rgba(37, 99, 235, .24); }
+        .success-action.primary:hover { color: #fff; box-shadow: 0 14px 26px rgba(37, 99, 235, .32); }
+        .success-action.secondary { color: #af6900; background: #fffaf0; border: 1px solid #f6c96e; }
+        .success-action.secondary:hover { color: #915700; background: #fff4dc; box-shadow: 0 8px 18px rgba(180, 117, 14, .12); }
+        .success-security { margin: 22px 0 0; color: #8291a4; font-size: 12px; }
+        .success-security i { margin-right: 5px; color: #20a178; }
+        .approval-lock{max-width:390px;margin:0 auto;padding:20px;border:1px solid #f4d38a;border-radius:16px;background:linear-gradient(145deg,#fffbeb,#fff7dc);text-align:left}.approval-lock.denied{border-color:#f1b5bf;background:linear-gradient(145deg,#fff5f6,#ffebee)}.approval-lock-icon{display:grid;place-items:center;width:42px;height:42px;margin-bottom:13px;border-radius:12px;background:#f59e0b;color:#fff;box-shadow:0 8px 18px rgba(245,158,11,.22)}.approval-lock.denied .approval-lock-icon{background:#e54861}.approval-lock h3{margin:0 0 7px;color:#573b08;font-size:16px;font-weight:800}.approval-lock.denied h3{color:#732333}.approval-lock p{margin:0;color:#806b43;font-size:12px;line-height:1.55}.approval-lock.denied p{color:#8b5963}.approval-next{display:flex;align-items:center;gap:7px;margin-top:13px;color:#8a650e;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+        @keyframes successEnter { from { opacity: 0; transform: translateY(20px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes successMark { from { opacity: 0; transform: scale(.55) rotate(-12deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+        @media (max-width: 575px) { .scan-success { padding: 38px 24px 29px; border-radius: 22px; } .container-main { padding: 26px 16px; } }
+        @media (prefers-reduced-motion: reduce) { .scan-success, .success-mark { animation: none; } .success-action { transition: none; } }
         .nav-links {
             display: flex;
             align-items: center;
@@ -219,37 +293,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         }
         .card {
             border: none;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             overflow: hidden;
             margin-bottom: 20px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: all 0.3s ease;
+            background: #ffffff;
         }
         .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
         }
         .card-body {
             padding: 30px;
         }
         .card-title {
             color: #1f2937;
-            font-weight: 700;
-            margin-bottom: 25px;
+            font-weight: 800;
+            margin-bottom: 10px;
             font-size: 28px;
             display: flex;
             align-items: center;
             gap: 10px;
+            letter-spacing: -0.3px;
+        }
+        .card-title i {
+            color: #2563eb;
+            font-size: 32px;
         }
         #video-container {
             background: #000;
-            border-radius: 16px;
+            border-radius: 12px;
             overflow: hidden;
             position: relative;
             aspect-ratio: 4/3;
             max-width: 100%;
-            margin-bottom: 25px;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
         }
         #scanner {
             width: 100%;
@@ -263,17 +342,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             transform: translate(-50%, -50%);
             width: 260px;
             height: 260px;
-            border: 4px solid #10b981;
-            border-radius: 15px;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 30px rgba(16, 185, 129, 0.3);
+            border: 3px solid #10b981;
+            border-radius: 12px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5), 0 0 20px rgba(16, 185, 129, 0.4);
             animation: scannerPulse 2s infinite;
         }
         @keyframes scannerPulse {
             0%, 100% {
-                box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 30px rgba(16, 185, 129, 0.3);
+                box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5), 0 0 20px rgba(16, 185, 129, 0.4);
             }
             50% {
-                box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 50px rgba(16, 185, 129, 0.5);
+                box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5), 0 0 40px rgba(16, 185, 129, 0.6);
             }
         }
         .scanner-corner {
@@ -308,7 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         }
         .status {
             text-align: center;
-            padding: 14px 16px;
+            padding: 12px 14px;
             border-radius: 10px;
             margin-bottom: 18px;
             font-weight: 700;
@@ -317,48 +396,82 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             align-items: center;
             justify-content: center;
             gap: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            text-transform: none;
+            letter-spacing: 0;
         }
         .status-waiting {
-            background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 100%);
-            color: #3730a3;
-            box-shadow: 0 4px 12px rgba(55, 48, 163, 0.15);
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+            box-shadow: 0 2px 8px rgba(30, 64, 175, 0.1);
         }
         .status-success {
-            background: linear-gradient(135deg, #d1fae5 0%, #d1f4f0 100%);
+            background: #ecfdf5;
             color: #065f46;
-            box-shadow: 0 4px 12px rgba(6, 95, 70, 0.15);
+            border: 1px solid #a7f3d0;
+            box-shadow: 0 2px 8px rgba(6, 95, 70, 0.1);
         }
         .status-error {
-            background: linear-gradient(135deg, #fee2e2 0%, #fed7d7 100%);
+            background: #fef2f2;
             color: #7f1d1d;
-            box-shadow: 0 4px 12px rgba(127, 29, 29, 0.15);
+            border: 1px solid #fecaca;
+            box-shadow: 0 2px 8px rgba(127, 29, 29, 0.1);
         }
         .btn-toggle {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: white;
             border: none;
-            padding: 14px 20px;
-            border-radius: 12px;
+            padding: 12px 20px;
+            border-radius: 10px;
             width: 100%;
             cursor: pointer;
             font-weight: 700;
             margin-bottom: 15px;
             transition: all 0.3s ease;
-            font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+            font-size: 15px;
+            text-transform: none;
+            letter-spacing: 0;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
         }
         .btn-toggle:hover {
-            background: linear-gradient(135deg, #5568d3 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
             transform: translateY(-2px);
-            box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+        }
+        .btn-tracking {
+            background: transparent;
+            color: #14b8a6;
+            border: 2px solid #14b8a6;
+            padding: 11px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            font-size: 15px;
+            text-transform: none;
+            letter-spacing: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            margin-bottom: 0;
+        }
+        .btn-tracking:hover {
+            background: #14b8a6;
+            color: white;
+            box-shadow: 0 6px 16px rgba(20, 184, 166, 0.3);
+            transform: translateY(-2px);
+        }
+        .tab-button {
+            transition: all 0.3s ease;
+        }
+        .tab-button:hover {
+            color: #2563eb !important;
         }
         .user-info {
             background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
@@ -391,17 +504,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             display: none;
         }
         .user-info-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: white;
-            padding: 30px;
+            padding: 44px 40px;
             text-align: center;
         }
         .user-info-header h5 {
             display: block;
             margin: 0;
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 15px;
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            letter-spacing: -0.4px;
         }
         .loyalty-points-display {
             background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
@@ -491,29 +605,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             color: #7f1d1d;
         }
         .btn-back {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: white;
             border: none;
-            padding: 14px 24px;
-            border-radius: 12px;
+            padding: 12px 20px;
+            border-radius: 10px;
             cursor: pointer;
             font-weight: 700;
             width: 100%;
-            margin-top: 25px;
+            margin-top: 20px;
             transition: all 0.3s ease;
-            font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+            font-size: 15px;
+            text-transform: none;
+            letter-spacing: 0;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
         }
         .btn-back:hover {
-            background: linear-gradient(135deg, #5568d3 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
             transform: translateY(-2px);
-            box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
         }
         .hidden {
             display: none;
@@ -565,7 +679,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         }
         
         .card-body a {
-            color: #667eea;
+            color: #2563eb;
             text-decoration: none;
             font-weight: 700;
             transition: all 0.3s ease;
@@ -575,7 +689,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         }
         
         .card-body a:hover {
-            color: #764ba2;
+            color: #1d4ed8;
             transform: translateX(3px);
         }
         .form-group {
@@ -605,9 +719,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             color: #1f2937;
         }
         .form-group textarea:focus {
-            border-color: #667eea;
+            border-color: #2563eb;
             background: white;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         .error-message {
             color: #7f1d1d;
@@ -625,45 +739,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         .scanner-width {
             max-width: 580px;
             width: 100%;
-            background: white !important;
+            background: #ffffff !important;
+            border: 1px solid #e5e7eb;
         }
         .scanner-width .card-body {
-            padding: 35px;
+            padding: 28px;
         }
         .buy-form {
             background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
             border: 2px solid #10b981;
-            padding: 25px;
-            border-radius: 16px;
-            margin-top: 25px;
-            margin-bottom: 25px;
-            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
         }
         .buy-form h6 {
             color: #047857;
             font-weight: 700;
-            margin-bottom: 20px;
-            font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            margin-bottom: 15px;
+            font-size: 15px;
+            text-transform: none;
+            letter-spacing: 0;
             display: flex;
             align-items: center;
             gap: 8px;
         }
         .buy-form .form-control {
-            border: 2px solid #d1fae5;
-            border-radius: 10px;
-            padding: 12px 16px;
-            font-size: 15px;
-            margin-bottom: 12px;
-            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 14px;
+            margin-bottom: 10px;
+            background: #ffffff;
             transition: all 0.3s ease;
             color: #1f2937;
         }
         .buy-form .form-control:focus {
             border-color: #10b981;
             box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-            background: #fafafa;
+            background: #f9fafb;
         }
         .buy-form .form-control::placeholder {
             color: #9ca3af;
@@ -672,16 +787,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
             border: none;
-            padding: 14px 24px;
-            border-radius: 12px;
+            padding: 12px 20px;
+            border-radius: 10px;
             cursor: pointer;
             font-weight: 700;
             width: 100%;
             transition: all 0.3s ease;
-            font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+            font-size: 15px;
+            text-transform: none;
+            letter-spacing: 0;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -690,7 +805,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         .btn-buy:hover {
             background: linear-gradient(135deg, #059669 0%, #047857 100%);
             transform: translateY(-2px);
-            box-shadow: 0 12px 30px rgba(16, 185, 129, 0.4);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
         }
         .btn-buy:active {
             transform: translateY(0);
@@ -1095,45 +1210,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             align-items: center;
             gap: 8px;
         }
-        .qr-points-card {
-            background: #fbbf24;
-            border: 2px solid #f59e0b;
-            border-radius: 18px;
-            padding: 18px;
-            text-align: center;
-            box-shadow: 0 10px 24px rgba(180, 83, 9, 0.18);
+        a.points-chip {
+            text-decoration: none;
         }
-        .qr-frame {
-            margin: 0 auto 12px;
-            width: 200px;
-            height: 200px;
-            background: #ffffff;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #e5e7eb;
-            box-shadow: inset 0 0 0 2px #f9fafb;
-        }
-        .qr-frame img {
-            width: 170px;
-            height: 170px;
-            object-fit: contain;
-        }
-        .qr-caption {
-            color: #3f2a00;
-            font-weight: 700;
-            font-size: 20px;
-            margin-top: 4px;
-        }
-        .qr-subtext {
-            color: #4b5563;
-            font-size: 14px;
-            margin-top: 4px;
+        a.points-chip:hover {
+            color: #f9fafb;
+            text-decoration: none;
+            filter: brightness(1.08);
         }
         .hero-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 14px;
             margin-top: 4px;
             margin-bottom: 18px;
@@ -1185,6 +1272,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         .profile-edit-btn:hover {
             filter: brightness(1.05);
         }
+        .profile-edit-btn-bottom {
+            width: 100%;
+            justify-content: center;
+            margin-top: 12px;
+        }
         .profile-summary {
             background: #f8fafc;
             border: 1px solid #e5e7eb;
@@ -1232,7 +1324,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             width: 62px;
             height: 62px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: #ffffff;
             font-weight: 800;
             font-size: 20px;
@@ -1383,6 +1475,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             font-weight: 700;
             font-size: 14px;
         }
+        .rewards-convert-link {
+            color: #0f766e;
+            font-weight: 800;
+            font-size: 13px;
+            border: 1px solid #99f6e4;
+            background: #ecfeff;
+            border-radius: 999px;
+            padding: 6px 11px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .rewards-convert-link:hover {
+            color: #115e59;
+            text-decoration: none;
+            background: #ccfbf1;
+        }
         .rewards-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1421,11 +1531,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             font-weight: 700;
             border: 1px solid #d1d5db;
         }
+        .reward-pill-form {
+            align-self: flex-start;
+            margin-top: 10px;
+        }
+        .reward-pill-btn {
+            background: #f3f4f6;
+            color: #374151;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            border: 1px solid #d1d5db;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .reward-pill-btn[disabled] {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
         .reward-item.unlocked {
             border-color: #10b981;
             box-shadow: 0 8px 20px rgba(16, 185, 129, 0.15);
         }
-        .reward-item.unlocked .reward-pill {
+        .reward-item.unlocked .reward-pill,
+        .reward-item.unlocked .reward-pill-btn {
             background: #ecfdf5;
             border-color: #6ee7b7;
             color: #047857;
@@ -1517,9 +1649,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             }
             .navbar .container-fluid {
                 display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
                 padding-left: 12px;
                 padding-right: 12px;
             }
@@ -1527,14 +1660,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                 font-size: 21px;
             }
             .ml-auto.nav-links {
-                margin-left: 0 !important;
-                width: 100%;
-                justify-content: flex-start;
-                gap: 4px;
+                display: none;
             }
             .nav-link {
                 margin-left: 0;
-                margin-right: 10px;
                 font-size: 13px;
                 padding: 4px 2px;
             }
@@ -1577,7 +1706,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             }
             .btn-buy,
             .btn-back,
-            .btn-toggle {
+            .btn-toggle,
+            .btn-tracking {
                 min-height: 48px;
                 font-size: 14px;
                 letter-spacing: 0.3px;
@@ -1627,7 +1757,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                 gap: 10px;
             }
             .hero-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-template-columns: 1fr;
                 gap: 10px;
             }
             .profile-editor-card {
@@ -1656,23 +1786,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             .profile-user-code {
                 font-size: 10px;
                 letter-spacing: 0.15px;
-            }
-            .qr-points-card {
-                padding: 12px;
-            }
-            .qr-frame {
-                width: 120px;
-                height: 120px;
-            }
-            .qr-frame img {
-                width: 104px;
-                height: 104px;
-            }
-            .qr-caption {
-                font-size: 14px;
-            }
-            .qr-subtext {
-                font-size: 11px;
             }
             .points-strip-title {
                 font-size: 17px;
@@ -1721,54 +1834,187 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Shared public UI alignment overrides */
+        body.public-ui {
+            min-height: 100vh;
+            padding: 0 0 24px;
+        }
+        .navbar {
+            background: rgba(244, 248, 251, 0.86);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(16, 38, 58, 0.08);
+            padding: 12px 0;
+        }
+        .navbar-brand {
+            color: #10263a !important;
+            font-weight: 800;
+            font-size: 28px;
+            letter-spacing: -0.4px;
+        }
+        .nav-link {
+            color: #185f97 !important;
+            font-weight: 700;
+            margin-left: 18px;
+        }
+        .nav-link:hover {
+            color: #124c78 !important;
+            transform: none;
+        }
+        .scanner-width {
+            max-width: 660px;
+            border: 1px solid rgba(16, 38, 58, 0.08);
+            box-shadow: 0 20px 45px rgba(8, 33, 55, 0.14);
+        }
+        .scanner-width .card-body {
+            padding: 26px;
+        }
+        .card-title {
+            font-size: 42px;
+            letter-spacing: -0.6px;
+            margin-bottom: 18px;
+        }
+        .status {
+            border-radius: 12px;
+            text-transform: none;
+            letter-spacing: 0;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 12px 14px;
+        }
+        .status-waiting {
+            background: #edf7ff;
+            color: #1f4f77;
+            border: 1px solid #cde3f3;
+            box-shadow: none;
+        }
+        .btn-toggle {
+            background: linear-gradient(135deg, #145c9e 0%, #1c75bc 100%);
+            border-radius: 12px;
+            text-transform: none;
+            letter-spacing: 0;
+            box-shadow: 0 10px 20px rgba(20, 92, 158, 0.26);
+        }
+        .btn-toggle:hover {
+            background: linear-gradient(135deg, #124c84 0%, #185f97 100%);
+            box-shadow: 0 14px 24px rgba(20, 92, 158, 0.3);
+        }
+
+        /* Premium customer access experience */
+        :root{--login-ink:#10263a;--login-blue:#1769d2;--login-aqua:#08b8c8;--login-ease:cubic-bezier(.22,1,.36,1)}
+        body.public-ui{background:radial-gradient(circle at 10% 16%,rgba(8,184,200,.16),transparent 28%),radial-gradient(circle at 90% 86%,rgba(23,105,210,.13),transparent 30%),linear-gradient(145deg,#eff9fd,#f8fbff 52%,#edf7fb);overflow-x:hidden}
+        body.public-ui::before,body.public-ui::after{content:'';position:fixed;z-index:-1;border:1px solid rgba(8,184,200,.12);border-radius:50%;pointer-events:none;animation:loginRing 12s ease-in-out infinite alternate}
+        body.public-ui::before{width:420px;height:420px;left:-230px;top:18%}body.public-ui::after{width:540px;height:540px;right:-300px;bottom:-260px;animation-delay:-5s}
+        .navbar{position:relative;z-index:10;background:rgba(255,255,255,.76)!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 8px 28px rgba(15,52,78,.06);animation:loginNavIn .65s var(--login-ease) both}
+        .navbar-brand img{width:38px!important;height:38px!important;padding:4px;border-radius:11px;background:linear-gradient(135deg,#1376ca,#08aeba);box-shadow:0 8px 20px rgba(8,126,170,.2)}
+        #mobile-menu-button{width:44px!important;height:44px!important;border-radius:12px!important;transition:transform .2s ease,box-shadow .2s ease}#mobile-menu-button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(16,38,58,.1)}
+        .container-main{min-height:calc(100vh - 74px);align-items:center;padding:40px 20px 60px}
+        .scanner-width{position:relative;max-width:540px!important;border:1px solid rgba(255,255,255,.9)!important;border-radius:26px!important;background:rgba(255,255,255,.93)!important;box-shadow:0 30px 80px rgba(14,55,85,.16),0 4px 12px rgba(14,55,85,.06)!important;backdrop-filter:blur(16px);animation:loginCardIn .8s .08s var(--login-ease) both}
+        .scanner-width::before{content:'';position:absolute;width:240px;height:240px;right:-150px;top:-155px;border-radius:50%;background:radial-gradient(circle,rgba(8,184,200,.16),transparent 68%);pointer-events:none}
+        .scanner-width .card-body{position:relative;padding:42px!important}
+        .login-hero{text-align:center;margin-bottom:26px}.login-icon{display:grid;place-items:center;width:66px;height:66px;margin:0 auto 18px;border-radius:21px;color:#fff!important;font-size:26px!important;background:linear-gradient(145deg,#1769d2,#08b8c8);box-shadow:0 15px 30px rgba(23,105,210,.24);animation:loginIconIn .7s .3s var(--login-ease) both}.login-hero h2{color:var(--login-ink)!important;font-size:29px!important;font-weight:800!important;letter-spacing:-.04em}.login-hero p{color:#71869b!important;margin:0}.security-note{display:inline-flex;align-items:center;gap:6px;margin-top:11px;color:#16836f;font-size:11px;font-weight:700}.login-tabs{position:relative;display:flex;padding:4px;margin-bottom:25px;border:1px solid #dde7ef;border-radius:14px;background:#eef3f7}.tab-button{position:relative;z-index:1;min-height:44px;border-radius:11px!important;color:#61758a!important;transition:color .25s ease,background .25s ease,box-shadow .25s ease,transform .2s ease!important}.tab-button.active{color:var(--login-ink)!important;background:#fff!important;box-shadow:0 5px 14px rgba(16,38,58,.1)!important}.tab-button i{margin-right:6px;color:#1785c7}.login-tab-panel.tab-enter{animation:tabEnter .36s var(--login-ease) both}.login-form label{color:var(--login-ink)!important;font-size:13px!important}.mobile-field{position:relative}.mobile-field .country-code{position:absolute;z-index:2;left:15px;top:50%;transform:translateY(-50%);padding-right:12px;border-right:1px solid #d7e3ec;color:#506b82;font-size:13px;font-weight:800}.mobile-field .form-control{height:56px!important;padding-left:70px!important;border:1px solid #d8e5ee!important;border-radius:14px!important;background:#f7fafc!important;font-size:16px;letter-spacing:.04em;transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}.mobile-field .form-control:hover{border-color:#afc9db!important;background:#fff!important}.mobile-field .form-control:focus{border-color:var(--login-aqua)!important;box-shadow:0 0 0 4px rgba(8,184,200,.12),0 10px 24px rgba(14,70,100,.06)!important;transform:translateY(-1px)}.login-helper{display:flex;align-items:flex-start;gap:7px;color:#71869b!important;font-size:12px!important;line-height:1.5}.login-helper i{margin-top:3px;color:#27a88f}.btn-toggle{position:relative;min-height:55px;overflow:hidden;border-radius:14px!important;background:linear-gradient(120deg,#1769d2,#08aeca,#1769d2)!important;background-size:180% 180%!important;box-shadow:0 14px 30px rgba(23,105,210,.25)!important;transition:transform .2s ease,box-shadow .2s ease!important;animation:loginGradient 6s ease infinite}.btn-toggle::after{content:'';position:absolute;inset:0;transform:translateX(-120%) skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transition:transform .7s var(--login-ease)}.btn-toggle:hover::after{transform:translateX(120%) skewX(-20deg)}.btn-toggle:hover{transform:translateY(-2px)!important;box-shadow:0 18px 36px rgba(23,105,210,.32)!important}.btn-toggle:active,.btn-tracking:active{transform:scale(.985)!important}.btn-tracking{min-height:52px;border-radius:14px!important;background:rgba(255,255,255,.7);transition:transform .2s ease,background .2s ease,box-shadow .2s ease!important}.register-prompt{padding-top:4px;text-align:center}.register-prompt a{display:inline!important}.error-message{animation:errorIn .42s var(--login-ease) both}
+        #video-container{border-radius:18px;background:#07111d;box-shadow:0 20px 42px rgba(4,15,28,.25)}.scanner-frame{border:0;box-shadow:0 0 0 9999px rgba(2,8,18,.48);animation:none}.scanner-corner{width:32px;height:32px;border-color:#34e4c0;border-width:4px}.scanner-line{position:absolute;left:8px;right:8px;top:12px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,#55f5d3,transparent);box-shadow:0 0 12px #27dfba;animation:scanLine 2.4s ease-in-out infinite}.status-waiting{background:#eff9ff;border-color:#c7e7f2;color:#176484}.scanner-trust{display:flex;justify-content:center;gap:16px;margin:13px 0;color:#71869b;font-size:10px}.scanner-trust span{display:flex;align-items:center;gap:5px}.scanner-trust i{color:#1aa78f}
+        @keyframes loginNavIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}@keyframes loginCardIn{from{opacity:0;transform:translateY(28px) scale(.985)}to{opacity:1;transform:none}}@keyframes loginIconIn{from{opacity:0;transform:scale(.65) rotate(-8deg)}to{opacity:1;transform:none}}@keyframes loginRing{from{opacity:.35;transform:scale(.9)}to{opacity:1;transform:scale(1.08)}}@keyframes loginGradient{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}@keyframes tabEnter{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}@keyframes errorIn{0%{opacity:0;transform:translateX(-7px)}50%{transform:translateX(4px)}100%{opacity:1;transform:none}}@keyframes scanLine{0%,100%{top:12px;opacity:.4}50%{top:calc(100% - 14px);opacity:1}}
+        a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid rgba(8,184,200,.3)!important;outline-offset:3px}
+        @media(max-width:575px){.container-main{align-items:flex-start;padding:20px 12px 36px}.scanner-width{border-radius:22px!important}.scanner-width .card-body{padding:30px 22px!important}.login-icon{width:58px;height:58px;border-radius:18px}.login-hero h2{font-size:25px!important}.navbar-brand{font-size:25px}.navbar-brand img{width:34px!important;height:34px!important}}
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
     </style>
 </head>
-<body>
+<body class="public-ui">
     <!-- Navigation -->
     <nav class="navbar">
         <div class="container-fluid">
-            <span class="navbar-brand">HydroMIS</span>
-            <div class="ml-auto nav-links">
-                <a href="../home.php" class="nav-link"><i class="fas fa-home mr-1"></i> Home</a>
-                <a href="../create_account.php" class="nav-link"><i class="fas fa-user-plus mr-1"></i> Create Account</a>
-                <a href="../login.php" class="nav-link"><i class="fas fa-sign-in-alt mr-1"></i> Admin Login</a>
-            </div>
+            <span class="navbar-brand"><img src="../<?php echo htmlspecialchars($systemLogo); ?>" alt="HydroMIS Logo" style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;">HydroMIS</span>
+            <button id="mobile-menu-button" type="button" class="d-md-none d-inline-flex align-items-center justify-content-center" style="width:40px;height:40px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#4b5563;" aria-controls="mobile-menu-panel" aria-expanded="false" aria-label="Toggle navigation">
+                <i id="mobile-menu-icon" class="fas fa-bars"></i>
+            </button>
         </div>
+
     </nav>
+
+    <div id="mobile-menu-overlay" class="mobile-menu-overlay d-md-none" aria-hidden="true">
+        <aside id="mobile-menu-panel" class="mobile-menu-panel" role="dialog" aria-modal="true" aria-label="Mobile navigation">
+            <div class="d-flex align-items-center justify-content-between px-3 py-3" style="border-bottom:1px solid #e5e7eb;">
+                <div class="d-flex align-items-center" style="gap:8px;">
+                    <img src="../<?php echo htmlspecialchars($systemLogo); ?>" alt="HydroMIS Logo" style="width: 28px; height: 28px; object-fit: contain; color:#2563eb;">
+                    <span style="font-size:24px;font-weight:800;color:#1f2937;letter-spacing:-0.3px;">HydroMIS</span>
+                </div>
+                <button id="mobile-menu-close" type="button" class="d-inline-flex align-items-center justify-content-center" style="width:36px;height:36px;border:none;border-radius:8px;background:#fff;color:#4b5563;" aria-label="Close navigation">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="px-3 py-3">
+                <div class="mobile-menu-group">
+                    <a href="./rewards.php" class="mobile-menu-item mobile-menu-item-secondary">Rewards</a>
+                    <button type="button" class="mobile-menu-item" onclick="shareWithFriends()">
+                        <i class="fas fa-share-alt"></i>
+                        <span>Share with friends</span>
+                    </button>
+                </div>
+
+                <div class="mobile-menu-group">
+                    <a href="mailto:hydromis.support@gmail.com" class="mobile-menu-item mobile-menu-item-secondary">Contact us</a>
+                </div>
+
+                <div class="mobile-menu-group">
+                    <a href="../terms.php" class="mobile-menu-item mobile-menu-item-secondary">Terms & conditions</a>
+                    <a href="../privacy.php" class="mobile-menu-item mobile-menu-item-secondary">Privacy terms</a>
+                </div>
+            </div>
+        </aside>
+    </div>
 
     <div class="container-main">
         <?php if ($scanned_data): ?>
-        <!-- Realistic Purchasing View -->
+        <!-- Redirect to Purchase Page -->
+        <div style="width: 100%; display: flex; justify-content: center; padding: 30px 20px;">
+            <section class="scan-success" aria-labelledby="scan-success-title">
+                <div class="success-mark" aria-hidden="true">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <?php $accountApproved = strtolower((string)($scanned_data['status'] ?? 'pending')) === 'approved'; ?>
+                <p class="success-eyebrow"><?php echo $accountApproved ? 'Account verified' : 'Account located'; ?></p>
+                <h2 id="scan-success-title">Welcome, <span><?php echo htmlspecialchars($scanned_data['full_name']); ?></span></h2>
+                <?php if ($accountApproved): ?>
+                <p class="success-copy">Your approved account is ready. Choose what you would like to do next.</p>
+                <div class="success-actions">
+                <a class="success-action primary" href="purchase.php?user_id=<?php echo urlencode($scanned_data['user_id']); ?>">
+                    <i class="fas fa-shopping-bag"></i> Order Water <i class="fas fa-arrow-right"></i>
+                </a>
+                <a class="success-action secondary" href="rewards.php?user_id=<?php echo urlencode($scanned_data['user_id']); ?>">
+                    <i class="fas fa-gift"></i> View Rewards
+                </a>
+                </div>
+                <p class="success-security"><i class="fas fa-shield-alt"></i> Secure account access</p>
+                <?php else: $accountDenied = strtolower((string)($scanned_data['status'] ?? 'pending')) === 'denied'; ?>
+                <p class="success-copy">We found your account, but ordering is not available yet.</p>
+                <div class="approval-lock<?php echo $accountDenied ? ' denied' : ''; ?>">
+                    <div class="approval-lock-icon"><i class="fas <?php echo $accountDenied ? 'fa-circle-xmark' : 'fa-clock'; ?>"></i></div>
+                    <h3><?php echo $accountDenied ? 'Account not approved' : 'Waiting for administrator approval'; ?></h3>
+                    <p><?php echo $accountDenied ? 'Please contact HydroMIS support if you believe this decision needs review.' : 'A HydroMIS administrator must review and approve your registration before you can purchase water.'; ?></p>
+                    <div class="approval-next"><i class="fas <?php echo $accountDenied ? 'fa-headset' : 'fa-rotate'; ?>"></i> <?php echo $accountDenied ? 'Contact support for assistance' : 'Try logging in again after approval'; ?></div>
+                </div>
+                <p class="success-security"><i class="fas fa-lock"></i> Purchasing is locked for this account</p>
+                <?php endif; ?>
+            </section>
+        </div>
+
+        <!-- Purchase Shell (Removed - moved to separate purchase.php page)
         <div class="purchase-shell">
             <div class="rewards-panel">
                 <div class="points-strip">
                     <div class="points-strip-title">Hydro Rewards</div>
-                    <div class="points-chip">
+                    <a class="points-chip" href="./rewards.php?user_id=<?php echo urlencode($scanned_data['user_id']); ?>">
                         <?php echo intval($scanned_data['loyalty_points'] ?? 0); ?> pts
                         <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                    </div>
+                    </a>
                 </div>
 
                 <div class="hero-grid">
-                        <div class="qr-points-card">
-                            <div class="qr-frame">
-                                <?php
-                                $qr_image_src = !empty($scanned_data['qr_code_path'])
-                                    ? '../' . ltrim($scanned_data['qr_code_path'], './')
-                                    : 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode(json_encode(['user_id' => $scanned_data['user_id']]));
-                                ?>
-                                <img src="<?php echo htmlspecialchars($qr_image_src); ?>" alt="Customer QR" onerror="this.onerror=null;this.src='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=<?php echo urlencode(json_encode(['user_id' => $scanned_data['user_id']])); ?>';">
-                            </div>
-                            <div class="qr-caption"><?php echo htmlspecialchars($scanned_data['user_id']); ?></div>
-                            <div class="qr-subtext">Scan code to collect points.</div>
-                        </div>
-
                         <div class="profile-editor-card">
                             <div class="profile-editor-head">
                                 <h6><i class="fas fa-id-card"></i> User Profile</h6>
-                                <button type="button" class="profile-edit-btn" id="editProfileBtn" onclick="toggleProfileEdit(true)">
-                                    <i class="fas fa-pen"></i> Edit Profile
-                                </button>
                             </div>
 
                             <?php
@@ -1851,201 +2097,77 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                     <i class="fas fa-times"></i> Cancel
                                 </button>
                             </form>
-                        </div>
-                </div>
 
-                <div class="rewards-header">
-                    <h6>Rewards</h6>
-                </div>
-
-                <?php $user_points = intval($scanned_data['loyalty_points'] ?? 0); ?>
-                <div class="rewards-grid">
-                    <div class="reward-item <?php echo $user_points >= 50 ? 'unlocked' : ''; ?>">
-                        <strong>Free 1 Gallon Regular Water</strong>
-                        <p>Instantly redeem at cashier after purchase.</p>
-                        <span class="reward-pill"><i class="fas fa-lock"></i> 50 pts</span>
-                    </div>
-                    <div class="reward-item <?php echo $user_points >= 100 ? 'unlocked' : ''; ?>">
-                        <strong>Discount Voucher</strong>
-                        <p>Get ₱20 off on your next refill order.</p>
-                        <span class="reward-pill"><i class="fas fa-lock"></i> 100 pts</span>
-                    </div>
-                    <div class="reward-item <?php echo $user_points >= 150 ? 'unlocked' : ''; ?>">
-                        <strong>Free 1 Gallons Bundle</strong>
-                        <p>Fast-lane service on your next visit.</p>
-                        <span class="reward-pill"><i class="fas fa-lock"></i> 150 pts</span>
-                    </div>
-                    <div class="reward-item <?php echo $user_points >= 250 ? 'unlocked' : ''; ?>">
-                        <strong>Free 2 Gallons Bundle</strong>
-                        <p>Best value bundle for loyal customers.</p>
-                        <span class="reward-pill"><i class="fas fa-lock"></i> 250 pts</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="checkout-panel">
-            <?php if ($transaction_success): ?>
-            <!-- Transaction Receipt -->
-            <div class="receipt">
-                <div class="receipt-header">
-                    <i class="fas fa-receipt mr-2"></i> RECEIPT
-                </div>
-                
-                <div class="receipt-line"></div>
-                
-                <div class="receipt-section">
-                    <div class="receipt-row">
-                        <span class="receipt-label">Transaction ID:</span>
-                        <span class="receipt-value"><?php echo $transaction_data['transaction_id']; ?></span>
-                    </div>
-                    <div class="receipt-row">
-                        <span class="receipt-label">Date & Time:</span>
-                        <span class="receipt-value"><?php echo date('M d, Y h:i A'); ?></span>
-                    </div>
-                    <div class="receipt-row">
-                        <span class="receipt-label">Customer:</span>
-                        <span class="receipt-value"><?php echo htmlspecialchars($scanned_data['full_name']); ?></span>
-                    </div>
-                    <div class="receipt-row">
-                        <span class="receipt-label">Customer ID:</span>
-                        <span class="receipt-value"><?php echo $scanned_data['user_id']; ?></span>
-                    </div>
-                </div>
-                
-                <div class="receipt-line"></div>
-                
-                <div class="receipt-section">
-                    <div class="receipt-header-small">Items</div>
-                    <div class="receipt-item-row">
-                        <span class="receipt-item-desc"><?php echo $transaction_data['water_type'] === 'nowater' ? 'No-Water' : 'Regular Water'; ?></span>
-                        <span class="receipt-item-qty"><?php echo $transaction_data['quantity']; ?></span>
-                        <span class="receipt-item-unit">@ ₱<?php echo number_format($transaction_data['price_per_unit'], 2); ?></span>
-                        <span class="receipt-item-total">₱<?php echo number_format($transaction_data['total_amount'], 2); ?></span>
-                    </div>
-                </div>
-                
-                <div class="receipt-line"></div>
-                
-                <div class="receipt-section">
-                    <div class="receipt-row">
-                        <span class="receipt-label">Subtotal:</span>
-                        <span class="receipt-value">₱<?php echo number_format($transaction_data['total_amount'], 2); ?></span>
-                    </div>
-                    <?php if ($transaction_data['discount'] > 0): ?>
-                    <div class="receipt-row discount-row">
-                        <span class="receipt-label"><i class="fas fa-tag mr-1"></i>Discount:</span>
-                        <span class="receipt-value">-₱<?php echo number_format($transaction_data['discount'], 2); ?></span>
-                    </div>
-                    <?php endif; ?>
-                    <div class="receipt-row amount-due">
-                        <span class="receipt-label">Amount Due:</span>
-                        <span class="receipt-value">₱<?php echo number_format($transaction_data['final_amount'], 2); ?></span>
-                    </div>
-                    <div class="receipt-row">
-                        <span class="receipt-label">Amount Tendered:</span>
-                        <span class="receipt-value">₱<?php echo number_format($transaction_data['amount_tendered'], 2); ?></span>
-                    </div>
-                    <div class="receipt-row change-row">
-                        <span class="receipt-label"><strong>Change:</strong></span>
-                        <span class="receipt-value"><strong>₱<?php echo number_format($transaction_data['change'], 2); ?></strong></span>
-                    </div>
-                </div>
-                
-                <div class="receipt-line"></div>
-                
-                <?php if ($transaction_data['loyalty_points'] > 0): ?>
-                <div class="receipt-section">
-                    <div class="receipt-row loyalty-row">
-                        <span class="receipt-label"><i class="fas fa-star mr-1"></i>Loyalty Points Earned:</span>
-                        <span class="receipt-value">+<?php echo $transaction_data['loyalty_points']; ?></span>
-                    </div>
-                </div>
-                <div class="receipt-line"></div>
-                <?php endif; ?>
-                
-                <div class="receipt-footer">
-                    <p>Thank you for your purchase!</p>
-                    <p style="font-size: 11px; color: #666;">Status: Pending Approval</p>
-                </div>
-            </div>
-            <?php else: ?>
-            <!-- Buy Form -->
-            <div class="buy-form">
-                <h6><i class="fas fa-shopping-bag mr-2"></i> Record Purchase</h6>
-                <?php if ($error): ?>
-                    <div class="error-message">
-                        <i class="fas fa-exclamation-circle mr-2"></i> <?php echo $error; ?>
-                    </div>
-                <?php endif; ?>
-                <form method="POST" onchange="calculatePrice()">
-                    <input type="hidden" name="user_id" value="<?php echo $scanned_data['user_id']; ?>">
-                    <input type="hidden" name="buy_submit" value="1">
-                    
-                    <div class="form-group">
-                        <label for="water_type" style="display: block; margin-bottom: 10px; font-weight: 600; color: #333;"><i class="fas fa-droplet mr-2"></i>Water Type</label>
-                        <div class="water-type-grid">
-                            <button type="button" class="btn-water-type active" id="btn-regular" onclick="selectWaterType('regular'); calculatePrice();" style="flex: 1;">
-                                <i class="fas fa-water"></i> Regular (₱20/gal)
-                            </button>
-                            <button type="button" class="btn-water-type" id="btn-nowater" onclick="selectWaterType('nowater'); calculatePrice();" style="flex: 1;">
-                                <i class="fas fa-ban"></i> No-Water (₱30/unit)
+                            <button type="button" class="profile-edit-btn profile-edit-btn-bottom" id="editProfileBtn" onclick="toggleProfileEdit(true)">
+                                <i class="fas fa-pen"></i> Edit Profile
                             </button>
                         </div>
-                        <input type="hidden" name="water_type" id="water_type" value="regular">
+
+        -->
+
+        <?php else: ?>
+        <!-- Main Card View -->
+        <div class="card scanner-width" id="mainLoginCard">
+            <div class="card-body" style="padding: 35px;">
+                <div class="login-hero">
+                    <div class="login-icon">
+                        <i class="fas fa-droplet"></i>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="quantity"><i class="fas fa-cube mr-2"></i>Quantity</label>
-                        <input type="number" class="form-control" name="quantity" id="quantity" placeholder="5" min="1" value="5" required onchange="calculatePrice()">
-                        <small class="form-text text-muted">Regular: gallons | No-Water: units</small>
-                    </div>
-                    
-                    <div class="price-breakdown" id="priceBreakdown">
-                        <div class="price-item">
-                            <span>Subtotal (<span id="displayQty">5</span> × ₱<span id="displayPrice">20</span>):</span>
-                            <span>₱<strong id="subtotal">100.00</strong></span>
-                        </div>
-                        <div class="price-item" id="discountRow" style="display: none;">
-                            <span>Discount (per 5 units):</span>
-                            <span>-₱<strong id="discount">0.00</strong></span>
-                        </div>
-                        <div class="price-item final">
-                            <span>Final Amount:</span>
-                            <span>₱<strong id="finalAmount">100.00</strong></span>
-                        </div>
-                        <div class="price-item points" id="pointsRow" style="display: none;">
-                            <span><i class="fas fa-star mr-1"></i>Loyalty Points:</span>
-                            <span>+<strong id="loyaltyPointsCalc">0</strong></span>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="amount_tendered"><i class="fas fa-money-bill mr-2"></i>Amount Tendered (₱)</label>
-                        <input type="number" class="form-control amount-input" name="amount_tendered" id="amount_tendered" placeholder="0.00" step="0.01" min="0" required onchange="calculateChange()">
-                        <div id="changeDisplay" class="change-display" style="display: none;">
-                            <div class="change-item">
-                                <span>Change:</span>
-                                <span>₱<strong id="changeAmount">0.00</strong></span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="btn-buy">
-                        <i class="fas fa-check mr-2"></i> Confirm Purchase
+                    <h2 style="color: #1f2937; font-weight: 700; margin-bottom: 8px; font-size: 26px; line-height: 1.2;">Customer Login</h2>
+                    <p style="color: #64748b; font-size: 14px;">Access your HydroMIS account</p>
+                    <span class="security-note"><i class="fas fa-shield-halved"></i> Secure customer access</span>
+                </div>
+
+                <div class="login-tabs" role="tablist" aria-label="Login method">
+                    <button type="button" class="tab-button active" onclick="switchTab('mobile')" style="flex: 1; background: #ffffff; color: #111827; border: none; border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: 13px; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);">
+                        <i class="fas fa-mobile-screen"></i> Mobile Number
                     </button>
-                </form>
-            </div>
-            <?php endif; ?>
+                    <button type="button" class="tab-button" onclick="switchTab('qr')" style="flex: 1; background: transparent; color: #111827; border: none; border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: 13px; box-shadow: none;">
+                        <i class="fas fa-qrcode"></i> QR Code
+                    </button>
+                </div>
 
-            <button type="button" class="btn-back" onclick="location.href='scan_qr.php';">
-                <i class="fas fa-scanner mr-2"></i> Scan Another QR
-            </button>
+                <div id="mobileTab" class="login-tab-panel" style="display: block;">
+                    <?php if ($error): ?>
+                        <div class="error-message" style="margin-bottom: 12px;">
+                            <i class="fas fa-exclamation-circle mr-2"></i> <?php echo htmlspecialchars($error); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <form method="POST" class="login-form" id="mobileLoginForm" style="margin-bottom: 12px;">
+                        <label for="mobile_number" style="color: #1f2937; font-weight: 700; margin-bottom: 10px; display: block; font-size: 15px;">Mobile Number</label>
+                        <div class="mobile-field"><span class="country-code">+63</span><input type="tel" id="mobile_number" name="mobile_number" class="form-control" placeholder="912 345 6789" autocomplete="tel" inputmode="numeric" value="<?php echo htmlspecialchars($mobile_login_value); ?>" style="border-radius: 12px; border: 1px solid #d1d5db; background: #ffffff; margin-bottom: 10px;" required></div>
+                        <p class="login-helper" style="color: #475569; font-size: 13px; margin-bottom: 16px;"><i class="fas fa-circle-info"></i> Enter the same mobile number used during registration.</p>
+
+                        <button type="submit" name="mobile_login" value="1" class="btn-toggle" style="margin-bottom: 0; width: 100%;">
+                            <i class="fas fa-sign-in-alt mr-2"></i> Login & Go to Purchase
+                        </button>
+                    </form>
+
+                    <button type="button" class="btn-tracking" onclick="goToTrackOrder();" style="width: 100%; margin-bottom: 16px;">
+                        <i class="fas fa-map-marker-alt mr-2"></i> Open Tracking Page
+                    </button>
+
+                    <div class="register-prompt">
+                        <span style="color: #334155; font-size: 14px;">Don't have an account?</span>
+                        <a href="../create_account.php" style="color: #2563eb; text-decoration: none; font-weight: 700; font-size: 14px;"> Register here</a>
+                    </div>
+                </div>
+
+                <div id="qrTab" class="login-tab-panel" style="display: none;">
+                    <p style="color: #475569; font-size: 14px; margin-bottom: 18px; text-align: center;">Use your account QR code to continue</p>
+                    <button type="button" class="btn-toggle" onclick="showScanner();" style="margin-bottom: 12px; width: 100%;">
+                        <i class="fas fa-camera mr-2"></i> Start Camera
+                    </button>
+                    <button type="button" class="btn-tracking" onclick="goToTrackOrder();" style="width: 100%; margin-bottom: 0;">
+                        <i class="fas fa-map-marker-alt mr-2"></i> Track Order Instead
+                    </button>
+                </div>
             </div>
         </div>
 
-        <?php else: ?>
-        <!-- Scanner -->
-        <div class="card scanner-width">
+        <!-- Scanner View - Hidden Initially -->
+        <div class="card scanner-width" id="scannerView" style="display: none;">
             <div class="card-body">
                 <h5 class="card-title">
                     <i class="fas fa-qrcode mr-2"></i> Scan QR Code
@@ -2064,6 +2186,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                 <div id="video-container">
                     <video id="scanner"></video>
                     <div class="scanner-frame">
+                        <div class="scanner-line"></div>
                         <div class="scanner-corner corner-tl"></div>
                         <div class="scanner-corner corner-tr"></div>
                         <div class="scanner-corner corner-bl"></div>
@@ -2078,6 +2201,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                 <p style="color: #666; font-size: 12px; text-align: center;">
                     <i class="fas fa-info-circle"></i> By scanning your QR code, your information will be displayed
                 </p>
+                <div class="scanner-trust"><span><i class="fas fa-lock"></i> Encrypted access</span><span><i class="fas fa-camera"></i> Camera stays private</span></div>
 
                 <form id="qr-form" method="POST" style="display: none;">
                     <div class="form-group">
@@ -2089,12 +2213,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
 
                 <hr>
 
-                <div style="text-align: center;">
-                    <p style="color: #666; margin-bottom: 15px;">Don't have an account yet?</p>
-                    <a href="create_account.php" style="color: #667eea; text-decoration: none; font-weight: 600;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <p style="color: #6b7280; margin-bottom: 12px; font-size: 14px;">Don't have an account yet?</p>
+                    <a href="../create_account.php" style="color: #2563eb; text-decoration: none; font-weight: 700; font-size: 15px; transition: all 0.3s ease;" onmouseover="this.style.color='#1d4ed8'; this.style.transform='translateX(3px)';" onmouseout="this.style.color='#2563eb'; this.style.transform='translateX(0)';">
                         <i class="fas fa-user-plus mr-2"></i> Create New Account
                     </a>
                 </div>
+
+                <button type="button" class="btn-tracking" onclick="goToTrackOrder();">
+                    <i class="fas fa-map-marker-alt mr-2"></i> Track Your Order
+                </button>
+
+                <button type="button" class="btn-back" onclick="hideScanner();" style="margin-top: 12px;">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to Home
+                </button>
             </div>
         </div>
         <?php endif; ?>
@@ -2104,8 +2236,87 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         let video;
         let cameraActive = false;
 
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+        const mobileMenuPanel = document.getElementById('mobile-menu-panel');
+        const mobileMenuClose = document.getElementById('mobile-menu-close');
+        const mobileMenuIcon = document.getElementById('mobile-menu-icon');
+
+        function openMobileMenu() {
+            document.body.classList.add('mobile-nav-open');
+            if (mobileMenuButton) {
+                mobileMenuButton.setAttribute('aria-expanded', 'true');
+            }
+            if (mobileMenuIcon) {
+                mobileMenuIcon.classList.remove('fa-bars');
+                mobileMenuIcon.classList.add('fa-xmark');
+            }
+        }
+
+        function closeMobileMenu() {
+            document.body.classList.remove('mobile-nav-open');
+            if (mobileMenuButton) {
+                mobileMenuButton.setAttribute('aria-expanded', 'false');
+            }
+            if (mobileMenuIcon) {
+                mobileMenuIcon.classList.remove('fa-xmark');
+                mobileMenuIcon.classList.add('fa-bars');
+            }
+        }
+
+        function toggleMobileMenu() {
+            if (document.body.classList.contains('mobile-nav-open')) {
+                closeMobileMenu();
+            } else {
+                openMobileMenu();
+            }
+        }
+
+        if (mobileMenuButton && mobileMenuOverlay && mobileMenuPanel && mobileMenuClose && mobileMenuIcon) {
+            mobileMenuButton.addEventListener('click', toggleMobileMenu);
+            mobileMenuClose.addEventListener('click', closeMobileMenu);
+
+            mobileMenuOverlay.addEventListener('click', function (event) {
+                if (!mobileMenuPanel.contains(event.target)) {
+                    closeMobileMenu();
+                }
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && document.body.classList.contains('mobile-nav-open')) {
+                    closeMobileMenu();
+                }
+            });
+        }
+
+        async function shareWithFriends() {
+            const shareData = {
+                title: 'HydroMIS',
+                text: 'Check out HydroMIS for easy water refill ordering and tracking.',
+                url: window.location.origin + '/HydroMIS-1.3/'
+            };
+
+            if (navigator.share) {
+                try {
+                    await navigator.share(shareData);
+                } catch (error) {
+                    // Ignore cancelled shares.
+                }
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(shareData.url);
+                alert('Link copied. Share it with your friends!');
+            } catch (error) {
+                alert('Sharing is not available on this device.');
+            }
+        }
+
         async function toggleCamera() {
-            const button = document.querySelector('.btn-toggle');
+            const scannerView = document.getElementById('scannerView');
+            const button = scannerView ? scannerView.querySelector('.btn-toggle') : null;
+            if (!button) return;
             
             if (!cameraActive) {
                 try {
@@ -2116,7 +2327,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                     video.srcObject = stream;
                     video.play();
                     cameraActive = true;
-                    button.textContent = '⏹ Stop Camera';
+                    button.innerHTML = '<i class="fas fa-stop-circle mr-2"></i> Stop Camera';
                     startScanning();
                 } catch (err) {
                     alert('Unable to access camera: ' + err.message);
@@ -2125,7 +2336,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             } else {
                 video.srcObject.getTracks().forEach(track => track.stop());
                 cameraActive = false;
-                button.textContent = '📷 Start Camera';
+                button.innerHTML = '<i class="fas fa-camera mr-2"></i> Start Camera';
                 updateStatus('Camera stopped', false);
             }
         }
@@ -2300,9 +2511,82 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             }
         }
         
+        // Show scanner view
+        function showScanner() {
+            const mainCard = document.getElementById('mainLoginCard');
+            const scannerView = document.getElementById('scannerView');
+            
+            if (mainCard) mainCard.style.display = 'none';
+            if (scannerView) scannerView.style.display = 'block';
+            
+            // Auto-start camera
+            setTimeout(() => toggleCamera(), 300);
+        }
+
+        // Hide scanner view and return to main view
+        function hideScanner() {
+            const mainCard = document.getElementById('mainLoginCard');
+            const scannerView = document.getElementById('scannerView');
+            
+            if (cameraActive) {
+                const video = document.getElementById('scanner');
+                if (video && video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                }
+                cameraActive = false;
+            }
+            
+            if (scannerView) scannerView.style.display = 'none';
+            if (mainCard) mainCard.style.display = 'block';
+        }
+
+        // Switch between tabs
+        function switchTab(tabName) {
+            const mobileTab = document.getElementById('mobileTab');
+            const qrTab = document.getElementById('qrTab');
+            const tabButtons = document.querySelectorAll('.tab-button');
+            
+            // Hide all tabs
+            if (mobileTab) mobileTab.style.display = 'none';
+            if (qrTab) qrTab.style.display = 'none';
+            
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Show selected tab and style button
+            if (tabName === 'mobile') {
+                if (mobileTab) mobileTab.style.display = 'block';
+                if (mobileTab) { mobileTab.classList.remove('tab-enter'); void mobileTab.offsetWidth; mobileTab.classList.add('tab-enter'); }
+                if (tabButtons[0]) tabButtons[0].classList.add('active');
+            } else if (tabName === 'qr') {
+                if (qrTab) qrTab.style.display = 'block';
+                if (qrTab) { qrTab.classList.remove('tab-enter'); void qrTab.offsetWidth; qrTab.classList.add('tab-enter'); }
+                if (tabButtons[1]) tabButtons[1].classList.add('active');
+            }
+        }
+
+        // Navigate to order tracking page
+        function goToTrackOrder() {
+            window.location.href = './track_order.php';
+        }
+
+        function confirmRewardConvert(rewardTitle, requiredPoints, currentPoints) {
+            if (currentPoints < requiredPoints) {
+                alert('You need ' + requiredPoints + ' points to convert this reward.');
+                return false;
+            }
+            return window.confirm('Convert ' + requiredPoints + ' points for "' + rewardTitle + '"? Click OK to continue or Cancel to stop.');
+        }
+
         // Initialize price calculation on page load
         window.addEventListener('DOMContentLoaded', function() {
             calculatePrice();
+
+            const mobileForm = document.getElementById('mobileLoginForm');
+            if (mobileForm) mobileForm.addEventListener('submit', function() {
+                const submit = this.querySelector('.btn-toggle');
+                submit.disabled = true;
+                submit.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Verifying account...';
+            });
 
             const profileForm = document.getElementById('profileEditForm');
             const editBtn = document.getElementById('editProfileBtn');
@@ -2311,5 +2595,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             }
         });
     </script>
+    <?php if ($scanned_data): ?><script src="../js/user-notifications.js"></script><?php endif; ?>
 </body>
 </html>

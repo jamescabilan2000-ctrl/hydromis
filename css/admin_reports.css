@@ -110,17 +110,19 @@ html, body {
 }
 
 .page-header {
-    margin-bottom: 30px;
+    margin-bottom: 40px;
+    padding: 16px 0;
 }
 
 .page-header h2 {
-    font-size: 28px;
+    font-size: 44px;
     font-weight: 700;
     color: #1f2937;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
+    letter-spacing: -0.6px;
 }
 
 .page-header p {

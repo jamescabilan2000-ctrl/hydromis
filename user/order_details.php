@@ -6,7 +6,9 @@ session_start();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="../css/animations.css" rel="stylesheet">
+</head>
 <body>
     <main class="page-shell">
         <a href="track_order.php" class="back-btn">
@@ -48,12 +50,26 @@ session_start();
                         <span class="info-label">Water Type</span>
                         <span class="info-value"><?php echo ucfirst($transaction['water_type']); ?></span>
                     </div>
+                    <div class="info-item">
+                        <span class="info-label">Container</span>
+                        <span class="info-value"><?php echo ($transaction['container_status'] ?? '') === 'new' ? 'New container' : 'Customer-owned container'; ?></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Fulfillment</span>
+                        <span class="info-value"><?php echo ($transaction['fulfillment_method'] ?? '') === 'pickup' ? 'Self pickup' : 'Delivery'; ?></span>
+                    </div>
                 </div>
 
                 <div class="product-breakdown">
                     <div class="breakdown-row">
                         <span class="breakdown-label">Quantity</span>
-                        <span class="breakdown-value"><?php echo $transaction['quantity']; ?> <?php echo $transaction['water_type'] === 'regular' ? 'Gallons' : 'Units'; ?></span>
+                        <span class="breakdown-value"><?php 
+                            $size_display = $transaction['water_type'] === 'regular' ? 'Gallons' : 'Units';
+                            if (preg_match('/×\s*(.*?)\s*\((?:New|Pickup & Deliver)\)/', $transaction['description'], $m)) {
+                                $size_display = trim($m[1]);
+                            }
+                            echo $transaction['quantity'] . ' × ' . htmlspecialchars($size_display); 
+                        ?></span>
                     </div>
                     <div class="breakdown-row">
                         <span class="breakdown-label">Price per Unit</span>
@@ -69,6 +85,10 @@ session_start();
                         <span class="breakdown-value">-₱<?php echo number_format($transaction['discount'], 2); ?></span>
                     </div>
                     <?php endif; ?>
+                    <div class="breakdown-row">
+                        <span class="breakdown-label"><?php echo ($transaction['fulfillment_method'] ?? '') === 'pickup' ? 'Pickup Fee' : 'Delivery Fee'; ?></span>
+                        <span class="breakdown-value"><?php echo ($transaction['fulfillment_method'] ?? '') === 'pickup' ? 'Free' : '₱' . number_format(10 * (int)$transaction['quantity'], 2); ?></span>
+                    </div>
                     <div class="breakdown-row total">
                         <span class="breakdown-label">Total Amount</span>
                         <span class="breakdown-value">₱<?php echo number_format($transaction['amount'], 2); ?></span>

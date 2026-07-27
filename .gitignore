@@ -1,0 +1,4 @@
+/config/.encryption_key
+/cloudflare/node_modules/
+/cloudflare/.wrangler/
+/cloudflare/.dev.vars

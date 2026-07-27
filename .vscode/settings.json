@@ -1,0 +1,24 @@
+{
+    "claudeCode.useTerminal": true,
+    "explorer.sortOrder": "foldersNestsFiles",
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.expand": false,
+    "explorer.fileNesting.patterns": {
+        "README.md": "PROJECT_STRUCTURE.md, QUICK_START.md, *_GUIDE.md, LIVE_GPS_*.md",
+        "index.php": "home.php, onboarding.php, privacy.php, terms.php",
+        "login.php": "logout.php, create_account.php, admin_portal.php",
+        "setup.php": "clean_setup.php, add_columns.sql",
+        "database.php": "schema.sql, add_*.sql, *_schema.sql",
+        "dashboard.php": "dashboard*.css, unified-dashboard.css"
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/cookie_test.txt": true,
+        "**/staff_out.txt": true,
+        "**/tmp_check.php": true
+    },
+    "search.exclude": {
+        "uploads/**": true,
+        "qrcodes/**": true
+    }
+}

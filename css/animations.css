@@ -1,0 +1,328 @@
+/* Global Animations & Enhancements - Apply to all pages */
+
+/* Animation Keyframes */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes popIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes glow {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(47, 107, 223, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(47, 107, 223, 0.6);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+/* Enhanced Button Styling */
+button, .btn, input[type="submit"], input[type="button"], a.button {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    overflow: hidden;
+}
+
+button:not(:disabled):hover,
+.btn:hover,
+input[type="submit"]:not(:disabled):hover,
+input[type="button"]:not(:disabled):hover,
+a.button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+button:active,
+.btn:active,
+input[type="submit"]:active,
+input[type="button"]:active,
+a.button:active {
+    transform: translateY(0);
+}
+
+/* Enhanced Form Elements */
+input, textarea, select {
+    transition: all 0.3s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 0 0 3px rgba(47, 107, 223, 0.1) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #a8b8cc;
+}
+
+/* Card Hover Effects */
+.card, .stat-card, .table-card, .payment-card, .order-card {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.card:hover,
+.stat-card:hover,
+.table-card:hover,
+.payment-card:hover,
+.order-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Badge Animations */
+.badge, span[class*="badge"], span[class*="status"], span[class*="tag"] {
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.3s ease;
+}
+
+.badge:hover, span[class*="badge"]:hover, span[class*="status"]:hover {
+    transform: scale(1.05);
+}
+
+/* Navigation Enhancements */
+nav a, nav button {
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+nav a:hover, nav button:hover {
+    color: #2f6bdf !important;
+}
+
+/* Link Hover Effects */
+a:not([class]), a[class*="link"] {
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+a:not([class]):hover, a[class*="link"]:hover {
+    color: #2f6bdf;
+}
+
+/* Smooth Scrolling */
+* {
+    scroll-behavior: smooth;
+}
+
+/* Loading State */
+.loading, [data-loading="true"] {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Glow Effect for Important Elements */
+.highlight, .featured, .important {
+    animation: glow 3s ease-in-out infinite;
+}
+
+/* Table Row Hover */
+tbody tr:hover {
+    background-color: rgba(47, 107, 223, 0.05) !important;
+    transition: background-color 0.3s ease;
+}
+
+/* Smooth Transitions */
+* {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 0.2s;
+    transition-timing-function: ease-in-out;
+}
+
+/* Disabled States */
+button:disabled, input:disabled, select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Focus Visible for Accessibility */
+*:focus-visible {
+    outline: 2px solid #2f6bdf;
+    outline-offset: 2px;
+}
+
+/* Error Styling */
+.error, .has-error, input.error, textarea.error {
+    border-color: #dd4e4e !important;
+    animation: slideInDown 0.3s ease;
+}
+
+/* Success Styling */
+.success, .has-success, input.success, textarea.success {
+    border-color: #18a56a !important;
+    animation: slideInDown 0.3s ease;
+}
+
+/* Tooltip Enhancement */
+[title], [data-tooltip] {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+[title]:hover, [data-tooltip]:hover {
+    z-index: 1000;
+}
+
+/* Backdrop Filter Support */
+.glass, .glassmorphism {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Depth Effect */
+.elevated {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.elevated-more {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Text Selection Enhancement */
+::selection {
+    background: linear-gradient(135deg, #2f6bdf 0%, #7a56e8 100%);
+    color: white;
+}
+
+::-moz-selection {
+    background: linear-gradient(135deg, #2f6bdf 0%, #7a56e8 100%);
+    color: white;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #2f6bdf 0%, #7a56e8 100%);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #1f58c7 0%, #6a47d9 100%);
+}
+
+/* Input Range Slider Enhancement */
+input[type="range"] {
+    accent-color: #2f6bdf;
+    cursor: pointer;
+    transition: box-shadow 0.3s ease;
+}
+
+input[type="range"]:hover {
+    box-shadow: 0 0 10px rgba(47, 107, 223, 0.3);
+}
+
+/* Responsive Animations */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Reduce animations on mobile */
+    * {
+        transition-duration: 0.15s;
+    }
+
+    button, .btn {
+        transition-duration: 0.2s;
+    }
+}

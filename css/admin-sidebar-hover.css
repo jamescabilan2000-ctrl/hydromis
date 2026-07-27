@@ -1,0 +1,31 @@
+/* Desktop admin menu: reveal the navigation from the left screen edge. */
+@media (min-width: 901px) {
+    .shell {
+        grid-template-columns: 10px minmax(0, 1fr) !important;
+    }
+
+    .sidebar {
+        width: var(--sidebar-w, 260px);
+        z-index: 100;
+        overflow-x: hidden;
+        clip-path: inset(0 calc(100% - 10px) 0 0);
+        box-shadow: 10px 0 24px rgba(0, 0, 0, 0);
+        transition: clip-path .22s ease, box-shadow .22s ease;
+    }
+
+    .sidebar:not(:hover) > * {
+        visibility: hidden;
+        opacity: 0;
+    }
+
+    .sidebar:hover {
+        clip-path: inset(0);
+        box-shadow: 10px 0 24px rgba(0, 0, 0, .28);
+    }
+
+    .sidebar:hover > * {
+        visibility: visible;
+        opacity: 1;
+        transition: opacity .12s ease .08s;
+    }
+}

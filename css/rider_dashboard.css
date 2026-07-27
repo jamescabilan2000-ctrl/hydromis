@@ -209,3 +209,131 @@ body {
     .my-del-table .action-col form,
     .my-del-table .action-col .btn { width: 100% !important; margin-bottom: 6px; }
 }
+
+/* ── Notification Toasts ── */
+#notification-container {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 380px;
+}
+
+.notification {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-shadow: 0 8px 24px rgba(11, 18, 32, 0.22);
+    border-left: 4px solid #3b82f6;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1.35;
+}
+
+.notification-close {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 15px;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.notification-close:hover {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.notification-success {
+    border-left-color: #10b981;
+    background: #ecfdf5;
+}
+
+.notification-success .notification-content,
+.notification-success i {
+    color: #065f46;
+}
+
+.notification-error {
+    border-left-color: #ef4444;
+    background: #fef2f2;
+}
+
+.notification-error .notification-content,
+.notification-error i {
+    color: #991b1b;
+}
+
+.notification-warning {
+    border-left-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.notification-warning .notification-content,
+.notification-warning i {
+    color: #78350f;
+}
+
+.notification-info {
+    border-left-color: #2563eb;
+    background: #eff6ff;
+}
+
+.notification-info .notification-content,
+.notification-info i {
+    color: #1e40af;
+}
+
+.notification-loading {
+    border-left-color: #7c3aed;
+}
+
+.animate-slide-in {
+    animation: toastSlideIn 0.25s ease-out;
+}
+
+.animate-fade-out {
+    animation: toastFadeOut 0.25s ease-out;
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes toastFadeOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(10px);
+    }
+}

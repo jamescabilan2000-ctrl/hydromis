@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Management - HydroMIS</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+/* ─── TOKENS ─────────────────────────────────────────────── */
+:root {
+    --bg: #0b1120;
+    --bg-2: #0f1829;
+    --surface: #131d30;
+    --surface-2: #1a2847;
+    --border: rgba(255,255,255,.07);
+    --border-2: rgba(255,255,255,.12);
+    --text: #e2efff;
+    --muted: #7b90b4;
+    --accent: #3b82f6;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --purple: #a855f7;
+    --accent-glow: rgba(59,130,246,.15);
+    --green-glow: rgba(16,185,129,.15);
+    --amber-glow: rgba(245,158,11,.15);
+    --red-glow: rgba(239,68,68,.15);
+    --purple-glow: rgba(168,85,247,.15);
+    --shadow: 0 18px 40px rgba(0,0,0,.3);
+    --transition: all .2s ease;
+    --font-head: 'Plus Jakarta Sans', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+}
+
+/* ─── RESET ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+    font-family: var(--font-body);
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    color: var(--text);
+    line-height: 1.5;
+}
+
+/* ─── LAYOUT ─────────────────────────────────────────────── */
+.layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 100vh;
+}
+
+/* ─── SIDEBAR ────────────────────────────────────────────── */
+.sidebar {
+    background: linear-gradient(180deg, #132f4a 0%, #11253b 100%);
+    padding: 28px 22px;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.sidebar h1 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: #fff;
+}
+
+.sidebar p {
+    margin: 8px 0 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(226, 239, 255, 0.7);
+}
+
+.sidebar nav {
+    flex: 1;
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sidebar nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.sidebar nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
+.sidebar nav a.active {
+    background: #1c5075;
+    color: #fff;
+    font-weight: 700;
+}
+
+/* ─── MAIN ───────────────────────────────────────────────── */
+.main { display: flex; flex-direction: column; }
+
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 0 28px;
+    height: 64px;
+    background: rgba(11,17,32,.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+}
+
+.topbar-title {
+    font-family: var(--font-head);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+}
+
+.topbar-subtitle {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.logout-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.logout-btn:hover {
+    background: var(--surface-2);
+    border-color: var(--border-2);
+}
+
+/* ─── PAGE ───────────────────────────────────────────────── */
+.page { padding: 28px; }
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 22px;
+    margin-bottom: 28px;
+}
+
+.page-header h2 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -1px;
+}
+
+.page-header p {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.soft-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.soft-btn:hover {
+    background: var(--surface-2);
+    border-color: var(--border-2);
+}
+
+/* ─── ALERT BANNER ───────────────────────────────────────── */
+.alert-pending {
+    background: var(--amber-glow);
+    border: 1px solid rgba(245,158,11,.3);
+    color: var(--amber);
+    padding: 14px 18px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+/* ─── STATS GRID ─────────────────────────────────────────── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    transition: var(--transition);
+}
+
+.stat-card:hover {
+    border-color: var(--border-2);
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    background: var(--accent-glow);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-family: var(--font-head);
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* ─── CARD ───────────────────────────────────────────────── */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.card-title {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.card-meta {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+/* ─── TABLE ──────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead th {
+    padding: 16px 20px;
+    background: rgba(255,255,255,.02);
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+tbody td {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    font-size: 13px;
+}
+
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: rgba(255,255,255,.025); }
+
+/* ─── BADGES ─────────────────────────────────────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+}
+
+.badge::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.badge-pending {
+    background: var(--amber-glow);
+    color: var(--amber);
+    border: 1px solid rgba(245,158,11,.3);
+}
+
+.badge-pending::before { background: var(--amber); }
+
+.badge-verified, .badge-approved {
+    background: var(--green-glow);
+    color: var(--green);
+    border: 1px solid rgba(16,185,129,.3);
+}
+
+.badge-verified::before, .badge-approved::before { background: var(--green); }
+
+.badge-rejected {
+    background: var(--red-glow);
+    color: var(--red);
+    border: 1px solid rgba(239,68,68,.3);
+}
+
+.badge-rejected::before { background: var(--red); }
+
+.badge-processing {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border: 1px solid rgba(59,130,246,.3);
+}
+
+.badge-processing::before { background: var(--accent); }
+
+/* ─── ACTION BUTTONS ─────────────────────────────────────── */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-verify,
+.btn-reject {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-verify {
+    background: linear-gradient(135deg, var(--green) 0%, #059669 100%);
+    color: #fff;
+}
+
+.btn-verify:hover { filter: brightness(1.1); }
+
+.btn-reject {
+    background: linear-gradient(135deg, var(--red) 0%, #dc2626 100%);
+    color: #fff;
+}
+
+.btn-reject:hover { filter: brightness(1.1); }
+
+/* ─── EMPTY STATE ────────────────────────────────────────── */
+.empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--muted);
+}
+
+.empty-state i {
+    font-size: 32px;
+    margin-bottom: 12px;
+    display: block;
+    opacity: .4;
+}
+
+/* ─── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar {
+        position: static;
+        height: auto;
+        border-bottom: 1px solid var(--border);
+    }
+    .topbar, .page { padding: 16px; }
+    .page-header { flex-direction: column; }
+    .header-actions { width: 100%; }
+    .soft-btn { width: 100%; }
+    .stats-grid { grid-template-columns: 1fr; }
+    thead { display: none; }
+    table, tbody, tr, td { display: block; width: 100%; }
+    tbody tr { border-top: 1px solid var(--border); }
+    tbody td { padding: 12px 16px; border-top: none; }
+    .action-buttons { flex-direction: column; width: 100%; }
+    .btn-verify, .btn-reject { width: 100%; }
+}
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <h1>HydroMIS</h1>
+            <p>Water Refilling Staff</p>
+            <nav>
+                <a href="dashboard.php"><i class="fas fa-home"></i> Dashboard</a>
+                <a href="pending.php"><i class="fas fa-hourglass-half"></i> Pending</a>
+                <a href="payments.php" class="active"><i class="fas fa-money-bill-wave"></i> Payments</a>
+                <a href="history.php"><i class="fas fa-history"></i> History</a>
+            </nav>
+        </aside>
+        <div class="main">
+            <div class="topbar">
+                <div>
+                    <div class="topbar-title">Payments</div>
+                    <div class="topbar-subtitle">Staff Portal - Manage payment verification</div>
+                </div>
+                <div class="topbar-actions">
+                    <span>Staff</span>
+                    <a href="logout.php" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+            <section class="page">
+                <div class="page-header">
+                    <div>
+                        <h2>Payment Management</h2>
+                        <p>Verify and manage customer payment transactions</p>
+                    </div>
+                    <div class="header-actions">
+                        <a href="dashboard.php" class="soft-btn"><i class="fas fa-home"></i> Dashboard</a>
+                    </div>
+                </div>
+
+                <!-- Alert Banner -->
+                <div class="alert-pending" id="alertBanner" style="display: none;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <strong>You have <span id="pendingCount">0</span> payment(s) pending verification!</strong>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Payments</div>
+                            <div class="stat-value" id="totalPayments">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="stat-content">
+                            <div class="stat-label">Pending Verification</div>
+                            <div class="stat-value" id="pendingPayments">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-content">
+                            <div class="stat-label">Verified</div>
+                            <div class="stat-value" id="verifiedPayments">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-peso-sign"></i></div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Amount</div>
+                            <div class="stat-value" id="totalAmount">₱0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payments Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title"><i class="fas fa-list"></i> All Payments</span>
+                        <span class="card-meta" id="paymentCount">0 records</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Payment ID</th>
+                                    <th>Transaction ID</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentsTableBody">
+                                <tr>
+                                    <td colspan="7" class="empty-state">
+                                        <i class="fas fa-inbox"></i>
+                                        <p>No payments found</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

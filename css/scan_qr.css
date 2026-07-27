@@ -213,7 +213,7 @@ body {
 /* ═══════════════════════════════════════════════════════════════════ */
 
 .web-card-header {
-    padding: 20px;
+    padding: 36px 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -222,12 +222,12 @@ body {
 }
 
 .web-card-header h6 {
-    font-size: 14px;
+    font-size: 18px;
     font-weight: 800;
     color: #1e293b;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
 }
 
 .web-card-header h6 i {

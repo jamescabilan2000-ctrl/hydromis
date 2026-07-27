@@ -42,19 +42,22 @@ body::before {
 
 .header-create {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 42px;
+    padding: 12px 0;
 }
 
 .header-create h2 {
     color: #0f4fd4;
     font-weight: 900;
-    margin-bottom: 10px;
-    font-size: 28px;
+    margin-bottom: 14px;
+    font-size: 44px;
+    letter-spacing: -0.6px;
 }
 
 .header-create p {
     color: #64748b;
-    font-size: 14px;
+    font-size: 16px;
+    letter-spacing: 0.3px;
 }
 
 .form-group {

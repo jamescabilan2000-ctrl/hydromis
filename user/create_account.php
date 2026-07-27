@@ -19,11 +19,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = 'Contact number should be at least 10 digits!';
     } else {
         // Generate unique user ID
-        $user_id = generateID('USR');
+        $user_id = generateUserID();
         
         // Insert user into database
-        $sql = "INSERT INTO users (user_id, full_name, address, contact_number, status) 
-                VALUES ('$user_id', '$full_name', '$address', '$contact_number', 'pending')";
+        $enc_name = $conn->real_escape_string(encrypt_sensitive(htmlspecialchars_decode($full_name)));
+        $enc_address = $conn->real_escape_string(encrypt_sensitive(htmlspecialchars_decode($address)));
+        $enc_contact = $conn->real_escape_string(encrypt_sensitive($contact_number));
+        $contact_lookup = sensitive_lookup($contact_number);
+        $sql = "INSERT INTO users (user_id, full_name, address, contact_number, contact_lookup, status) 
+                VALUES ('$user_id', '$enc_name', '$enc_address', '$enc_contact', '$contact_lookup', 'pending')";
         
         if ($conn->query($sql) === TRUE) {
             // Generate QR code
@@ -69,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <title>Create Account - HydroMIS</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="../css/animations.css" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -338,7 +343,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="ml-auto">
                 <a href="create_account.php" class="nav-link">Create Account</a>
                 <a href="scan_qr.php" class="nav-link">Scan QR Code</a>
-                <a href="index.php" class="nav-link">Admin Login</a>
             </div>
         </div>
     </nav>

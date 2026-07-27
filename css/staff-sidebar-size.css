@@ -1,0 +1,22 @@
+.layout,
+.shell {
+    grid-template-columns: 270px minmax(0, 1fr) !important;
+}
+
+.staff-sidebar {
+    width: 270px !important;
+    min-width: 270px;
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .layout,
+    .shell {
+        grid-template-columns: 1fr !important;
+    }
+
+    .staff-sidebar {
+        width: 100% !important;
+        min-width: 0;
+    }
+}

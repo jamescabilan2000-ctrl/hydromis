@@ -1,0 +1,53 @@
+.delivery-operations-page .page {
+    padding-top: 22px !important;
+}
+
+.delivery-operations-page .page-hero {
+    min-height: 0 !important;
+    margin-bottom: 18px !important;
+    padding: 22px 26px !important;
+}
+
+.delivery-operations-page .page-hero h1 {
+    font-size: 30px !important;
+}
+
+.delivery-operations-page .content-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 18px !important;
+}
+
+.delivery-operations-page .content-grid > .card {
+    width: 100%;
+}
+
+.delivery-operations-page .delivery-item {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) minmax(360px, .9fr);
+    align-items: center;
+    gap: 18px;
+    padding: 18px 22px;
+}
+
+.delivery-operations-page .delivery-top {
+    min-width: 0;
+}
+
+.delivery-operations-page .assign-row {
+    align-self: center;
+    margin: 0;
+}
+
+.delivery-operations-page .assign-select {
+    min-height: 42px;
+}
+
+.delivery-operations-page .delivery-list .empty {
+    padding: 55px 24px;
+}
+
+@media (max-width: 900px) {
+    .delivery-operations-page .delivery-item {
+        grid-template-columns: 1fr;
+    }
+}

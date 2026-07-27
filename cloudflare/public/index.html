@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HydroMIS Cloudflare</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark">H</span><div><strong>HydroMIS</strong><small>Cloud operations</small></div></div>
+    <span id="status" class="status">Checking API</span>
+  </header>
+  <main>
+    <section class="overview">
+      <div><p class="eyebrow">Migration environment</p><h1>Hono Worker and D1 are online.</h1><p>Core customer, transaction, notification, and live delivery routes are running at the edge.</p></div>
+      <button id="refresh" type="button">Refresh status</button>
+    </section>
+    <section class="metrics" aria-label="Service status">
+      <article><span>Runtime</span><strong>Cloudflare Workers</strong></article>
+      <article><span>API framework</span><strong>Hono</strong></article>
+      <article><span>Database</span><strong id="database">Checking</strong></article>
+      <article><span>D1 tables</span><strong id="tableCount">-</strong></article>
+    </section>
+    <section class="content">
+      <div><h2>Database tables</h2><p>The migrated schema detected by the Worker.</p></div>
+      <div id="tables" class="table-list"><span>Loading</span></div>
+      <pre id="error" hidden></pre>
+    </section>
+  </main>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

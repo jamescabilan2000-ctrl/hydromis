@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Staff Dashboard — HydroMIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+/* ─── TOKENS ─────────────────────────────────────────────── */
+:root {
+  --bg:         #0b1120;
+  --bg-2:       #0f1829;
+  --surface:    #131d30;
+  --surface-2:  #19243c;
+  --border:     rgba(255,255,255,.07);
+  --border-2:   rgba(255,255,255,.12);
+  --text:       #e8eef8;
+  --muted:      #7b90b4;
+  --accent:     #3b82f6;
+  --accent-glow:rgba(59,130,246,.28);
+  --green:      #10b981;
+  --green-glow: rgba(16,185,129,.22);
+  --amber:      #f59e0b;
+  --amber-glow: rgba(245,158,11,.22);
+  --red:        #ef4444;
+  --red-glow:   rgba(239,68,68,.22);
+  --purple:     #8b5cf6;
+  --purple-glow:rgba(139,92,246,.22);
+  --teal:       #06b6d4;
+  --radius:     16px;
+  --radius-sm:  10px;
+  --radius-lg:  22px;
+  --shadow:     0 4px 24px rgba(0,0,0,.35);
+  --shadow-lg:  0 8px 48px rgba(0,0,0,.5);
+  --font-head:  'Plus Jakarta Sans', 'DM Sans', Arial, sans-serif;
+  --font-body:  'DM Sans', Arial, sans-serif;
+  --sidebar-w:  270px;
+  --transition: .22s cubic-bezier(.4,0,.2,1);
+}
+
+/* ─── RESET ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ─── LAYOUT ─────────────────────────────────────────────── */
+.shell { display: flex; min-height: 100vh; }
+
+/* ─── SIDEBAR ────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 18px 24px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.brand {
+  padding: 0 8px 28px;
+  border-bottom: 1px solid var(--border);
+}
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.brand-icon {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent) 0%, #1d4ed8 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 0 0 1px rgba(59,130,246,.3), 0 4px 16px var(--accent-glow);
+}
+.brand-name {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  line-height: 1;
+}
+.brand-sub {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.nav { flex: 1; padding-top: 22px; }
+.nav-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 12px;
+  margin-bottom: 8px;
+}
+.nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all var(--transition);
+  margin-bottom: 2px;
+  position: relative;
+}
+.nav a .nav-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  background: transparent;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.nav a:hover { color: var(--text); background: var(--surface); }
+.nav a:hover .nav-icon { background: var(--surface-2); color: var(--accent); }
+.nav a.active {
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(59,130,246,.18) 0%, rgba(59,130,246,.08) 100%);
+  font-weight: 600;
+}
+.nav a.active .nav-icon {
+  background: rgba(59,130,246,.2);
+  color: var(--accent);
+}
+.nav a.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 60%;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent);
+}
+.nav-badge {
+  margin-left: auto;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.sidebar-footer {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.staff-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.staff-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.staff-info strong { display: block; font-size: 13px; font-weight: 600; }
+.staff-info span { font-size: 11px; color: var(--muted); }
+.logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(239,68,68,.1);
+  border: 1px solid rgba(239,68,68,.2);
+  color: var(--red);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all var(--transition);
+}
+.logout-btn:hover { background: rgba(239,68,68,.18); color: var(--red); text-decoration: none; }
+
+/* ─── MAIN ───────────────────────────────────────────────── */
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 28px;
+  height: 64px;
+  background: rgba(11,17,32,.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.topbar-title { font-family: var(--font-head); font-size: 18px; font-weight: 700; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.topbar-time {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-feature-settings: 'tnum';
+}
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all var(--transition);
+  text-decoration: none;
+  font-size: 13px;
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-2); }
+
+/* ─── PAGE ───────────────────────────────────────────────── */
+.page { padding: 28px; flex: 1; }
+
+.page-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+.page-hero h1 {
+  font-family: var(--font-head);
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1.1;
+}
+.page-hero p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+.hero-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+
+/* ─── BUTTONS ────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn-ghost {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-ghost:hover { background: var(--surface-2); border-color: var(--border-2); color: var(--text); text-decoration: none; }
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(59,130,246,.3);
+}
+.btn-primary:hover { background: #2563eb; color: #fff; text-decoration: none; }
+.btn-success { background: var(--green); color: #fff; }
+.btn-success:hover { background: #059669; filter: brightness(1.05); }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { background: #dc2626; filter: brightness(1.05); }
+.btn-warning { background: var(--amber); color: #000; }
+.btn-warning:hover { background: #d97706; }
+.btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+.btn-xs { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+
+/* ─── FLASH ──────────────────────────────────────────────── */
+.flash {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  margin-bottom: 22px;
+  font-size: 14px;
+  font-weight: 500;
+  animation: slideDown .3s ease;
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.flash-success { background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); color: var(--green); }
+.flash-danger  { background: rgba(239,68,68,.12);  border: 1px solid rgba(239,68,68,.3);  color: var(--red); }
+.flash-warning { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.3); color: var(--amber); }
+.flash-info    { background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.3); color: var(--accent); }
+.flash-close { margin-left: auto; background: none; border: none; color: inherit; cursor: pointer; opacity: .7; font-size: 16px; }
+.flash-close:hover { opacity: 1; }
+
+/* ─── ALERT BANNER ───────────────────────────────────────── */
+.pending-banner {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(245,158,11,.15) 0%, rgba(245,158,11,.05) 100%);
+  border: 1px solid rgba(245,158,11,.35);
+  margin-bottom: 24px;
+  animation: pulse-border 2s ease infinite;
+}
+@keyframes pulse-border {
+  0%,100% { border-color: rgba(245,158,11,.35); }
+  50%      { border-color: rgba(245,158,11,.7); }
+}
+.pending-banner .pulse-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--amber);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 0 var(--amber-glow);
+  animation: pulse-dot 1.5s ease infinite;
+}
+@keyframes pulse-dot {
+  0%   { box-shadow: 0 0 0 0 var(--amber-glow); }
+  70%  { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.pending-banner strong { font-weight: 700; color: var(--amber); }
+.pending-banner a { margin-left: auto; flex-shrink: 0; }
+
+/* ─── STATS ──────────────────────────────────────────────── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 22px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition), border-color var(--transition);
+}
+.stat::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+}
+.stat-green::after { background: var(--green); }
+.stat-blue::after  { background: var(--accent); }
+.stat-purple::after{ background: var(--purple); }
+.stat-amber::after { background: var(--amber); }
+.stat:hover { transform: translateY(-2px); border-color: var(--border-2); }
+.stat-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.stat-chip {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+}
+.chip-green  { background: var(--green-glow); color: var(--green); }
+.chip-blue   { background: var(--accent-glow); color: var(--accent); }
+.chip-purple { background: var(--purple-glow); color: var(--purple); }
+.chip-amber  { background: var(--amber-glow); color: var(--amber); }
+.stat-trend {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+.trend-up   { background: var(--green-glow);   color: var(--green); }
+.trend-warn { background: var(--amber-glow); color: var(--amber); }
+.trend-neu  { background: var(--surface-2); color: var(--muted); }
+.stat-val {
+  font-family: 'DM Sans', Arial, sans-serif;
+  font-size: clamp(16px, 2vw, 24px);
+  font-weight: 800;
+  letter-spacing: -.3px;
+  line-height: 1.1;
+  margin-bottom: 6px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+.stat-label { font-size: 13px; color: var(--muted); font-weight: 500; }
+
+/* ─── QUICK LINKS ────────────────────────────────────────── */
+.quick-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.quick-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--text);
+  transition: all var(--transition);
+  overflow: hidden;
+  position: relative;
+}
+.quick-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.quick-amber::before { background: linear-gradient(135deg, var(--amber-glow) 0%, transparent 60%); }
+.quick-blue::before  { background: linear-gradient(135deg, var(--accent-glow) 0%, transparent 60%); }
+.quick-green::before { background: linear-gradient(135deg, var(--green-glow) 0%, transparent 60%); }
+.quick-card:hover { border-color: var(--border-2); transform: translateY(-2px); box-shadow: var(--shadow); color: var(--text); text-decoration: none; }
+.quick-card:hover::before { opacity: 1; }
+.quick-icon {
+  width: 48px; height: 48px;
+  border-radius: 13px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  position: relative; z-index: 1;
+}
+.quick-copy { flex: 1; min-width: 0; position: relative; z-index: 1; }
+.quick-copy h3 { font-family: var(--font-head); font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+.quick-copy p { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.quick-arrow { color: var(--muted); font-size: 14px; flex-shrink: 0; position: relative; z-index: 1; transition: transform var(--transition); }
+.quick-card:hover .quick-arrow { transform: translateX(4px); color: var(--text); }
+
+/* ─── CONTENT GRID ───────────────────────────────────────── */
+.content-grid {
+  display: grid;
+  grid-template-columns: 1.3fr .7fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+/* ─── CARD ───────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.card-title {
+  font-family: var(--font-head);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.dot-green  { background: var(--green); }
+.dot-blue   { background: var(--accent); }
+.dot-amber  { background: var(--amber); }
+.card-meta { font-size: 12px; color: var(--muted); }
+.card-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+.card-link:hover { color: #93c5fd; text-decoration: none; }
+
+/* ─── TABLE ──────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  padding: 12px 18px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(255,255,255,.02);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tbody td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr { transition: background var(--transition); }
+tbody tr:hover { background: rgba(255,255,255,.025); }
+.t-id { font-family: 'Courier New', monospace; font-size: 12px; color: var(--muted); font-weight: 600; }
+.t-name { font-weight: 600; }
+.t-amount { font-family: var(--font-head); font-weight: 700; color: var(--green); }
+.t-date { font-size: 12px; color: var(--muted); }
+
+/* ─── BADGES ─────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+.badge-pending  { background: rgba(245,158,11,.15); color: var(--amber);  border: 1px solid rgba(245,158,11,.3); }
+.badge-pending::before { background: var(--amber); }
+.badge-approved, .badge-delivered { background: rgba(16,185,129,.15); color: var(--green); border: 1px solid rgba(16,185,129,.3); }
+.badge-approved::before, .badge-delivered::before { background: var(--green); }
+.badge-denied   { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid rgba(239,68,68,.3); }
+.badge-denied::before { background: var(--red); }
+.badge-on_the_way, .badge-on_way, .badge-assigned {
+  background: rgba(59,130,246,.15); color: var(--accent); border: 1px solid rgba(59,130,246,.3);
+}
+.badge-on_the_way::before, .badge-on_way::before, .badge-assigned::before { background: var(--accent); }
+
+/* ─── ACTION BTNS ────────────────────────────────────────── */
+.action-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ─── DELIVERY STACK ─────────────────────────────────────── */
+.delivery-list { padding: 0; }
+.delivery-item {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+.delivery-item:last-child { border-bottom: none; }
+.delivery-item:hover { background: rgba(255,255,255,.02); }
+.delivery-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.delivery-id { font-family: 'Courier New', monospace; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.delivery-cust { font-weight: 600; font-size: 14px; }
+.delivery-rider {
+  font-size: 12px;
+  display: flex; align-items: center; gap: 5px;
+  margin-top: 4px;
+}
+.rider-online { color: var(--green); }
+.rider-unassigned { color: var(--amber); }
+.assign-row { display: flex; gap: 8px; align-items: center; }
+.assign-select {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color var(--transition);
+  min-width: 0;
+}
+.assign-select:focus { border-color: var(--accent); }
+.assign-select option { background: var(--surface); }
+
+/* ─── FEEDBACK ───────────────────────────────────────────── */
+.feedback-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 18px; }
+.review-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: border-color var(--transition);
+}
+.review-card:hover { border-color: var(--border-2); }
+.review-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.review-name { font-weight: 600; font-size: 14px; }
+.review-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.stars { display: flex; gap: 2px; }
+.star { font-size: 13px; }
+.star-full  { color: var(--amber); }
+.star-empty { color: var(--surface-2); filter: brightness(2); }
+.review-body { font-size: 13px; color: var(--muted); line-height: 1.5; margin-top: 10px; font-style: italic; }
+
+/* ─── RATING SUMMARY ─────────────────────────────────────── */
+.rating-summary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,.02);
+}
+.rating-big {
+  font-family: var(--font-head);
+  font-size: 42px;
+  font-weight: 800;
+  color: var(--amber);
+  line-height: 1;
+}
+.rating-stars-lg { display: flex; gap: 3px; margin-bottom: 4px; }
+.rating-stars-lg .star { font-size: 16px; }
+.rating-count { font-size: 12px; color: var(--muted); }
+
+/* ─── EMPTY ──────────────────────────────────────────────── */
+.empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+}
+.empty i { font-size: 32px; margin-bottom: 12px; display: block; opacity: .4; }
+.empty p { font-size: 14px; }
+
+/* ─── SECTION ────────────────────────────────────────────── */
+.section { margin-bottom: 20px; }
+
+/* ─── DIVIDER ────────────────────────────────────────────── */
+.divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+/* ─── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-2); }
+::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 1280px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .content-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 960px) {
+  :root { --sidebar-w: 220px; }
+  .quick-row { grid-template-columns: 1fr; }
+  .feedback-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .shell { flex-direction: column; }
+  .sidebar { width: 100%; height: auto; position: relative; padding: 16px; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .page { padding: 16px; }
+  .page-hero { flex-direction: column; }
+  .hero-actions { width: 100%; }
+}
+@media (max-width: 480px) {
+  .stats-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ─── SIDEBAR ─────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">
+        <div class="brand-icon">💧</div>
+        <div>
+          <div class="brand-name">HydroMIS</div>
+          <div class="brand-sub">Water Refilling</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-label" style="margin-top:0;">Main</div>
+      <a href="dashboard.php" class="active">
+        <div class="nav-icon"><i class="fas fa-gauge-high"></i></div>
+        Dashboard
+              </a>
+      <a href="pending.php">
+        <div class="nav-icon"><i class="fas fa-hourglass-half"></i></div>
+        Pending Approvals
+              </a>
+
+      <div class="nav-label" style="margin-top:18px;">Finance</div>
+      <a href="payments.php">
+        <div class="nav-icon"><i class="fas fa-credit-card"></i></div>
+        Payments
+      </a>
+      <a href="history.php">
+        <div class="nav-icon"><i class="fas fa-clock-rotate-left"></i></div>
+        Transaction History
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="staff-card">
+        <div class="staff-avatar">S</div>
+        <div class="staff-info">
+          <strong>Sarah Staff</strong>
+          <span>Staff Account</span>
+        </div>
+      </div>
+      <a href="../logout.php" class="logout-btn">
+        <i class="fas fa-right-from-bracket"></i> Sign Out
+      </a>
+    </div>
+  </aside>
+
+  <!-- ─── MAIN ─────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title">Operations Dashboard</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-time" id="liveClock">--:--:--</div>
+        <a href="dashboard.php" class="icon-btn" title="Refresh"><i class="fas fa-rotate-right"></i></a>
+        <a href="pending.php" class="btn btn-primary btn-sm">
+          <i class="fas fa-hourglass-half"></i>
+          Review Pending
+                  </a>
+      </div>
+    </div>
+
+    <!-- Page -->
+    <div class="page">
+
+      <!-- Flash -->
+      
+      <!-- Pending Banner -->
+      
+      <!-- Hero -->
+      <div class="page-hero">
+        <div>
+          <h1>Good Morning, Sarah 👋</h1>
+          <p>Live view of approvals, delivery progress, riders, payments, and customer feedback.</p>
+        </div>
+        <div class="hero-actions">
+          <a href="pending.php" class="btn btn-ghost"><i class="fas fa-list-check"></i> All Pending</a>
+          <a href="history.php" class="btn btn-ghost"><i class="fas fa-history"></i> History</a>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="card stat stat-green">
+          <div class="stat-head">
+            <div class="stat-chip chip-green"><i class="fas fa-peso-sign"></i></div>
+            <span class="stat-trend trend-up"><i class="fas fa-arrow-up"></i> Revenue</span>
+          </div>
+          <div class="stat-val">PHP 6,295.00</div>
+          <div class="stat-label">5 approved orders</div>
+        </div>
+        <div class="card stat stat-blue">
+          <div class="stat-head">
+            <div class="stat-chip chip-blue"><i class="fas fa-bag-shopping"></i></div>
+            <span class="stat-trend trend-neu">Total</span>
+          </div>
+          <div class="stat-val">6</div>
+          <div class="stat-label">0 pending · 1 denied</div>
+        </div>
+        <div class="card stat stat-purple">
+          <div class="stat-head">
+            <div class="stat-chip chip-purple"><i class="fas fa-motorcycle"></i></div>
+            <span class="stat-trend trend-up">1 active</span>
+          </div>
+          <div class="stat-val">1</div>
+          <div class="stat-label">Active riders available</div>
+        </div>
+        <div class="card stat stat-amber">
+          <div class="stat-head">
+            <div class="stat-chip chip-amber"><i class="fas fa-truck-fast"></i></div>
+            <span class="stat-trend trend-neu">In transit</span>
+          </div>
+          <div class="stat-val">0</div>
+          <div class="stat-label">0 delivered today</div>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="quick-row">
+        <a href="pending.php" class="quick-card quick-amber">
+          <div class="quick-icon chip-amber"><i class="fas fa-hourglass-half"></i></div>
+          <div class="quick-copy">
+            <h3>Pending Approvals</h3>
+            <p>Review and approve or deny customer transactions</p>
+          </div>
+          <div class="quick-arrow"><i class="fas fa-chevron-right"></i></div>
+        </a>
+        <a href="history.php" class="quick-card quick-blue">
+          <div class="quick-icon chip-blue"><i class="fas fa-clock-rotate-left"></i></div>
+          <div class="quick-copy">
+            <h3>Transaction History</h3>
+            <p>Browse all transaction records and order history</p>
+          </div>
+          <div class="quick-arrow"><i class="fas fa-chevron-right"></i></div>
+        </a>
+        <a href="payments.php" class="quick-card quick-green">
+          <div class="quick-icon chip-green"><i class="fas fa-money-bill-wave"></i></div>
+          <div class="quick-copy">
+            <h3>Payments</h3>
+            <p>View payment records and collection details</p>
+          </div>
+          <div class="quick-arrow"><i class="fas fa-chevron-right"></i></div>
+        </a>
+      </div>
+
+      <!-- Pending Approvals + Delivery -->
+      <div class="content-grid section">
+        <!-- Pending Approvals Table -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">
+              <span class="dot dot-amber"></span>
+              Pending Approvals
+            </div>
+            <a href="pending.php" class="card-link">View all <i class="fas fa-arrow-right"></i></a>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Customer</th>
+                  <th>Contact</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                                  <tr><td colspan="6">
+                    <div class="empty">
+                      <i class="fas fa-circle-check"></i>
+                      <p>No pending transactions — you're all caught up!</p>
+                    </div>
+                  </td></tr>
+                              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Delivery Runs -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">
+              <span class="dot dot-blue"></span>
+              Delivery Runs
+            </div>
+            <span class="card-meta">5 approved</span>
+          </div>
+          <div class="delivery-list">
+                                        <div class="delivery-item">
+                <div class="delivery-top">
+                  <div>
+                    <div class="delivery-id">TXN-105CDDB0EB398546</div>
+                    <div class="delivery-cust">james cabilan</div>
+                    <div class="delivery-rider">
+                                              <span class="rider-online"><i class="fas fa-motorcycle"></i></span>
+                        <span>Default Rider</span>
+                                                                  </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+                    <span class="badge badge-assigned">Assigned</span>
+                    <span style="font-family:var(--font-head);font-weight:700;color:var(--green);font-size:13px;">PHP 95.00</span>
+                  </div>
+                </div>
+                                <form method="POST" class="assign-row">
+                  <input type="hidden" name="transaction_id" value="TXN-105CDDB0EB398546">
+                  <input type="hidden" name="action" value="assign_rider">
+                  <select name="rider_id" class="assign-select" aria-label="Select rider">
+                    <option value="">— Select rider —</option>
+                                        <option value="RID-001"
+                      selected>
+                      Default Rider                    </option>
+                                      </select>
+                  <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-user-check"></i> Assign</button>
+                </form>
+                              </div>
+                            <div class="delivery-item">
+                <div class="delivery-top">
+                  <div>
+                    <div class="delivery-id">TRX-001</div>
+                    <div class="delivery-cust">Juan Dela Cruz</div>
+                    <div class="delivery-rider">
+                                              <span class="rider-unassigned"><i class="fas fa-user-slash"></i> Unassigned</span>
+                                          </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+                    <span class="badge badge-pending">Pending</span>
+                    <span style="font-family:var(--font-head);font-weight:700;color:var(--green);font-size:13px;">PHP 1,500.00</span>
+                  </div>
+                </div>
+                                <form method="POST" class="assign-row">
+                  <input type="hidden" name="transaction_id" value="TRX-001">
+                  <input type="hidden" name="action" value="assign_rider">
+                  <select name="rider_id" class="assign-select" aria-label="Select rider">
+                    <option value="">— Select rider —</option>
+                                        <option value="RID-001"
+                      >
+                      Default Rider                    </option>
+                                      </select>
+                  <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-user-check"></i> Assign</button>
+                </form>
+                              </div>
+                            <div class="delivery-item">
+                <div class="delivery-top">
+                  <div>
+                    <div class="delivery-id">TRX-005</div>
+                    <div class="delivery-cust">Juan Dela Cruz</div>
+                    <div class="delivery-rider">
+                                              <span class="rider-unassigned"><i class="fas fa-user-slash"></i> Unassigned</span>
+                                          </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+                    <span class="badge badge-pending">Pending</span>
+                    <span style="font-family:var(--font-head);font-weight:700;color:var(--green);font-size:13px;">PHP 1,500.00</span>
+                  </div>
+                </div>
+                                <form method="POST" class="assign-row">
+                  <input type="hidden" name="transaction_id" value="TRX-005">
+                  <input type="hidden" name="action" value="assign_rider">
+                  <select name="rider_id" class="assign-select" aria-label="Select rider">
+                    <option value="">— Select rider —</option>
+                                        <option value="RID-001"
+                      >
+                      Default Rider                    </option>
+                                      </select>
+                  <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-user-check"></i> Assign</button>
+                </form>
+                              </div>
+                            <div class="delivery-item">
+                <div class="delivery-top">
+                  <div>
+                    <div class="delivery-id">TRX-002</div>
+                    <div class="delivery-cust">Maria Santos</div>
+                    <div class="delivery-rider">
+                                              <span class="rider-unassigned"><i class="fas fa-user-slash"></i> Unassigned</span>
+                                          </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+                    <span class="badge badge-pending">Pending</span>
+                    <span style="font-family:var(--font-head);font-weight:700;color:var(--green);font-size:13px;">PHP 2,000.00</span>
+                  </div>
+                </div>
+                                <form method="POST" class="assign-row">
+                  <input type="hidden" name="transaction_id" value="TRX-002">
+                  <input type="hidden" name="action" value="assign_rider">
+                  <select name="rider_id" class="assign-select" aria-label="Select rider">
+                    <option value="">— Select rider —</option>
+                                        <option value="RID-001"
+                      >
+                      Default Rider                    </option>
+                                      </select>
+                  <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-user-check"></i> Assign</button>
+                </form>
+                              </div>
+                            <div class="delivery-item">
+                <div class="delivery-top">
+                  <div>
+                    <div class="delivery-id">TRX-003</div>
+                    <div class="delivery-cust">Pedro Reyes</div>
+                    <div class="delivery-rider">
+                                              <span class="rider-unassigned"><i class="fas fa-user-slash"></i> Unassigned</span>
+                                          </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+                    <span class="badge badge-pending">Pending</span>
+                    <span style="font-family:var(--font-head);font-weight:700;color:var(--green);font-size:13px;">PHP 1,200.00</span>
+                  </div>
+                </div>
+                                <form method="POST" class="assign-row">
+                  <input type="hidden" name="transaction_id" value="TRX-003">
+                  <input type="hidden" name="action" value="assign_rider">
+                  <select name="rider_id" class="assign-select" aria-label="Select rider">
+                    <option value="">— Select rider —</option>
+                                        <option value="RID-001"
+                      >
+                      Default Rider                    </option>
+                                      </select>
+                  <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-user-check"></i> Assign</button>
+                </form>
+                              </div>
+                                    </div>
+        </div>
+      </div>
+
+      <!-- Recent Transactions -->
+      <div class="card section">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot dot-green"></span>
+            Recent Transactions
+          </div>
+          <a href="history.php" class="card-link">View all <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+                                              <tr>
+                  <td><span class="t-id">TXN-105CDDB0EB398546</span></td>
+                  <td><span class="t-name">james cabilan</span></td>
+                  <td><span class="t-amount">PHP 95.00</span></td>
+                  <td style="font-size:13px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    Water Purchase - 5 gallons @ ₱20 each                  </td>
+                  <td><span class="badge badge-approved">Approved</span></td>
+                  <td><span class="t-date">Mar 28, 2026</span></td>
+                </tr>
+                                <tr>
+                  <td><span class="t-id">TRX-001</span></td>
+                  <td><span class="t-name">Juan Dela Cruz</span></td>
+                  <td><span class="t-amount">PHP 1,500.00</span></td>
+                  <td style="font-size:13px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    Water Service Bill                  </td>
+                  <td><span class="badge badge-approved">Approved</span></td>
+                  <td><span class="t-date">Mar 28, 2026</span></td>
+                </tr>
+                                <tr>
+                  <td><span class="t-id">TRX-002</span></td>
+                  <td><span class="t-name">Maria Santos</span></td>
+                  <td><span class="t-amount">PHP 2,000.00</span></td>
+                  <td style="font-size:13px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    Monthly Service Fee                  </td>
+                  <td><span class="badge badge-approved">Approved</span></td>
+                  <td><span class="t-date">Mar 28, 2026</span></td>
+                </tr>
+                                <tr>
+                  <td><span class="t-id">TRX-003</span></td>
+                  <td><span class="t-name">Pedro Reyes</span></td>
+                  <td><span class="t-amount">PHP 1,200.00</span></td>
+                  <td style="font-size:13px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    Installation Fee                  </td>
+                  <td><span class="badge badge-approved">Approved</span></td>
+                  <td><span class="t-date">Mar 28, 2026</span></td>
+                </tr>
+                                <tr>
+                  <td><span class="t-id">TRX-004</span></td>
+                  <td><span class="t-name">Ana Lopez</span></td>
+                  <td><span class="t-amount">PHP 3,000.00</span></td>
+                  <td style="font-size:13px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    Service Upgrade                  </td>
+                  <td><span class="badge badge-denied">Denied</span></td>
+                  <td><span class="t-date">Mar 28, 2026</span></td>
+                </tr>
+                                <tr>
+                  <td><span class="t-id">TRX-005</span></td>
+                  <td><span class="t-name">Juan Dela Cruz</span></td>
+                  <td><span class="t-amount">PHP 1,500.00</span></td>
+                  <td style="font-size:13px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    Monthly Service Fee                  </td>
+                  <td><span class="badge badge-approved">Approved</span></td>
+                  <td><span class="t-date">Mar 28, 2026</span></td>
+                </tr>
+                                          </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="card section">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot dot-amber"></span>
+            Customer Feedback
+          </div>
+          <span class="card-meta">0 reviews</span>
+        </div>
+                  <div class="empty">
+            <i class="fas fa-comment-slash"></i>
+            <p>No customer feedback yet</p>
+          </div>
+              </div>
+
+    </div><!-- /page -->
+  </main>
+</div><!-- /shell -->
+
+<script>
+// Live clock
+function tick() {
+  const el = document.getElementById('liveClock');
+  if (el) el.textContent = new Date().toLocaleTimeString('en-PH', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+tick();
+setInterval(tick, 1000);
+
+// Auto-dismiss flash after 5s
+setTimeout(() => {
+  const f = document.querySelector('.flash');
+  if (f) f.style.cssText = 'opacity:0;transform:translateY(-6px);transition:.3s ease;';
+  setTimeout(() => f && f.remove(), 300);
+}, 5000);
+</script>
+</body>
+</html>
