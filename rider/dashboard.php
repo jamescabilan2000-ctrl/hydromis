@@ -421,7 +421,13 @@ $sql = "SELECT
     WHERE t.status = 'approved'
       AND {$rider_where}
       AND COALESCE(NULLIF(t.delivery_status, ''), 'assigned') IN ('assigned', 'pending', 'on_way', 'delivered')
-    ORDER BY FIELD(COALESCE(NULLIF(t.delivery_status,''),'assigned'), 'on_way', 'assigned', 'pending', 'delivered'),
+    ORDER BY CASE COALESCE(NULLIF(t.delivery_status,''),'assigned')
+                 WHEN 'on_way' THEN 1
+                 WHEN 'assigned' THEN 2
+                 WHEN 'pending' THEN 3
+                 WHEN 'delivered' THEN 4
+                 ELSE 5
+             END,
              t.created_at DESC";
 
 $stmt = $conn->prepare($sql);
