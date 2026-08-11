@@ -18,12 +18,14 @@ class PgDBCompatStatement {
     private PgDBCompatConnection $connection;
     private array $values=[];
     public int $affected_rows=0;
+    public int $insert_id=0;
+    public int $errno=0;
     public string $error='';
     public function __construct(PDOStatement $statement,PgDBCompatConnection $connection){$this->statement=$statement;$this->connection=$connection;}
     public function bind_param(string $types,&...$variables):bool{$this->values=[];foreach($variables as &$value)$this->values[]=&$value;return true;}
     public function execute(?array $params=null):bool{
-        try{$ok=$this->statement->execute(array_values($params??$this->values));$this->affected_rows=$this->statement->rowCount();$this->connection->statementCompleted($this->affected_rows);return $ok;}
-        catch(PDOException $e){$this->error=$e->getMessage();$this->connection->setError($this->error);return false;}
+        try{$ok=$this->statement->execute(array_values($params??$this->values));$this->affected_rows=$this->statement->rowCount();$this->connection->statementCompleted($this->affected_rows);$this->insert_id=$this->connection->insert_id;return $ok;}
+        catch(PDOException $e){$this->error=$e->getMessage();$this->errno=$e->getCode()==='23505'?1062:0;$this->connection->setError($this->error);return false;}
     }
     public function get_result(){return new PgDBCompatResult($this->statement->fetchAll(PDO::FETCH_ASSOC));}
     public function close():bool{$this->statement->closeCursor();return true;}
