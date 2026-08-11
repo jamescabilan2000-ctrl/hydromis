@@ -2,6 +2,7 @@
 require_once 'check_auth.php';
 require_once '../config/database.php';
 require_once '../config/system_settings.php';
+require_once '../config/storage_service.php';
 
 $systemLogo = system_logo_path($conn);
 $pointsPerGallon = system_int_setting($conn, 'points_per_gallon', 1, 0, 100);
@@ -69,41 +70,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             exit;
         }
 
-        // Ensure upload directory exists
-        $uploadDir = __DIR__ . '/../uploads/avatars/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-
         $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
         if (!$ext) {
             $extMap = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
             $ext = $extMap[$mimeType] ?? 'jpg';
         }
         $filename = 'avatar_' . $admin_id . '_' . time() . '.' . $ext;
-        $destination = $uploadDir . $filename;
+        $dbPath = 'uploads/avatars/' . $filename;
 
         // Fetch old avatar path
         $oldResult = $conn->query("SELECT avatar_path FROM admin_profiles WHERE admin_id = '$admin_id' LIMIT 1");
         if ($oldResult && $oldResult->num_rows > 0) {
             $oldPath = $oldResult->fetch_assoc()['avatar_path'];
             if ($oldPath) {
-                $oldFile = __DIR__ . '/../' . $oldPath;
-                if (file_exists($oldFile)) {
-                    unlink($oldFile);
-                }
+                hydromis_delete_object($oldPath);
             }
         }
 
-        if (move_uploaded_file($file['tmp_name'], $destination)) {
-            $dbPath = 'uploads/avatars/' . $filename;
+        if (hydromis_store_upload($file['tmp_name'], $dbPath, $mimeType)) {
             $dbPathSafe = $conn->real_escape_string($dbPath);
             $conn->query("INSERT INTO admin_profiles (admin_id, avatar_path) VALUES ('$admin_id', '$dbPathSafe')
                           ON DUPLICATE KEY UPDATE avatar_path = '$dbPathSafe'");
             
             $_SESSION['avatar_path'] = $dbPath; // Update session
             
-            echo json_encode(['success' => true, 'message' => 'Avatar updated successfully', 'path' => '../' . $dbPath]);
+            echo json_encode(['success' => true, 'message' => 'Avatar updated successfully', 'path' => hydromis_storage_url($dbPath)]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to save avatar image']);
         }
@@ -1019,7 +1010,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                     <div class="qr-card-body" style="padding:0;">
                         <div class="qr-preview-area">
                             <div class="qr-preview-box has-image" style="width:88px;height:88px;">
-                                <img src="../<?= htmlspecialchars($systemLogo) ?>" alt="Current system logo" id="systemLogoPreview" style="object-fit:contain;">
+                                <img src="<?= htmlspecialchars(hydromis_asset_url($systemLogo, '../')) ?>" alt="Current system logo" id="systemLogoPreview" style="object-fit:contain;">
                             </div>
                             <div class="qr-upload-actions">
                                 <button type="button" class="qr-upload-btn primary" onclick="document.getElementById('systemLogoInput').click()"><i class="fas fa-cloud-arrow-up"></i> Change System Logo</button>
@@ -1208,7 +1199,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                 <div class="qr-card-body">
                     <div class="qr-preview-area">
                         <div class="qr-preview-box has-image" id="gcashPreviewBox">
-                            <img src="../<?= htmlspecialchars($qr_gcash['qr_image_path']) ?>" alt="GCash QR" id="gcashPreviewImg">
+                            <img src="<?= htmlspecialchars(hydromis_asset_url($qr_gcash['qr_image_path'], '../')) ?>" alt="GCash QR" id="gcashPreviewImg">
                             <div class="qr-placeholder" style="display:none;"><i class="fas fa-qrcode"></i><span>No QR</span></div>
                         </div>
                         <div class="qr-upload-actions">
@@ -1253,7 +1244,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                 <div class="qr-card-body">
                     <div class="qr-preview-area">
                         <div class="qr-preview-box has-image" id="mayaPreviewBox">
-                            <img src="../<?= htmlspecialchars($qr_maya['qr_image_path']) ?>" alt="Maya QR" id="mayaPreviewImg">
+                            <img src="<?= htmlspecialchars(hydromis_asset_url($qr_maya['qr_image_path'], '../')) ?>" alt="Maya QR" id="mayaPreviewImg">
                             <div class="qr-placeholder" style="display:none;"><i class="fas fa-qrcode"></i><span>No QR</span></div>
                         </div>
                         <div class="qr-upload-actions">
@@ -1292,8 +1283,8 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
             <div class="settings-section">
                 <div class="profile-avatar-row">
                     <div class="profile-avatar-big" id="profileAvatarBig" style="overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--bg3);">
-                        <?php if (!empty($_SESSION['avatar_path']) && file_exists('../' . $_SESSION['avatar_path'])): ?>
-                            <img src="../<?= htmlspecialchars($_SESSION['avatar_path']) ?>" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                        <?php if (!empty($_SESSION['avatar_path']) && hydromis_object_exists($_SESSION['avatar_path'])): ?>
+                            <img src="<?= htmlspecialchars(hydromis_storage_url($_SESSION['avatar_path'])) ?>" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                         <?php else: ?>
                             <?= strtoupper(substr($_SESSION['full_name'] ?? 'A', 0, 1)) ?>
                         <?php endif; ?>
@@ -1403,7 +1394,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
 <div class="shell">
     <aside class="sidebar">
         <div class="brand-logo">
-            <div class="brand-icon"><img src="../<?= htmlspecialchars($systemLogo) ?>" alt="HydroMIS logo" style="width:24px;height:24px;object-fit:contain;"></div>
+            <div class="brand-icon"><img src="<?= htmlspecialchars(hydromis_asset_url($systemLogo, '../')) ?>" alt="HydroMIS logo" style="width:24px;height:24px;object-fit:contain;"></div>
             <div>
                 <div class="brand-name">HydroMIS</div>
                 <div class="brand-sub">Admin Portal</div>
@@ -1439,8 +1430,8 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
         <div class="sidebar-footer">
             <div class="admin-card">
                 <div class="admin-avatar" id="sidebarAvatar" style="overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                    <?php if (!empty($_SESSION['avatar_path']) && file_exists('../' . $_SESSION['avatar_path'])): ?>
-                        <img src="../<?= htmlspecialchars($_SESSION['avatar_path']) ?>" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    <?php if (!empty($_SESSION['avatar_path']) && hydromis_object_exists($_SESSION['avatar_path'])): ?>
+                        <img src="<?= htmlspecialchars(hydromis_storage_url($_SESSION['avatar_path'])) ?>" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                     <?php else: ?>
                         <?= strtoupper(substr($_SESSION['full_name'] ?? 'A', 0, 1)) ?>
                     <?php endif; ?>
@@ -2174,7 +2165,7 @@ function saveQrSettings(method) {
             qrSelectedFiles[method] = null;
             // Update preview image with server path
             if (data.data && data.data.qr_image_path) {
-                document.getElementById(method + 'PreviewImg').src = '../' + data.data.qr_image_path + '?t=' + Date.now();
+                document.getElementById(method + 'PreviewImg').src = data.data.qr_image_url || ('../' + data.data.qr_image_path + '?t=' + Date.now());
             }
             // Reset file input
             document.getElementById(method + 'FileInput').value = '';

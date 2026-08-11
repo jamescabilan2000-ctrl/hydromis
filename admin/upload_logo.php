@@ -2,6 +2,7 @@
 require_once 'check_auth.php';
 require_once '../config/database.php';
 require_once '../config/system_settings.php';
+require_once '../config/storage_service.php';
 
 header('Content-Type: application/json');
 ensure_system_settings_schema($conn);
@@ -37,36 +38,22 @@ if (!$imageInfo || $imageInfo[0] < 64 || $imageInfo[1] < 64) {
     exit;
 }
 
-$uploadDir = __DIR__ . '/../uploads/system/';
-if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
-    echo json_encode(['success' => false, 'message' => 'Unable to create the logo upload directory.']);
-    exit;
-}
-
 $oldPath = system_logo_path($conn);
 $filename = 'hydromis-logo-' . time() . '.' . $extensions[$mime];
-$destination = $uploadDir . $filename;
-if (!move_uploaded_file($file['tmp_name'], $destination)) {
+$newPath = 'uploads/system/' . $filename;
+if (!hydromis_store_upload($file['tmp_name'], $newPath, $mime)) {
     echo json_encode(['success' => false, 'message' => 'Unable to save the uploaded logo.']);
     exit;
 }
-
-$newPath = 'uploads/system/' . $filename;
 $staffId = (string)($_SESSION['admin_auth_id'] ?? $_SESSION['admin_id'] ?? 'ADMIN');
 $stmt = $conn->prepare("INSERT INTO system_settings (setting_key, setting_value, updated_by) VALUES ('system_logo', ?, ?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value), updated_by=VALUES(updated_by)");
 $stmt->bind_param('ss', $newPath, $staffId);
 if (!$stmt->execute()) {
-    @unlink($destination);
+    hydromis_delete_object($newPath);
     echo json_encode(['success' => false, 'message' => 'Unable to update the logo setting.']);
     exit;
 }
 
-if (str_starts_with($oldPath, 'uploads/system/')) {
-    $oldFile = realpath(__DIR__ . '/../' . $oldPath);
-    $systemDir = realpath($uploadDir);
-    if ($oldFile && $systemDir && str_starts_with($oldFile, $systemDir . DIRECTORY_SEPARATOR) && is_file($oldFile)) {
-        @unlink($oldFile);
-    }
-}
+if (str_starts_with($oldPath, 'uploads/system/')) hydromis_delete_object($oldPath);
 
-echo json_encode(['success' => true, 'message' => 'System logo updated.', 'path' => '../' . $newPath]);
+echo json_encode(['success' => true, 'message' => 'System logo updated.', 'path' => hydromis_storage_url($newPath)]);

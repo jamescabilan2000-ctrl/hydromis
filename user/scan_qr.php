@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once '../config/storage_service.php';
 require_once '../config/system_settings.php';
 $systemLogo = system_logo_path($conn);
 
@@ -1996,7 +1997,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
     <!-- Navigation -->
     <nav class="navbar">
         <div class="container-fluid">
-            <span class="navbar-brand"><img src="../<?php echo htmlspecialchars($systemLogo); ?>" alt="HydroMIS Logo" style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;">HydroMIS</span>
+            <span class="navbar-brand"><img src="<?php echo htmlspecialchars(hydromis_asset_url($systemLogo, '../')); ?>" alt="HydroMIS Logo" style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;">HydroMIS</span>
             <button id="mobile-menu-button" type="button" class="d-md-none d-inline-flex align-items-center justify-content-center" style="width:40px;height:40px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#4b5563;" aria-controls="mobile-menu-panel" aria-expanded="false" aria-label="Toggle navigation">
                 <i id="mobile-menu-icon" class="fas fa-bars"></i>
             </button>
@@ -2008,7 +2009,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
         <aside id="mobile-menu-panel" class="mobile-menu-panel" role="dialog" aria-modal="true" aria-label="Mobile navigation">
             <div class="d-flex align-items-center justify-content-between px-3 py-3" style="border-bottom:1px solid #e5e7eb;">
                 <div class="d-flex align-items-center" style="gap:8px;">
-                    <img src="../<?php echo htmlspecialchars($systemLogo); ?>" alt="HydroMIS Logo" style="width: 28px; height: 28px; object-fit: contain; color:#2563eb;">
+                    <img src="<?php echo htmlspecialchars(hydromis_asset_url($systemLogo, '../')); ?>" alt="HydroMIS Logo" style="width: 28px; height: 28px; object-fit: contain; color:#2563eb;">
                     <span style="font-size:24px;font-weight:800;color:#1f2937;letter-spacing:-0.3px;">HydroMIS</span>
                 </div>
                 <button id="mobile-menu-close" type="button" class="d-inline-flex align-items-center justify-content-center" style="width:36px;height:36px;border:none;border-radius:8px;background:#fff;color:#4b5563;" aria-label="Close navigation">
@@ -2097,8 +2098,8 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                                 $profile_image_src = '';
                                 foreach (['jpg', 'jpeg', 'png', 'webp'] as $img_ext) {
                                     $candidate = '../uploads/profile_photos/' . $scanned_data['user_id'] . '.' . $img_ext;
-                                    if (file_exists($candidate)) {
-                                        $profile_image_src = $candidate;
+                                    if (hydromis_object_exists(ltrim($candidate, '../'))) {
+                                        $profile_image_src = hydromis_storage_url(ltrim($candidate, '../'));
                                         break;
                                     }
                                 }

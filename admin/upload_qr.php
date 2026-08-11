@@ -1,6 +1,7 @@
 <?php
 require_once 'check_auth.php';
 require_once '../config/database.php';
+require_once '../config/storage_service.php';
 
 header('Content-Type: application/json');
 
@@ -12,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         while ($row = $result->fetch_assoc()) {
             $settings[$row['payment_method']] = [
                 'qr_image_path'  => $row['qr_image_path'],
+                'qr_image_url'   => hydromis_asset_url($row['qr_image_path'], '../'),
                 'account_number' => $row['account_number'],
                 'account_name'   => $row['account_name'],
                 'updated_at'     => $row['updated_at']
@@ -32,12 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $accountNumber = trim($_POST['account_number'] ?? '');
     $accountName   = trim($_POST['account_name'] ?? '');
-
-    // Ensure upload directory exists
-    $uploadDir = __DIR__ . '/../uploads/payment_qr/';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
-    }
 
     $qrImagePath = null;
 
@@ -69,26 +65,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ext = $extMap[$mimeType] ?? 'jpg';
         }
         $filename = $method . '_qr_' . time() . '.' . $ext;
-        $destination = $uploadDir . $filename;
+        $qrImagePath = 'uploads/payment_qr/' . $filename;
 
         // Delete old uploaded QR image (not default ones in imagess/)
         $oldResult = $conn->query("SELECT qr_image_path FROM payment_qr_settings WHERE payment_method = '" . $conn->real_escape_string($method) . "' LIMIT 1");
         if ($oldResult && $oldResult->num_rows > 0) {
             $oldPath = $oldResult->fetch_assoc()['qr_image_path'];
             if (strpos($oldPath, 'uploads/payment_qr/') !== false) {
-                $oldFile = __DIR__ . '/../' . $oldPath;
-                if (file_exists($oldFile)) {
-                    unlink($oldFile);
-                }
+                hydromis_delete_object($oldPath);
             }
         }
 
-        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+        if (!hydromis_store_upload($file['tmp_name'], $qrImagePath, $mimeType)) {
             echo json_encode(['success' => false, 'message' => 'Failed to save uploaded file.']);
             exit;
         }
 
-        $qrImagePath = 'uploads/payment_qr/' . $filename;
     }
 
     // Build update query
@@ -112,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Fetch updated record
         $updated = $conn->query("SELECT qr_image_path, account_number, account_name FROM payment_qr_settings WHERE payment_method = '$safeMethod' LIMIT 1");
         $data = $updated ? $updated->fetch_assoc() : [];
+        if (!empty($data['qr_image_path'])) $data['qr_image_url'] = hydromis_asset_url($data['qr_image_path'], '../');
         echo json_encode([
             'success' => true,
             'message' => ucfirst($method) . ' QR settings updated successfully!',

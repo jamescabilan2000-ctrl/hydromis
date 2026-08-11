@@ -1166,7 +1166,7 @@ $final_total = $item_total + $delivery_fee - $discount;
     <nav class="navbar">
         <div class="container-fluid">
             <a href="../home.php" class="navbar-brand">
-                <img src="../<?php echo htmlspecialchars($systemLogo); ?>" alt="HydroMIS logo"> HydroMIS
+                <img src="<?php echo htmlspecialchars(hydromis_asset_url($systemLogo, '../')); ?>" alt="HydroMIS logo"> HydroMIS
             </a>
         </div>
     </nav>
@@ -1339,7 +1339,7 @@ $final_total = $item_total + $delivery_fee - $discount;
                             <h5>Scan QR Code to Pay via GCash</h5>
                         </div>
                         <div class="gcash-qr-image">
-                            <img src="../<?= htmlspecialchars($qr_gcash['qr_image_path']) ?>" alt="GCash QR Code">
+                            <img src="<?= htmlspecialchars(hydromis_asset_url($qr_gcash['qr_image_path'], '../')) ?>" alt="GCash QR Code">
                         </div>
                         <div class="gcash-account-info">
                             <div class="gcash-account-row">
@@ -1386,7 +1386,7 @@ $final_total = $item_total + $delivery_fee - $discount;
                             <h5>Scan QR Code to Pay via Maya</h5>
                         </div>
                         <div class="maya-qr-image">
-                            <img src="../<?= htmlspecialchars($qr_maya['qr_image_path']) ?>" alt="Maya QR Code">
+                            <img src="<?= htmlspecialchars(hydromis_asset_url($qr_maya['qr_image_path'], '../')) ?>" alt="Maya QR Code">
                         </div>
                         <div class="maya-account-info">
                             <div class="maya-account-row">

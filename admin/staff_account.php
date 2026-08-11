@@ -2,6 +2,7 @@
 require_once 'check_auth.php';
 require_once '../config/database.php';
 require_once '../config/system_settings.php';
+require_once '../config/storage_service.php';
 $systemLogo = system_logo_path($conn);
 $conn->query("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS profile_image VARCHAR(255) NULL");
 
@@ -31,12 +32,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $allowedImages = ['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];
             if (!isset($allowedImages[$mime])) $uploadError = 'Use a JPG, PNG, or WEBP profile image.';
             else {
-                $uploadDirectory = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'staff_profiles';
-                if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0755, true)) $uploadError = 'The profile image folder could not be created.';
-                else {
-                    $fileName = 'staff_' . bin2hex(random_bytes(12)) . '.' . $allowedImages[$mime];
-                    if (move_uploaded_file($profileUpload['tmp_name'], $uploadDirectory . DIRECTORY_SEPARATOR . $fileName)) $uploadedProfilePath = 'uploads/staff_profiles/' . $fileName;
-                    else $uploadError = 'The profile image could not be saved.';
+                $fileName = 'staff_' . bin2hex(random_bytes(12)) . '.' . $allowedImages[$mime];
+                $uploadedProfilePath = 'uploads/staff_profiles/' . $fileName;
+                if (!hydromis_store_upload($profileUpload['tmp_name'], $uploadedProfilePath, $mime)) {
+                    $uploadedProfilePath = null;
+                    $uploadError = 'The profile image could not be saved.';
                 }
             }
         }
@@ -126,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body><div class="shell">
 <aside class="sidebar">
-    <div class="brand"><b><img src="../<?php echo htmlspecialchars($systemLogo); ?>" alt="HydroMIS logo" style="width:25px;height:25px;object-fit:contain;"></b><div><strong>HydroMIS</strong><span>Admin</span></div></div>
+    <div class="brand"><b><img src="<?php echo htmlspecialchars(hydromis_asset_url($systemLogo, '../')); ?>" alt="HydroMIS logo" style="width:25px;height:25px;object-fit:contain;"></b><div><strong>HydroMIS</strong><span>Admin</span></div></div>
     <nav>
         <div class="nav-label">Main</div>
         <a class="nav-item" href="dashboard.php"><i class="fas fa-chart-pie"></i> Dashboard</a>
@@ -153,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form class="form" method="post" enctype="multipart/form-data" autocomplete="off">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['staff_account_csrf']); ?>">
             <div class="grid">
-                <div class="field full"><label>Profile image</label><div class="profile-upload"><img class="profile-preview" id="staff-profile-preview" src="<?php echo !empty($staff['profile_image']) ? '../' . htmlspecialchars($staff['profile_image']) : 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2276%22 height=%2276%22%3E%3Crect width=%2276%22 height=%2276%22 rx=%2238%22 fill=%22%23242d3d%22/%3E%3Ccircle cx=%2238%22 cy=%2229%22 r=%2213%22 fill=%22%232dd4bf%22/%3E%3Cpath d=%22M15 68c2-15 12-23 23-23s21 8 23 23%22 fill=%22%232dd4bf%22/%3E%3C/svg%3E'; ?>" alt="Staff profile preview"><div><label class="profile-picker" for="staff-profile-image"><i class="fas fa-camera"></i> Choose profile image<input id="staff-profile-image" name="profile_image" type="file" accept="image/jpeg,image/png,image/webp"></label><small>JPG, PNG, or WEBP. Maximum size: 3 MB.</small></div></div></div>
+                <div class="field full"><label>Profile image</label><div class="profile-upload"><img class="profile-preview" id="staff-profile-preview" src="<?php echo !empty($staff['profile_image']) ? htmlspecialchars(hydromis_storage_url($staff['profile_image'])) : 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2276%22 height=%2276%22%3E%3Crect width=%2276%22 height=%2276%22 rx=%2238%22 fill=%22%23242d3d%22/%3E%3Ccircle cx=%2238%22 cy=%2229%22 r=%2213%22 fill=%22%232dd4bf%22/%3E%3Cpath d=%22M15 68c2-15 12-23 23-23s21 8 23 23%22 fill=%22%232dd4bf%22/%3E%3C/svg%3E'; ?>" alt="Staff profile preview"><div><label class="profile-picker" for="staff-profile-image"><i class="fas fa-camera"></i> Choose profile image<input id="staff-profile-image" name="profile_image" type="file" accept="image/jpeg,image/png,image/webp"></label><small>JPG, PNG, or WEBP. Maximum size: 3 MB.</small></div></div></div>
                 <div class="field"><label>Staff ID</label><input class="readonly" value="<?php echo htmlspecialchars($staff['admin_id'] ?? 'Generated automatically'); ?>" readonly></div>
                 <div class="field"><label for="staff-name">Full name</label><input id="staff-name" name="full_name" maxlength="255" required value="<?php echo htmlspecialchars($staff['full_name'] ?? ''); ?>"></div>
                 <div class="field full"><label for="staff-username">Username</label><input id="staff-username" name="username" maxlength="50" required value="<?php echo htmlspecialchars($staff['username'] ?? ''); ?>"><small>Used on the Staff option of the login page.</small></div>

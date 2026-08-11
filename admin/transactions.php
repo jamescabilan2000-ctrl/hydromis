@@ -1,6 +1,7 @@
 <?php
 require_once 'check_auth.php';
 require_once '../config/database.php';
+require_once '../config/storage_service.php';
 require_once '../config/system_settings.php';
 $systemLogo = system_logo_path($conn);
 
@@ -491,7 +492,7 @@ html, body {
     <aside class="sidebar">
         <div class="brand">
             <div class="brand-logo">
-                <div class="brand-icon"><img src="../<?= htmlspecialchars($systemLogo) ?>" alt="Logo" style="width: 24px; height: 24px; object-fit: contain;"></div>
+                <div class="brand-icon"><img src="<?= htmlspecialchars(hydromis_asset_url($systemLogo, '../')) ?>" alt="Logo" style="width: 24px; height: 24px; object-fit: contain;"></div>
                 <div>
                     <div class="brand-name">HydroMIS</div>
                     <div class="brand-sub">Admin</div>
@@ -529,8 +530,8 @@ html, body {
         <div class="sidebar-footer">
             <div class="admin-card">
                 <div class="admin-avatar" style="overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                    <?php if (!empty($_SESSION['avatar_path']) && file_exists('../' . $_SESSION['avatar_path'])): ?>
-                        <img src="../<?= htmlspecialchars($_SESSION['avatar_path']) ?>" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    <?php if (!empty($_SESSION['avatar_path']) && hydromis_object_exists($_SESSION['avatar_path'])): ?>
+                        <img src="<?= htmlspecialchars(hydromis_storage_url($_SESSION['avatar_path'])) ?>" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                     <?php else: ?>
                         <?= strtoupper(substr($_SESSION['full_name'] ?? 'A', 0, 1)) ?>
                     <?php endif; ?>
@@ -690,7 +691,7 @@ html, body {
                                                 <div style="color: var(--muted); font-size: 10px; margin-top: 2px;">Ref: <?php echo htmlspecialchars($row['payment_reference']); ?></div>
                                             <?php endif; ?>
                                             <?php if (!empty($row['payment_proof'])): ?>
-                                                <a href="../<?php echo htmlspecialchars($row['payment_proof']); ?>" target="_blank" rel="noopener" style="color: var(--aqua); font-size: 11px; font-weight: 700; display: inline-block; margin-top: 4px; text-decoration: none;"><i class="fas fa-image"></i> View Proof</a>
+                                                <a href="<?php echo htmlspecialchars(hydromis_storage_url($row['payment_proof'])); ?>" target="_blank" rel="noopener" style="color: var(--aqua); font-size: 11px; font-weight: 700; display: inline-block; margin-top: 4px; text-decoration: none;"><i class="fas fa-image"></i> View Proof</a>
                                             <?php endif; ?>
                                         </div>
                                     <?php endif; ?>

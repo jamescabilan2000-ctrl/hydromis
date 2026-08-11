@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/storage_service.php';
 
 function ensure_system_settings_schema($conn): void {
     $conn->query("CREATE TABLE IF NOT EXISTS system_settings (

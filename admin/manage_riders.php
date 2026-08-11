@@ -650,7 +650,7 @@ html, body {
     <aside class="sidebar">
         <div class="brand">
             <div class="brand-logo">
-                <div class="brand-icon"><img src="../<?= htmlspecialchars($systemLogo) ?>" alt="Logo" style="width: 24px; height: 24px; object-fit: contain;"></div>
+                <div class="brand-icon"><img src="<?= htmlspecialchars(hydromis_asset_url($systemLogo, '../')) ?>" alt="Logo" style="width: 24px; height: 24px; object-fit: contain;"></div>
                 <div>
                     <div class="brand-name">HydroMIS</div>
                     <div class="brand-sub">Admin</div>

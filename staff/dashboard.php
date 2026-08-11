@@ -1058,7 +1058,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-logo">
-        <div class="brand-icon"><img src="../<?php echo htmlspecialchars($systemLogo); ?>" alt="HydroMIS logo" style="width:28px;height:28px;object-fit:contain;"></div>
+        <div class="brand-icon"><img src="<?php echo htmlspecialchars(hydromis_asset_url($systemLogo, '../')); ?>" alt="HydroMIS logo" style="width:28px;height:28px;object-fit:contain;"></div>
         <div>
           <div class="brand-name">HydroMIS</div>
           <div class="brand-sub">Water Refilling</div>

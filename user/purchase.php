@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once '../config/storage_service.php';
 require_once '../config/system_settings.php';
 require_once '../config/inventory_service.php';
 require_once '../config/system_settings.php';
@@ -36,19 +37,12 @@ function savePurchasePaymentProof($fieldName, $paymentId) {
         return [null, 'Payment proof must be a JPG, PNG, or WEBP image.'];
     }
 
-    $uploadDir = __DIR__ . '/../uploads/payment_proofs/';
-    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
-        return [null, 'Payment proof storage is not available.'];
-    }
-
     $fileName = $paymentId . '-' . time() . '.' . $allowedMimeTypes[$mimeType];
-    $destination = $uploadDir . $fileName;
-
-    if (!move_uploaded_file($tmpName, $destination)) {
+    $objectPath = 'uploads/payment_proofs/' . $fileName;
+    if (!hydromis_store_upload($tmpName, $objectPath, $mimeType)) {
         return [null, 'Unable to save payment proof. Please try again.'];
     }
-
-    return ['uploads/payment_proofs/' . $fileName, null];
+    return [$objectPath, null];
 }
 
 $error = '';
@@ -344,11 +338,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                     $error = 'Invalid image type. Please use PNG, JPG, or WEBP.';
                 } else {
                     $file_ext = strtolower(pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION));
-                    $upload_dir = '../uploads/profile_photos/';
                     $file_name = $user_id . '.' . $file_ext;
-                    $file_path = $upload_dir . $file_name;
-                    
-                    if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $file_path)) {
+                    $file_path = 'uploads/profile_photos/' . $file_name;
+
+                    if (hydromis_store_upload($_FILES['profile_image']['tmp_name'], $file_path, $_FILES['profile_image']['type'])) {
                         $profile_success = 'Profile photo updated successfully.';
                     } else {
                         $error = 'Failed to upload profile photo.';

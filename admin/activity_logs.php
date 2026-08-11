@@ -83,7 +83,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans'
 <body>
 <div class="layout">
 <aside class="sidebar">
-  <div class="brand"><img src="../<?=htmlspecialchars($systemLogo)?>" alt="HydroMIS logo"><div><b>HydroMIS</b><span>Admin Portal</span></div></div>
+  <div class="brand"><img src="<?=htmlspecialchars(hydromis_asset_url($systemLogo, '../'))?>" alt="HydroMIS logo"><div><b>HydroMIS</b><span>Admin Portal</span></div></div>
   <nav class="nav">
     <div class="nav-label">Main</div>
     <a href="dashboard.php"><i class="fas fa-chart-pie"></i>Dashboard</a>

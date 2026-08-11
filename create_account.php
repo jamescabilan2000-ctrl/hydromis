@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once 'config/database.php';
+require_once 'config/storage_service.php';
 
 $error = '';
 $success = false;
@@ -50,14 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
             
             $qr_code_url = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" . urlencode($qr_data);
             
-            $qrcodes_dir = 'qrcodes/';
-            if (!is_dir($qrcodes_dir)) {
-                mkdir($qrcodes_dir, 0755, true);
-            }
-            
-            $qr_image_path = $qrcodes_dir . $user_id . '.png';
+            $qr_image_path = 'qrcodes/' . $user_id . '.png';
             $qr_image_content = file_get_contents($qr_code_url);
-            file_put_contents($qr_image_path, $qr_image_content);
+            if ($qr_image_content === false || !hydromis_store_bytes($qr_image_path, $qr_image_content, 'image/png')) {
+                throw new RuntimeException('Unable to store the customer QR code.');
+            }
             
             $sql = "UPDATE users SET qr_code_path = '$qr_image_path' WHERE user_id = '$user_id'";
             $conn->query($sql);
@@ -534,7 +532,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                         <div class="pass-customer-name"><?php echo htmlspecialchars($_POST['full_name']); ?></div>
                         <p class="pass-login-guide">Use this mobile number to log in<strong><?php echo htmlspecialchars($contact_number); ?></strong></p>
                         <div class="qr-frame">
-                            <img id="customerQrImage" src="qrcodes/<?php echo rawurlencode($new_user_id); ?>.png" alt="HydroMIS customer QR code for <?php echo htmlspecialchars($_POST['full_name']); ?>">
+                            <img id="customerQrImage" src="<?php echo htmlspecialchars(hydromis_storage_url('qrcodes/' . $new_user_id . '.png')); ?>" alt="HydroMIS customer QR code for <?php echo htmlspecialchars($_POST['full_name']); ?>">
                         </div>
                         <p class="pass-hint"><i class="fas fa-expand"></i> Keep the full code visible when scanning</p>
                         <button type="button" class="qr-download" id="downloadAccessPass"

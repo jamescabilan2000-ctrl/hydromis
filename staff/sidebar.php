@@ -40,7 +40,7 @@ if (isset($conn)) {
 .staff-sidebar-profile strong,.staff-sidebar-profile span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 <aside class="staff-sidebar">
-    <div class="staff-sidebar-brand"><b><img src="../<?php echo htmlspecialchars($systemLogo); ?>" alt="HydroMIS logo" style="width:30px;height:30px;object-fit:contain;"></b><div>HydroMIS<span>Water Refilling</span></div></div>
+    <div class="staff-sidebar-brand"><b><img src="<?php echo htmlspecialchars(hydromis_asset_url($systemLogo, '../')); ?>" alt="HydroMIS logo" style="width:30px;height:30px;object-fit:contain;"></b><div>HydroMIS<span>Water Refilling</span></div></div>
     <nav class="staff-sidebar-nav">
         <span>Main</span>
         <a class="<?php echo $staff_active === 'dashboard' ? 'active' : ''; ?>" href="dashboard.php"><i class="fas fa-home"></i>Dashboard</a>
@@ -64,7 +64,7 @@ if (isset($conn)) {
     </nav>
     <button type="button" class="staff-theme-toggle" id="staffThemeToggle" aria-label="Switch to light mode"><i class="fas fa-sun"></i><span>Light mode</span></button>
     <div class="staff-sidebar-footer">
-        <div class="staff-sidebar-profile"><b><?php if ($staffProfileImage !== ''): ?><img src="../<?php echo htmlspecialchars($staffProfileImage); ?>" alt="Staff profile" style="width:100%;height:100%;border-radius:inherit;object-fit:cover"><?php else: ?><?php echo htmlspecialchars(strtoupper(substr($_SESSION['full_name'] ?? 'S', 0, 1))); ?><?php endif; ?></b><div><strong><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Staff'); ?></strong><span>Staff Account</span></div></div>
+        <div class="staff-sidebar-profile"><b><?php if ($staffProfileImage !== ''): ?><img src="<?php echo htmlspecialchars(hydromis_storage_url($staffProfileImage)); ?>" alt="Staff profile" style="width:100%;height:100%;border-radius:inherit;object-fit:cover"><?php else: ?><?php echo htmlspecialchars(strtoupper(substr($_SESSION['full_name'] ?? 'S', 0, 1))); ?><?php endif; ?></b><div><strong><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Staff'); ?></strong><span>Staff Account</span></div></div>
         <a href="../logout.php" class="staff-sidebar-logout"><i class="fas fa-right-from-bracket"></i> Sign Out</a>
     </div>
 </aside>

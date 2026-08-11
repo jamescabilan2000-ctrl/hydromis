@@ -4,6 +4,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require_once '../config/database.php';
+require_once '../config/storage_service.php';
 
 $payment_success = false;
 $payment_error = '';
@@ -87,19 +88,12 @@ function savePaymentProof($fieldName, $paymentId) {
         return [null, 'Payment proof must be a JPG, PNG, or WEBP image.'];
     }
 
-    $uploadDir = __DIR__ . '/../uploads/payment_proofs/';
-    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
-        return [null, 'Payment proof storage is not available.'];
-    }
-
     $fileName = $paymentId . '-' . time() . '.' . $allowedMimeTypes[$mimeType];
-    $destination = $uploadDir . $fileName;
-
-    if (!move_uploaded_file($tmpName, $destination)) {
+    $objectPath = 'uploads/payment_proofs/' . $fileName;
+    if (!hydromis_store_upload($tmpName, $objectPath, $mimeType)) {
         return [null, 'Unable to save payment proof. Please try again.'];
     }
-
-    return ['uploads/payment_proofs/' . $fileName, null];
+    return [$objectPath, null];
 }
 
 $requestedTransactionId = trim($_POST['transaction_id'] ?? $_GET['transaction_id'] ?? '');

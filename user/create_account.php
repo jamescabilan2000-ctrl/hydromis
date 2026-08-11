@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once '../config/storage_service.php';
 
 $success = false;
 $error = '';
@@ -42,16 +43,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $qr_code_url = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" . urlencode($qr_data);
             
             // Save QR code file
-            $qrcodes_dir = 'qrcodes/';
-            if (!is_dir($qrcodes_dir)) {
-                mkdir($qrcodes_dir, 0755, true);
-            }
-            
-            $qr_image_path = $qrcodes_dir . $user_id . '.png';
+            $qr_image_path = 'qrcodes/' . $user_id . '.png';
             
             // Download and save QR code image
             $qr_image_content = file_get_contents($qr_code_url);
-            file_put_contents($qr_image_path, $qr_image_content);
+            if ($qr_image_content === false || !hydromis_store_bytes($qr_image_path, $qr_image_content, 'image/png')) {
+                throw new RuntimeException('Unable to store the customer QR code.');
+            }
             
             // Update user with QR code path
             $sql = "UPDATE users SET qr_code_path = '$qr_image_path' WHERE user_id = '$user_id'";
@@ -359,7 +357,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             <div class="qr-code-display">
                 <p style="color: #666; margin-bottom: 15px;">Your QR Code</p>
-                <img id="qrCodeImage" src="qrcodes/<?php echo $new_user_id; ?>.png" alt="QR Code">
+                <img id="qrCodeImage" src="<?php echo htmlspecialchars(hydromis_storage_url('qrcodes/' . $new_user_id . '.png')); ?>" alt="QR Code">
             </div>
 
             <div class="user-details">
