@@ -19,7 +19,9 @@ final class SupabaseSessionHandler implements SessionHandlerInterface
 
         $this->pdo = new PDO($dsn, (string)($config['user'] ?? ''), (string)($config['password'] ?? ''), [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_EMULATE_PREPARES => false,
+            // Supabase's transaction pooler (port 6543) does not retain
+            // server-side prepared statements between pooled transactions.
+            PDO::ATTR_EMULATE_PREPARES => true,
         ]);
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS hydromis_sessions (
             session_id VARCHAR(128) PRIMARY KEY,
