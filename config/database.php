@@ -27,6 +27,8 @@ define('DB_NAME', $databaseConfig['database'] ?? getenv('MYSQL_DB_NAME') ?: 'hyd
 if (($databaseConfig['driver'] ?? 'mysql') === 'pgsql') {
     define('DB_SSLMODE', $databaseConfig['sslmode'] ?? 'require');
     require __DIR__ . '/database_pgsql.php';
+    require_once __DIR__ . '/activity_logger.php';
+    auto_log_system_request($conn);
     return;
 }
 
