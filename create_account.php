@@ -62,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
             
             $success = true;
             $new_user_id = $user_id;
+            $_SESSION['qr_download_user_id'] = $user_id;
         } elseif ($error === '') {
             $error = 'Unable to create the account. Please try again.';
         }
@@ -532,7 +533,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                         <div class="pass-customer-name"><?php echo htmlspecialchars($_POST['full_name']); ?></div>
                         <p class="pass-login-guide">Use this mobile number to log in<strong><?php echo htmlspecialchars($contact_number); ?></strong></p>
                         <div class="qr-frame">
-                            <img id="customerQrImage" src="<?php echo htmlspecialchars(hydromis_storage_url('qrcodes/' . $new_user_id . '.png')); ?>" alt="HydroMIS customer QR code for <?php echo htmlspecialchars($_POST['full_name']); ?>">
+                            <img id="customerQrImage" src="download_qr.php?inline=1&amp;user_id=<?php echo rawurlencode($new_user_id); ?>" alt="HydroMIS customer QR code for <?php echo htmlspecialchars($_POST['full_name']); ?>">
                         </div>
                         <p class="pass-hint"><i class="fas fa-expand"></i> Keep the full code visible when scanning</p>
                         <button type="button" class="qr-download" id="downloadAccessPass"

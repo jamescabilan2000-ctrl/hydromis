@@ -20,7 +20,7 @@ if (!str_ends_with(strtolower($requestedPath), '.php')) {
 
 $publicRootPages = [
     'index.php', 'home.php', 'login.php', 'logout.php', 'onboarding.php',
-    'privacy.php', 'terms.php', 'create_account.php', 'admin_portal.php',
+    'privacy.php', 'terms.php', 'create_account.php', 'download_qr.php', 'admin_portal.php',
 ];
 $isRootPage = in_array($requestedPath, $publicRootPages, true);
 $isPortalPage = preg_match('#^(admin|staff|rider|user)/[A-Za-z0-9_-]+\.php$#', $requestedPath) === 1;

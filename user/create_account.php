@@ -1,4 +1,7 @@
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 require_once '../config/database.php';
 require_once '../config/storage_service.php';
 
@@ -57,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             $success = true;
             $new_user_id = $user_id;
+            $_SESSION['qr_download_user_id'] = $user_id;
         } else {
             $error = 'Error creating account: ' . $conn->error;
         }
@@ -357,7 +361,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             <div class="qr-code-display">
                 <p style="color: #666; margin-bottom: 15px;">Your QR Code</p>
-                <img id="qrCodeImage" src="<?php echo htmlspecialchars(hydromis_storage_url('qrcodes/' . $new_user_id . '.png')); ?>" alt="QR Code">
+                <img id="qrCodeImage" src="../download_qr.php?inline=1&amp;user_id=<?php echo rawurlencode($new_user_id); ?>" alt="QR Code">
+                <p><a href="../download_qr.php?user_id=<?php echo rawurlencode($new_user_id); ?>" class="btn btn-primary mt-3"><i class="fas fa-download mr-2"></i>Download QR Code</a></p>
             </div>
 
             <div class="user-details">

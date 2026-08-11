@@ -95,6 +95,20 @@ function hydromis_store_upload(string $temporaryFile, string $objectPath, string
     return $contents !== false && hydromis_store_bytes($objectPath, $contents, $mimeType);
 }
 
+function hydromis_read_bytes(string $objectPath): ?string {
+    $objectPath = ltrim(str_replace('\\', '/', $objectPath), '/');
+    if (hydromis_storage_enabled()) {
+        $config = hydromis_storage_config();
+        $encoded = implode('/', array_map('rawurlencode', explode('/', $objectPath)));
+        [$status, $body] = hydromis_storage_request('GET', '/storage/v1/object/authenticated/' . rawurlencode($config['bucket']) . '/' . $encoded);
+        return $status >= 200 && $status < 300 ? $body : null;
+    }
+    $local = dirname(__DIR__) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $objectPath);
+    if (!is_file($local)) return null;
+    $contents = file_get_contents($local);
+    return $contents === false ? null : $contents;
+}
+
 function hydromis_delete_object(string $objectPath): bool {
     $objectPath = ltrim(str_replace('\\', '/', $objectPath), '/');
     $deleted = true;
