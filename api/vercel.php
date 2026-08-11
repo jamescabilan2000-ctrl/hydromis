@@ -1,5 +1,8 @@
 <?php
 // Vercel runs the legacy PHP application through one serverless entry point.
+require_once dirname(__DIR__) . '/config/vercel_session.php';
+configure_vercel_sessions();
+
 $requestedPath = trim((string)($_GET['path'] ?? ''), '/');
 if ($requestedPath === '') {
     $requestedPath = 'index.php';
