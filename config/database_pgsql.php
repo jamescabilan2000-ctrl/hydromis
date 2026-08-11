@@ -33,7 +33,7 @@ class PgDBCompatConnection {
     public string $connect_error=''; public string $error=''; public int $insert_id=0; public int $affected_rows=0;
     private ?PDO $pdo=null;
     public function __construct($host,$user,$pass,$db,$port=6543){
-        try{$dsn="pgsql:host=$host;port=$port;dbname=$db;sslmode=".DB_SSLMODE;$this->pdo=new PDO($dsn,$user,$pass,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>true]);$this->pdo->exec("SET TIME ZONE 'Asia/Manila'");$this->pdo->exec(file_get_contents(__DIR__.'/../database/supabase_schema.sql'));$this->seedAccounts();}
+        try{$dsn="pgsql:host=$host;port=$port;dbname=$db;sslmode=".DB_SSLMODE;$this->pdo=new PDO($dsn,$user,$pass,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>true]);$this->pdo->exec("SET TIME ZONE 'Asia/Manila'");}
         catch(Throwable $e){$this->connect_error=$e->getMessage();$this->pdo=null;}
     }
     public function set_charset($charset):bool{return true;}

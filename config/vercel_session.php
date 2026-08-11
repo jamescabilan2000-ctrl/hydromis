@@ -7,7 +7,6 @@
 final class SupabaseSessionHandler implements SessionHandlerInterface
 {
     private PDO $pdo;
-    private bool $transactionOpen = false;
 
     public function __construct(array $config)
     {
@@ -23,13 +22,6 @@ final class SupabaseSessionHandler implements SessionHandlerInterface
             // server-side prepared statements between pooled transactions.
             PDO::ATTR_EMULATE_PREPARES => true,
         ]);
-        $this->pdo->exec("CREATE TABLE IF NOT EXISTS hydromis_sessions (
-            session_id VARCHAR(128) PRIMARY KEY,
-            payload TEXT NOT NULL,
-            expires_at TIMESTAMPTZ NOT NULL,
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )");
-        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_hydromis_sessions_expiry ON hydromis_sessions(expires_at)');
     }
 
     public function open(string $path, string $name): bool
@@ -39,20 +31,11 @@ final class SupabaseSessionHandler implements SessionHandlerInterface
 
     public function close(): bool
     {
-        if ($this->transactionOpen) {
-            $this->pdo->commit();
-            $this->transactionOpen = false;
-        }
         return true;
     }
 
     public function read(string $id): string|false
     {
-        $this->pdo->beginTransaction();
-        $this->transactionOpen = true;
-        $lock = $this->pdo->prepare('SELECT pg_advisory_xact_lock(hashtext(?))');
-        $lock->execute([$id]);
-
         $statement = $this->pdo->prepare('SELECT payload FROM hydromis_sessions WHERE session_id = ? AND expires_at > CURRENT_TIMESTAMP');
         $statement->execute([$id]);
         $payload = $statement->fetchColumn();
