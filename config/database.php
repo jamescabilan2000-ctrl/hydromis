@@ -24,9 +24,37 @@ define('DB_USER', $databaseConfig['user'] ?? getenv('MYSQL_DB_USER') ?: 'root');
 define('DB_PASS', $databaseConfig['password'] ?? getenv('MYSQL_DB_PASSWORD') ?: '');
 define('DB_NAME', $databaseConfig['database'] ?? getenv('MYSQL_DB_NAME') ?: 'hydromis');
 
+function sanitize($input) {
+    global $conn;
+    return $conn->real_escape_string(htmlspecialchars($input));
+}
+
+function generateID($prefix) {
+    return $prefix . '-' . strtoupper(bin2hex(random_bytes(8)));
+}
+
+function generateUserID() {
+    global $conn;
+
+    for ($attempt = 0; $attempt < 10; $attempt++) {
+        $candidate = 'USR-' . strtoupper(bin2hex(random_bytes(4)));
+        $safeCandidate = $conn->real_escape_string($candidate);
+        $existing = $conn->query("SELECT id FROM users WHERE user_id = '$safeCandidate' LIMIT 1");
+        if (!$existing || $existing->num_rows === 0) {
+            return $candidate;
+        }
+    }
+
+    throw new RuntimeException('Unable to generate a unique customer ID.');
+}
+
 if (($databaseConfig['driver'] ?? 'mysql') === 'pgsql') {
     define('DB_SSLMODE', $databaseConfig['sslmode'] ?? 'require');
     require __DIR__ . '/database_pgsql.php';
+
+    require_once __DIR__ . '/loyalty_service.php';
+    enforce_annual_loyalty_reset($conn);
+
     require_once __DIR__ . '/activity_logger.php';
     auto_log_system_request($conn);
     return;
@@ -513,35 +541,6 @@ $conn->set_charset('utf8mb4');
 
 require_once __DIR__ . '/loyalty_service.php';
 enforce_annual_loyalty_reset($conn);
-
-function sanitize($input) {
-    global $conn;
-    return $conn->real_escape_string(htmlspecialchars($input));
-}
-
-function generateID($prefix) {
-    return $prefix . '-' . strtoupper(bin2hex(random_bytes(8)));
-}
-
-/**
- * Generate a compact customer-facing ID such as USR-A1B2C3D4.
- * Existing IDs are intentionally not rewritten because they are referenced by
- * orders, payments, QR codes, notifications and uploaded files.
- */
-function generateUserID() {
-    global $conn;
-
-    for ($attempt = 0; $attempt < 10; $attempt++) {
-        $candidate = 'USR-' . strtoupper(bin2hex(random_bytes(4)));
-        $safeCandidate = $conn->real_escape_string($candidate);
-        $existing = $conn->query("SELECT id FROM users WHERE user_id = '$safeCandidate' LIMIT 1");
-        if (!$existing || $existing->num_rows === 0) {
-            return $candidate;
-        }
-    }
-
-    throw new RuntimeException('Unable to generate a unique customer ID.');
-}
 
 require_once __DIR__ . '/activity_logger.php';
 auto_log_system_request($conn);
