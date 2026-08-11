@@ -1,4 +1,10 @@
 /config/.encryption_key
+/config/supabase.local.php
+/qrcodes/*.png
+/uploads/avatars/*
+/uploads/payment_proofs/*
+/uploads/profile_photos/*
+/uploads/staff_profiles/*
 /cloudflare/node_modules/
 /cloudflare/.wrangler/
 /cloudflare/.dev.vars

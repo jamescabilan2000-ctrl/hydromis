@@ -78,7 +78,7 @@ body.public-ui {
     align-items: center;
     justify-content: center;
     color: #ffffff;
-    background: linear-gradient(145deg, var(--teal-600) 0%, var(--brand-700) 100%);
+    background: transparent;
     box-shadow: 0 8px 20px rgba(13, 155, 138, 0.24);
 }
 

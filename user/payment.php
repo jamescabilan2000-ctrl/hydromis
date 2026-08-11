@@ -133,15 +133,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
         } elseif ($amount <= 0) {
             $payment_error = 'Invalid order amount. Please contact staff.';
         } elseif ($paymentMethod === 'gcash' || $paymentMethod === 'maya') {
-            $referenceField = $paymentMethod . '_reference';
             $numberField = $paymentMethod . '_number';
-            $paymentReference = sanitize(trim($_POST[$referenceField] ?? ''));
             $walletNumber = normalizePaymentMobile($_POST[$numberField] ?? '');
 
             if ($walletNumber === '' || !preg_match('/^(09|\+639|639)\d{9}$/', $walletNumber)) {
                 $payment_error = ucfirst($paymentMethod) . ' mobile number must be a valid Philippine mobile number.';
-            } elseif ($paymentReference === '' || strlen($paymentReference) < 6 || strlen($paymentReference) > 64) {
-                $payment_error = ucfirst($paymentMethod) . ' reference number must be 6 to 64 characters.';
             } else {
                 [$paymentProof, $uploadError] = savePaymentProof('payment_proof', $paymentId);
                 if ($uploadError) {

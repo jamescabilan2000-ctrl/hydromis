@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once '../config/system_settings.php';
 
 $reward_catalog = [
     [
@@ -17,11 +18,25 @@ $reward_catalog = [
         'tag' => 'Voucher'
     ],
     [
+        'code' => 'delivery_discount',
+        'title' => 'Delivery Fee Discount',
+        'description' => 'Get P20 off the delivery fee on your next order.',
+        'points' => 125,
+        'tag' => 'Delivery Perk'
+    ],
+    [
         'code' => 'bundle_fast_lane',
         'title' => 'Free 1 Gallons Bundle',
         'description' => 'Fast-lane service on your next visit.',
         'points' => 150,
         'tag' => 'Service Perk'
+    ],
+    [
+        'code' => 'free_delivery',
+        'title' => 'Free Delivery',
+        'description' => 'Enjoy free delivery on your next eligible water order.',
+        'points' => 200,
+        'tag' => 'Delivery Reward'
     ],
     [
         'code' => 'bundle_2_gallons',
@@ -33,8 +48,10 @@ $reward_catalog = [
 ];
 
 $reward_by_code = [];
+$reward_enabled = [];
 foreach ($reward_catalog as $reward_item) {
     $reward_by_code[$reward_item['code']] = $reward_item;
+    $reward_enabled[$reward_item['code']] = system_int_setting($conn, 'reward_enabled_' . $reward_item['code'], 1, 0, 1) === 1;
 }
 
 $conn->query("CREATE TABLE IF NOT EXISTS reward_claims (
@@ -51,6 +68,22 @@ $conn->query("CREATE TABLE IF NOT EXISTS reward_claims (
     INDEX idx_reward_claim_status (claim_status),
     INDEX idx_reward_claim_user (user_id)
 )");
+$conn->query("ALTER TABLE reward_claims ADD COLUMN IF NOT EXISTS customer_seen_at DATETIME NULL");
+$seenMigration = $conn->query("SELECT setting_key FROM system_settings WHERE setting_key='reward_seen_migration_v1' LIMIT 1");
+if (!$seenMigration || $seenMigration->num_rows === 0) {
+    $conn->query("UPDATE reward_claims SET customer_seen_at=NOW() WHERE claim_status='claimed' AND customer_seen_at IS NULL");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key,setting_value,updated_by) VALUES ('reward_seen_migration_v1','1','SYSTEM')");
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acknowledge_reward_updates'])) {
+    $seenUserId = sanitize(trim((string)($_POST['user_id'] ?? '')));
+    if ($seenUserId !== '') {
+        $conn->query("UPDATE reward_claims SET customer_seen_at=NOW() WHERE user_id='$seenUserId' AND claim_status='approved' AND customer_seen_at IS NULL");
+    }
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true]);
+    exit;
+}
 
 $error = '';
 $success = '';
@@ -59,6 +92,7 @@ $selected_user = null;
 $user_id = '';
 $mobile_lookup = '';
 $redemption_history = [];
+$loyalty_reset_at = loyalty_points_reset_at($conn);
 
 function load_user_by_id($conn, $user_id) {
     $safe_user_id = sanitize($user_id);
@@ -76,7 +110,11 @@ function load_redemption_history($conn, $user_id, $limit = 5) {
     $history = [];
     $safe_user_id = sanitize($user_id);
     $safe_limit = max(1, intval($limit));
-    $sql = "SELECT transaction_id, description, notes, created_at FROM transactions WHERE user_id = '$safe_user_id' AND description LIKE 'Reward Redemption - %' ORDER BY created_at DESC LIMIT $safe_limit";
+    $sql = "SELECT t.transaction_id, t.description, t.notes, t.created_at, rc.reward_code, COALESCE(rc.claim_status,'pending') AS claim_status, rc.customer_seen_at
+        FROM transactions t
+        LEFT JOIN reward_claims rc ON rc.transaction_id=t.transaction_id
+        WHERE t.user_id = '$safe_user_id' AND t.description LIKE 'Reward Redemption - %'
+        ORDER BY t.created_at DESC LIMIT $safe_limit";
     $result = $conn->query($sql);
 
     if ($result && $result->num_rows > 0) {
@@ -86,6 +124,22 @@ function load_redemption_history($conn, $user_id, $limit = 5) {
     }
 
     return $history;
+}
+
+function generate_reward_id($conn): string {
+    for ($attempt = 0; $attempt < 10; $attempt++) {
+        $candidate = 'RWD-' . strtoupper(bin2hex(random_bytes(4)));
+        $safeCandidate = $conn->real_escape_string($candidate);
+        $existing = $conn->query("SELECT transaction_id FROM transactions WHERE transaction_id='$safeCandidate' LIMIT 1");
+        if (!$existing || $existing->num_rows === 0) return $candidate;
+    }
+    throw new RuntimeException('Unable to generate a unique reward ID.');
+}
+
+function compact_reward_id(string $transactionId): string {
+    return str_starts_with($transactionId, 'RWD-') && strlen($transactionId) > 12
+        ? 'RWD-' . substr($transactionId, 4, 8)
+        : $transactionId;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mobile_lookup_submit'])) {
@@ -132,6 +186,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
         $error = 'Invalid redemption request.';
     } elseif (!isset($reward_by_code[$reward_code])) {
         $error = 'Selected reward is not available.';
+    } elseif (empty($reward_enabled[$reward_code])) {
+        $error = 'This reward is temporarily disabled by the administrator.';
     } else {
         $selected_user = load_user_by_id($conn, $posted_user_id);
 
@@ -149,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
                 $sql_deduct = "UPDATE users SET loyalty_points = loyalty_points - $required_points WHERE user_id = '$safe_user_id'";
 
                 if ($conn->query($sql_deduct) === TRUE) {
-                    $redemption_id = generateID('RWD');
+                    $redemption_id = generate_reward_id($conn);
                     $reward_title = sanitize($reward['title']);
                     $reward_tag = sanitize($reward['tag']);
                     $reward_description = sanitize($reward['description']);
@@ -186,12 +242,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
         }
     }
 }
+if ($selected_user && empty($redemption_history)) {
+    $redemption_history = load_redemption_history($conn, (string)$selected_user['user_id']);
+}
+$has_approved_reward = count(array_filter($redemption_history, fn($item) => ($item['claim_status'] ?? '') === 'approved' && empty($item['customer_seen_at']))) > 0;
+$has_approved_free_delivery = count(array_filter($redemption_history, fn($item) => ($item['claim_status'] ?? '') === 'approved' && ($item['reward_code'] ?? '') === 'free_delivery' && empty($item['customer_seen_at']))) > 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php if (!empty($user_id)): ?><meta name="hydromis-user-id" content="<?php echo htmlspecialchars($user_id); ?>"><?php endif; ?>
     <title>Rewards Conversion - HydroMIS</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -393,21 +455,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
             margin: -6px -6px 28px;
             border-radius: 20px;
             color: #fff;
-            background: linear-gradient(120deg, #0b2f5f 0%, #1554a8 55%, #2483d5 100%);
+            background-color: #052b4a;
+            background-image: url('../imagess/registration-gallons-bg-v3.png');
+            background-repeat: no-repeat;
+            background-position: 58% 50%;
+            background-size: cover;
             box-shadow: 0 18px 34px rgba(23, 85, 170, .22);
+            animation: rewardsWaterDrift 16s ease-in-out infinite alternate;
+            transition: background-size 1.1s cubic-bezier(.2,.8,.2,1), filter .8s ease, box-shadow .5s ease;
         }
         .rewards-hero::before {
             content: '';
             position: absolute;
-            z-index: -1;
-            width: 330px;
-            height: 330px;
-            right: 8%;
-            top: -180px;
-            border: 1px solid rgba(255,255,255,.22);
-            border-radius: 50%;
-            box-shadow: 0 0 0 38px rgba(255,255,255,.05), 0 0 0 76px rgba(255,255,255,.035);
+            inset: 0;
+            z-index: 0;
+            background: linear-gradient(105deg, rgba(1,20,42,.88) 0%, rgba(2,37,67,.72) 48%, rgba(3,63,86,.28) 100%);
+            transition: background .8s ease;
         }
+        .rewards-hero::after { content:''; position:absolute; inset:-35%; z-index:1; pointer-events:none; background:linear-gradient(112deg,transparent 38%,rgba(151,239,255,.13) 49%,transparent 60%); transform:translateX(-46%) rotate(4deg); animation:rewardsLightSweep 8s ease-in-out infinite; }
+        .rewards-hero:hover { background-size:cover; filter:saturate(1.04) brightness(1.02); box-shadow:0 23px 44px rgba(10,89,157,.3); }
         .rewards-hero-copy { position: relative; z-index: 2; max-width: 500px; }
         .rewards-kicker { margin: 0 0 8px; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #b8e5ff; }
         .rewards-hero h1 { margin: 0; color: #fff; font-size: clamp(27px, 4vw, 36px); font-weight: 800; letter-spacing: -.045em; }
@@ -425,8 +491,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
             font-weight: 800;
             box-shadow: 0 8px 18px rgba(4, 29, 67, .18);
         }
-        .hero-water-image { position: absolute; z-index: 1; right: 30px; bottom: -38px; width: 230px; height: 230px; object-fit: contain; mix-blend-mode: screen; filter: drop-shadow(0 16px 15px rgba(0, 21, 54, .25)); animation: bottleFloat 4s ease-in-out infinite; }
-        @keyframes bottleFloat { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-8px) rotate(1deg); } }
+        .rewards-water-bubbles { position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none; }
+        .rewards-water-bubbles span { position:absolute; bottom:-18px; width:9px; height:9px; border:1px solid rgba(193,245,255,.7); border-radius:50%; background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.82),rgba(94,216,245,.1) 40%,transparent 68%); box-shadow:0 0 7px rgba(86,218,255,.3); opacity:0; animation:rewardsBubbleRise 8s ease-in infinite; }
+        .rewards-water-bubbles span:nth-child(1){left:12%;animation-delay:.5s}.rewards-water-bubbles span:nth-child(2){left:38%;width:13px;height:13px;animation-delay:3s;animation-duration:10s}.rewards-water-bubbles span:nth-child(3){left:67%;width:6px;height:6px;animation-delay:1.7s;animation-duration:7s}.rewards-water-bubbles span:nth-child(4){left:88%;width:15px;height:15px;animation-delay:4.8s;animation-duration:11s}
+        @keyframes rewardsWaterDrift { 0%{background-position:52% 48%} 50%{background-position:59% 52%} 100%{background-position:66% 47%} }
+        @keyframes rewardsLightSweep { 0%,18%{opacity:0;transform:translateX(-46%) rotate(4deg)} 48%{opacity:1} 78%,100%{opacity:0;transform:translateX(46%) rotate(4deg)} }
+        @keyframes rewardsBubbleRise { 0%{opacity:0;transform:translateY(0) scale(.7)} 14%{opacity:.75} 85%{opacity:.45} 100%{opacity:0;transform:translate(10px,-245px) scale(1.14)} }
 
         @keyframes float {
             0%, 100% { transform: translateY(0); }
@@ -870,6 +940,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
             text-align: center;
         }
 
+        .history-trigger{position:absolute;z-index:4;top:18px;right:18px;display:grid;place-items:center;width:46px;height:46px;border:1px solid rgba(255,255,255,.55);border-radius:15px;background:rgba(255,255,255,.92);color:#0879b9;font-size:18px;box-shadow:0 10px 26px rgba(3,55,91,.2);cursor:pointer;transition:transform .2s ease,background .2s ease}.history-trigger:hover{transform:translateY(-2px);background:#fff}.history-trigger.has-history::after{content:'';position:absolute;top:7px;right:7px;width:8px;height:8px;border:2px solid #fff;border-radius:50%;background:#10b981}.history-modal{position:fixed;z-index:1100;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(8,29,45,.58);backdrop-filter:blur(5px);opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease}.history-modal.open{opacity:1;visibility:visible}.history-dialog{width:min(100%,520px);max-height:min(82vh,680px);overflow:auto;border:1px solid rgba(255,255,255,.75);border-radius:22px;background:#fff;box-shadow:0 28px 70px rgba(4,34,53,.3);transform:translateY(12px) scale(.98);transition:transform .22s ease}.history-modal.open .history-dialog{transform:none}.history-dialog-head{position:sticky;z-index:2;top:0;display:flex;align-items:center;justify-content:space-between;gap:15px;padding:19px 20px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.96);backdrop-filter:blur(10px)}.history-dialog-title{display:flex;align-items:center;gap:10px}.history-dialog-title i{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:var(--accent-soft);color:var(--accent)}.history-dialog-title h3{margin:0;color:var(--ink);font-size:17px}.history-dialog-title p{margin:2px 0 0;color:var(--muted);font-size:11px}.history-close{display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:11px;background:#eef4f6;color:var(--muted);cursor:pointer}.history-dialog-body{padding:18px}.history-dialog .history-list{gap:10px}.history-dialog .history-empty{padding:30px 12px}@media(max-width:480px){.history-trigger{top:12px;right:12px;width:42px;height:42px}.history-dialog{border-radius:19px}.history-dialog-body{padding:13px}}
+
+        .history-trigger.has-approved::after{content:'';position:absolute;top:7px;right:7px;width:10px;height:10px;border:2px solid #fff;border-radius:50%;background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.2)}.reward-ready-notice{margin-bottom:14px;padding:12px 13px;border:1px solid #fecaca;border-radius:12px;background:#fff1f2;color:#9f1239;font-size:12px;line-height:1.5}.reward-ready-notice strong{display:block;margin-bottom:3px;color:#be123c}.history-status-ready,.history-status-approved{display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:4px 8px;border-radius:99px;font-size:9px;font-weight:800;text-transform:uppercase}.history-status-ready{background:#e8faf4;color:#087961}.history-status-approved{background:#e8f2ff;color:#1769aa}
+
         .field-label {
             font-size: 13px;
             font-weight: 700;
@@ -1179,15 +1253,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
                 padding: 16px 0;
             }
         }
+
+        /* Full-screen rewards layout without the decorative outer background/card. */
+        body {
+            width: 100%;
+            min-height: 100dvh;
+            padding: 0 !important;
+            background: #ffffff;
+        }
+        .page-shell {
+            width: 100%;
+            max-width: none;
+            min-height: 100dvh;
+            margin: 0;
+            padding: 0 !important;
+        }
+        .dashboard-card {
+            width: 100%;
+            min-height: 100dvh;
+            margin: 0;
+            padding: clamp(18px, 3vw, 36px);
+            border: 0;
+            border-radius: 0;
+            background: #ffffff;
+            box-shadow: none;
+        }
+        @media (max-width: 480px) {
+            .dashboard-card { padding: 12px; }
+            .rewards-hero { margin: 0 0 20px; }
+        }
     </style>
+    <script src="../js/ui-protection.js" defer></script>
 </head>
 <body>
     <div class="page-shell">
-        <div class="top-bar">
-            <div class="brand"><img src="../imagess/logosystem.png" alt="HydroMIS Logo" style="width: 24px; height: 24px; object-fit: contain; margin-right: 6px;"> HydroMIS</div>
-            </a>
-        </div>
-
         <?php if (!$selected_user): ?>
             <div class="dashboard-card login-panel">
                 <div class="title-row">
@@ -1218,13 +1317,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
 
             <div class="dashboard-card">
                 <section class="rewards-hero" aria-labelledby="rewards-title">
+                    <button type="button" class="history-trigger <?php echo $has_approved_reward ? 'has-approved' : (!empty($redemption_history) ? 'has-history' : ''); ?>" id="historyTrigger" aria-label="View recent redemptions" title="Recent redemptions"><i class="fas fa-clock-rotate-left"></i></button>
+                    <div class="rewards-water-bubbles" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
                     <div class="rewards-hero-copy">
                         <p class="rewards-kicker"><i class="fas fa-droplet"></i> HydroMIS loyalty</p>
                         <h1 id="rewards-title">Your rewards, refreshed.</h1>
                         <p class="subtitle">Turn every refill into a little more value. Choose a perk when you are ready.</p>
                         <div class="hero-points"><i class="fas fa-sparkles"></i> <?php echo $available_points; ?> points available</div>
+                        <?php if ($loyalty_reset_at): ?><p style="position:relative;z-index:2;margin:8px 0 0;color:rgba(235,247,255,.78);font-size:11px;"><i class="fas fa-calendar-rotate"></i> Points reset on <?php echo htmlspecialchars(date('M d, Y', strtotime($loyalty_reset_at))); ?></p><?php endif; ?>
                     </div>
-                    <img class="hero-water-image" src="../imagess/water5.webp" alt="Purified water gallon">
                 </section>
 
 
@@ -1245,11 +1346,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
                 <div class="rewards-grid">
                     <?php foreach ($reward_catalog as $reward): ?>
                         <?php $is_unlocked = $available_points >= $reward['points']; ?>
+                        <?php $is_enabled = !empty($reward_enabled[$reward['code']]); ?>
                         <?php
                             $reward_icons = [
                                 'free_1_gallon' => 'fa-droplet',
                                 'voucher_20' => 'fa-ticket',
+                                'delivery_discount' => 'fa-truck-fast',
                                 'bundle_fast_lane' => 'fa-bolt',
+                                'free_delivery' => 'fa-truck',
                                 'bundle_2_gallons' => 'fa-gem'
                             ];
                             $reward_icon = $reward_icons[$reward['code']] ?? 'fa-gift';
@@ -1265,9 +1369,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
                                     <input type="hidden" name="redeem_submit" value="1">
                                     <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user_id); ?>">
                                     <input type="hidden" name="reward_code" value="<?php echo htmlspecialchars($reward['code']); ?>">
-                                    <button type="submit" class="convert-pill-btn" <?php echo $is_unlocked ? '' : 'disabled'; ?>>
-                                        <i class="fas <?php echo $is_unlocked ? 'fa-gift' : 'fa-lock'; ?>"></i>
-                                        <?php echo $is_unlocked ? 'Redeem for ' : 'Need '; ?><?php echo intval($reward['points']); ?> pts
+                                    <button type="submit" class="convert-pill-btn" <?php echo ($is_unlocked && $is_enabled) ? '' : 'disabled'; ?>>
+                                        <i class="fas <?php echo !$is_enabled ? 'fa-pause' : ($is_unlocked ? 'fa-gift' : 'fa-lock'); ?>"></i>
+                                        <?php if (!$is_enabled): ?>Temporarily unavailable<?php else: ?><?php echo $is_unlocked ? 'Redeem for ' : 'Need '; ?><?php echo intval($reward['points']); ?> pts<?php endif; ?>
                                     </button>
                                 </form>
                             </div>
@@ -1287,8 +1391,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
                     </div>
                 <?php endif; ?>
 
-                <div class="history-block">
-                    <h5 class="history-head"><i class="fas fa-history"></i> Last 5 Conversions</h5>
+                <div class="history-modal" id="historyModal" aria-hidden="true">
+                  <div class="history-dialog" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle">
+                    <div class="history-dialog-head">
+                      <div class="history-dialog-title"><i class="fas fa-clock-rotate-left"></i><div><h3 id="historyModalTitle">Recent redemptions</h3><p>Your last five points conversions</p></div></div>
+                      <button type="button" class="history-close" id="historyClose" aria-label="Close recent redemptions"><i class="fas fa-xmark"></i></button>
+                    </div>
+                    <div class="history-dialog-body">
+                    <?php if ($has_approved_reward): ?>
+                        <div class="reward-ready-notice"><strong><i class="fas fa-circle-exclamation"></i> New reward approval</strong><?php echo $has_approved_free_delivery ? 'Your Free Delivery reward is active and will be applied automatically to your next delivery order.' : 'Your reward is approved. Please come to the HydroMIS water refilling station and show your redemption ID to claim it.'; ?></div>
+                    <?php endif; ?>
                     <?php if (!empty($redemption_history)): ?>
                         <ul class="history-list">
                             <?php foreach ($redemption_history as $history_item): ?>
@@ -1304,8 +1416,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
                                     <div class="history-main">
                                         <strong><?php echo htmlspecialchars($history_reward); ?></strong>
                                         <div class="history-meta">
-                                            <?php echo htmlspecialchars($history_item['transaction_id'] ?? '-'); ?> | <?php echo htmlspecialchars($history_time); ?>
+                                            <span title="<?php echo htmlspecialchars($history_item['transaction_id'] ?? '-'); ?>"><?php echo htmlspecialchars(compact_reward_id((string)($history_item['transaction_id'] ?? '-'))); ?></span> | <?php echo htmlspecialchars($history_time); ?>
                                         </div>
+                                        <?php if (($history_item['claim_status'] ?? '') === 'approved'): ?><span class="history-status-approved"><i class="fas <?php echo ($history_item['reward_code'] ?? '') === 'free_delivery' ? 'fa-truck-fast' : 'fa-store'; ?>"></i> <?php echo ($history_item['reward_code'] ?? '') === 'free_delivery' ? 'Active — next delivery is free' : 'Approved — ready to claim'; ?></span><?php elseif (($history_item['claim_status'] ?? '') === 'claimed'): ?><span class="history-status-ready"><i class="fas fa-circle-check"></i> Already claimed</span><?php endif; ?>
                                     </div>
                                     <div class="history-points"><?php echo htmlspecialchars($history_points_label); ?></div>
                                 </li>
@@ -1314,6 +1427,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
                     <?php else: ?>
                         <p class="history-empty">No conversions yet. Convert your first reward to see history here.</p>
                     <?php endif; ?>
+                    </div>
+                  </div>
                 </div>
             </div>
         <?php endif; ?>
@@ -1340,6 +1455,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
         const cancelBtn = document.getElementById('cancelBtn');
         const confirmBtn = document.getElementById('confirmBtn');
         const confirmMessage = document.getElementById('confirmMessage');
+        const historyTrigger = document.getElementById('historyTrigger');
+        const historyModal = document.getElementById('historyModal');
+        const historyClose = document.getElementById('historyClose');
+
+        // Keep the fixed overlay outside the animated/backdrop-filtered card.
+        // Mobile browsers otherwise position it against the full card height.
+        if (historyModal && historyModal.parentElement !== document.body) {
+            document.body.appendChild(historyModal);
+        }
+
+        function setHistoryModal(open) {
+            if (!historyModal) return;
+            historyModal.classList.toggle('open', open);
+            historyModal.setAttribute('aria-hidden', open ? 'false' : 'true');
+            document.body.style.overflow = open ? 'hidden' : '';
+            if (open) historyClose?.focus();
+            else historyTrigger?.focus();
+        }
+
+        historyTrigger?.addEventListener('click', () => {
+            setHistoryModal(true);
+            if (historyTrigger.classList.contains('has-approved')) {
+                const seenData = new FormData();
+                seenData.append('acknowledge_reward_updates', '1');
+                seenData.append('user_id', <?php echo json_encode((string)$user_id); ?>);
+                fetch('rewards.php', {method: 'POST', body: seenData, credentials: 'same-origin'})
+                    .then(response => response.ok ? response.json() : Promise.reject())
+                    .then(() => historyTrigger.classList.remove('has-approved'))
+                    .catch(() => {});
+            }
+        });
+        historyClose?.addEventListener('click', () => setHistoryModal(false));
+        historyModal?.addEventListener('click', event => {
+            if (event.target === historyModal) setHistoryModal(false);
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && historyModal?.classList.contains('open')) setHistoryModal(false);
+        });
 
         function showConfirmModal(rewardTitle, requiredPoints) {
             confirmMessage.textContent = 'Convert ' + requiredPoints + ' points for "' + rewardTitle + '"?';
@@ -1412,5 +1565,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
             });
         });
     </script>
+<?php if (!empty($user_id)): ?><script src="../js/user-notifications.js"></script><?php endif; ?>
 </body>
 </html>

@@ -1,3 +1,19 @@
+@import url("animations.css");
+
+/* Keep the administrator role label consistent on legacy admin layouts. */
+.admin-card .admin-role { font-size: 0 !important; }
+.admin-card .admin-role::after { content: "Administrator"; font-size: 11px; }
+
+/* The system mark is transparent; never place it inside a colored tile. */
+.sidebar .brand-icon,
+.brand-logo .brand-icon {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    overflow: visible !important;
+}
+
 /* Desktop admin menu: reveal the navigation from the left screen edge. */
 @media (min-width: 901px) {
     .shell {

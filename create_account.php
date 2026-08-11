@@ -8,22 +8,21 @@ $new_user_id = '';
 
 // Handle Account Creation
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
-    $full_name = sanitize($_POST['full_name']);
+    $full_name = trim(preg_replace('/\s+/u', ' ', sanitize($_POST['full_name'] ?? '')));
     $barangay = sanitize($_POST['barangay']);
-    $street_number = sanitize($_POST['street_number']);
+    $street_number = trim((string)($_POST['street_number'] ?? ''));
     $address = $street_number . ', ' . $barangay; // Combine for storage
     $contact_input = trim((string)($_POST['contact_number'] ?? ''));
-    $contact_number = preg_replace('/\D+/', '', $contact_input);
-    if (str_starts_with($contact_number, '63') && strlen($contact_number) === 12) {
-        $contact_number = '0' . substr($contact_number, 2);
-    } elseif (strlen($contact_number) === 10 && str_starts_with($contact_number, '9')) {
-        $contact_number = '0' . $contact_number;
-    }
+    $contact_number = $contact_input;
     
     if (empty($full_name) || empty($barangay) || empty($street_number) || empty($contact_number)) {
         $error = 'All fields are required!';
+    } elseif (!preg_match('/^[\p{L} ]+$/u', $full_name)) {
+        $error = 'Full name can contain letters and spaces only.';
+    } elseif (!preg_match('/^[\p{L}\d ]+$/u', $street_number)) {
+        $error = 'Street or purok can contain letters, numbers, and spaces only.';
     } elseif (!preg_match('/^09\d{9}$/', $contact_number)) {
-        $error = 'Enter a valid Philippine mobile number, such as 09123456789.';
+        $error = 'Contact number must contain exactly 11 numbers and begin with 09.';
     } else {
         $contact_lookup = sensitive_lookup($contact_number);
         $duplicateMobile = $conn->prepare("SELECT user_id FROM users WHERE contact_lookup = ? LIMIT 1");
@@ -351,7 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
             -webkit-backdrop-filter:blur(18px);
             animation:topbarIn .65s var(--register-ease) both;
         }
-        .brand-icon { box-shadow:0 10px 24px rgba(8,128,180,.22); }
+        .brand-icon { background:transparent;box-shadow:none; }
         .create-wrap { position:relative;z-index:1;max-width:1040px;margin:42px auto 60px; }
         .container-main {
             max-width:960px;
@@ -370,12 +369,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
             padding:52px 42px;
             text-align:left;
             overflow:hidden;
-            background:linear-gradient(145deg,#092f52 0%,#075f78 58%,#0795a4 100%);
+            background-color:#052b4a;
+            background-image:url('imagess/registration-gallons-bg-v3.png');
+            background-repeat:no-repeat;
+            background-position:48% 50%;
+            background-size:cover;
+            isolation:isolate;
+            animation:waterPanelDrift 16s ease-in-out infinite alternate;
+            transition:filter .8s ease;
         }
         .header::before {
-            content:'';position:absolute;width:320px;height:320px;right:-160px;top:-120px;
-            border:1px solid rgba(255,255,255,.15);border-radius:50%;box-shadow:0 0 0 55px rgba(255,255,255,.035),0 0 0 110px rgba(255,255,255,.025);
+            content:'';position:absolute;inset:0;z-index:-1;
+            background:linear-gradient(125deg,rgba(2,23,46,.8) 0%,rgba(2,43,72,.64) 48%,rgba(3,87,107,.38) 100%);
+            transition:background .8s ease;
         }
+        .header::after { content:'';position:absolute;inset:-35%;z-index:-1;pointer-events:none;background:linear-gradient(112deg,transparent 38%,rgba(156,238,255,.14) 49%,transparent 60%);transform:translateX(-45%) rotate(4deg);animation:waterLightSweep 8s ease-in-out infinite; }
+        .header:hover { background-size:cover;filter:saturate(1.08) brightness(1.03); }
+        .header:hover::before { background:linear-gradient(125deg,rgba(2,23,46,.74) 0%,rgba(2,43,72,.58) 48%,rgba(3,87,107,.3) 100%); }
+        .water-bubbles{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+        .water-bubbles span{position:absolute;bottom:-24px;width:10px;height:10px;border:1px solid rgba(194,246,255,.72);border-radius:50%;background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.8),rgba(105,220,245,.12) 38%,transparent 66%);box-shadow:inset -2px -2px 4px rgba(31,152,205,.28),0 0 7px rgba(91,222,255,.28);opacity:0;animation:bubbleRise 8s ease-in infinite}
+        .water-bubbles span:nth-child(1){left:8%;width:7px;height:7px;animation-delay:.4s;animation-duration:7.2s}
+        .water-bubbles span:nth-child(2){left:22%;width:13px;height:13px;animation-delay:3.1s;animation-duration:9.5s}
+        .water-bubbles span:nth-child(3){left:48%;width:6px;height:6px;animation-delay:1.7s;animation-duration:6.8s}
+        .water-bubbles span:nth-child(4){left:68%;width:16px;height:16px;animation-delay:4.6s;animation-duration:10.2s}
+        .water-bubbles span:nth-child(5){left:83%;width:9px;height:9px;animation-delay:2.4s;animation-duration:8.4s}
+        .water-bubbles span:nth-child(6){left:92%;width:5px;height:5px;animation-delay:5.5s;animation-duration:7.6s}
         .header-badge {
             position:relative;display:inline-flex;align-items:center;gap:8px;align-self:flex-start;
             margin-bottom:26px;padding:7px 12px;border:1px solid rgba(255,255,255,.2);border-radius:999px;
@@ -386,6 +404,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
         .header p { position:relative;font-size:18px;line-height:1.55;margin:0;opacity:.82; }
         .header-note { position:relative;display:flex;align-items:center;gap:9px;margin-top:28px;color:rgba(255,255,255,.72);font-size:13px; }
         .header-note i { color:#66eddf; }
+        @keyframes waterPanelDrift { 0%{background-position:42% 48%} 50%{background-position:50% 52%} 100%{background-position:58% 47%} }
+        @keyframes waterLightSweep { 0%,18%{opacity:0;transform:translateX(-48%) rotate(4deg)} 48%{opacity:1} 76%,100%{opacity:0;transform:translateX(48%) rotate(4deg)} }
+        @keyframes bubbleRise{0%{opacity:0;transform:translate3d(0,0,0) scale(.7)}12%{opacity:.8}55%{transform:translate3d(12px,-145px,0) scale(1)}88%{opacity:.48}100%{opacity:0;transform:translate3d(-7px,-300px,0) scale(1.16)}}
         .content { padding:42px 44px; }
         .form-intro { margin-bottom:26px; }
         .form-intro h2 { color:var(--register-ink);font-size:24px;font-weight:800;letter-spacing:-.4px;margin-bottom:7px; }
@@ -423,39 +444,79 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
         @keyframes shakeIn { 0%{opacity:0;transform:translateX(-8px)}45%{transform:translateX(5px)}100%{opacity:1;transform:none} }
         a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible { outline:3px solid rgba(8,184,213,.28);outline-offset:2px; }
         @media(max-width:800px){
-            .create-wrap{margin:24px auto 42px;padding:0 16px}.container-main{display:block;max-width:620px}.header{min-height:220px;padding:38px 32px;text-align:center;align-items:center}.header-badge{align-self:center;margin-bottom:18px}.header h1{font-size:34px}.header-note{margin-top:18px}.content{padding:32px}
+            .create-wrap{width:100%;max-width:none;min-height:100dvh;margin:0;padding:0}.container-main{display:block;width:100%;max-width:none;min-height:100dvh;border-radius:0;box-shadow:none}.header{min-height:280px;padding:38px 32px;text-align:center;align-items:center;background-size:cover!important;background-position:64% 52%}.header-badge{align-self:center;margin-bottom:18px}.header h1{font-size:34px}.header-note{margin-top:18px}.content{padding:32px}
         }
         @media(max-width:480px){
-            .create-wrap{margin:14px auto 28px;padding:0 12px}.container-main{border-radius:22px}.header{min-height:180px;padding:28px 20px}.header h1{font-size:29px;margin-bottom:9px}.header p{font-size:15px}.header-note{font-size:11px;margin-top:14px}.content{padding:26px 18px}.form-intro h2{font-size:21px}.form-control,select.form-control{height:51px}.btn-submit{min-height:52px}
+            .create-wrap{margin:0;padding:0}.container-main{border-radius:0}.header{min-height:260px;padding:28px 20px;background-size:cover!important;background-position:66% 50%}.header h1{font-size:29px;margin-bottom:9px}.header p{font-size:15px}.header-note{font-size:11px;margin-top:14px}.content{padding:26px 18px}.form-intro h2{font-size:21px}.form-control,select.form-control{height:51px}.btn-submit{min-height:52px}
             .digital-pass{padding:13px;border-radius:18px}.qr-frame{padding:10px}.account-detail{grid-template-columns:100px minmax(0,1fr)}.success-actions-grid{grid-template-columns:1fr}.success-actions-grid .home-action{grid-column:1}.success-message{font-size:20px}
         }
         /* Compact QR pass, sized like a printable customer ID. */
         .digital-pass{max-width:350px}
         .pass-customer-name{position:relative;margin:4px auto 14px;color:#142b40;font-size:20px;font-weight:800;letter-spacing:-.025em;line-height:1.25;overflow-wrap:anywhere}
+        .pass-login-guide{position:relative;margin:-5px auto 12px;color:#678095;font-size:10px;line-height:1.35}.pass-login-guide strong{display:block;margin-top:2px;color:#0879a8;font-family:monospace;font-size:14px;letter-spacing:.08em}
+        .pass-logo{position:relative;isolation:isolate;display:grid;place-items:center;width:38px;height:38px;border:0;border-radius:50%;background:transparent;box-shadow:none;animation:passLogoFloat 4.4s ease-in-out infinite}
+        .pass-logo::after{content:'';position:absolute;inset:-2px;z-index:-1;border-radius:50%;padding:1.5px;background:conic-gradient(from 25deg,transparent 0 22%,#35d9eb 34%,#2389ec 48%,transparent 59% 80%,#4ae5cc 91%,transparent);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;filter:drop-shadow(0 0 4px rgba(31,177,224,.55));animation:passLogoOrbit 5.4s linear infinite}
+        .pass-logo img{display:block;width:34px!important;height:34px!important;object-fit:contain;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;outline:0!important;animation:none!important;filter:drop-shadow(0 5px 7px rgba(6,78,139,.22));transition:transform .4s ease,filter .4s ease}
+        .pass-brand:hover .pass-logo img{transform:rotate(4deg) scale(1.07);filter:drop-shadow(0 7px 9px rgba(6,78,139,.32))}
+        @keyframes passLogoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+        @keyframes passLogoOrbit{to{transform:rotate(360deg)}}
         button.qr-download{font-family:inherit;cursor:pointer}
         .qr-frame{width:min(100%,230px);padding:12px;border-radius:16px}
         @media(max-width:480px){.pass-customer-name{font-size:18px;margin-bottom:12px}.qr-frame{width:min(100%,205px);padding:9px}}
+        /* Full-viewport registration success screen. */
+        body.success-view{width:100%;height:100dvh;min-height:0;overflow:hidden;background:linear-gradient(155deg,#f8fcfd 0%,#fff 48%,#edf8f7 100%)}
+        body.success-view .create-wrap{width:100%;max-width:none;min-height:100dvh;margin:0;padding:0}
+        body.success-view .container-main{display:block;width:100%;max-width:none;height:100dvh;min-height:0;margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;overflow:hidden;animation:none}
+        body.success-view .content{display:flex;justify-content:center;width:100%;height:100dvh;min-height:0;padding:clamp(16px,3vh,32px) clamp(18px,5vw,64px);overflow:hidden}
+        body.success-view .success-box{width:min(100%,680px);margin:auto;padding:0}
+        body.success-view .success-icon{font-size:clamp(50px,7vw,70px);margin-bottom:16px}
+        body.success-view .success-kicker{margin-bottom:12px;padding:7px 13px;font-size:10px}
+        body.success-view .success-message{margin-bottom:18px;font-size:clamp(23px,4vw,32px)}
+        body.success-view .success-subtitle{max-width:540px;margin:0 auto 22px;font-size:clamp(13px,2vw,15px)}
+        body.success-view .digital-pass{width:min(100%,440px);max-width:none;margin:0 auto 18px;padding:clamp(15px,3vw,22px);border-radius:24px}
+        body.success-view .pass-top{margin-bottom:12px}
+        body.success-view .pass-customer-name{margin:2px auto 12px;font-size:clamp(18px,3vw,22px)}
+        body.success-view .qr-frame{width:min(100%,280px);padding:11px}
+        body.success-view .pass-hint{margin-top:10px}
+        body.success-view .qr-download{min-height:40px;margin-top:10px;padding:9px 14px}
+        body.success-view .success-actions-grid{width:min(100%,440px);margin:0 auto}
+        @media(max-height:850px){
+            body.success-view .success-icon{font-size:44px;margin-bottom:9px}
+            body.success-view .success-kicker{margin-bottom:8px;padding:5px 11px}
+            body.success-view .success-message{margin-bottom:9px;font-size:22px}
+            body.success-view .success-subtitle{margin-bottom:12px;font-size:12px;line-height:1.4}
+            body.success-view .digital-pass{margin-bottom:10px;padding:12px}
+            body.success-view .pass-top{margin-bottom:7px}
+            body.success-view .pass-logo{width:32px;height:32px}
+            body.success-view .pass-logo img{width:29px!important;height:29px!important}
+            body.success-view .pass-customer-name{margin:0 auto 7px;font-size:17px}
+            body.success-view .pass-login-guide{margin:-2px auto 6px;font-size:9px}.pass-login-guide strong{font-size:12px}
+            body.success-view .qr-frame{width:min(100%,24vh,205px);padding:7px}
+            body.success-view .pass-hint{margin-top:6px;font-size:9px}
+            body.success-view .qr-download{min-height:34px;margin-top:6px;padding:6px 11px}
+            body.success-view .success-actions-grid .btn-action{min-height:40px}
+        }
+        @media(max-width:480px){
+            body.success-view .content{padding:14px 14px}
+            body.success-view .digital-pass{border-radius:19px}
+            body.success-view .qr-frame{width:min(100%,24vh,205px)}
+        }
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
     </style>
+    <script src="js/ui-protection.js" defer></script>
 </head>
-<body class="public-ui">
-    <header class="topbar">
-        <div class="topbar-inner">
-            <a class="brand" href="home.php" aria-label="HydroMIS Home">
-                <span class="brand-icon"><img src="imagess/logosystem.png" alt="HydroMIS Logo" style="width: 100%; height: 100%; object-fit: contain;"></span>
-                <h1 class="brand-wordmark">HydroMIS</h1>
-            </a>
-        </div>
-    </header>
-
+<body class="public-ui<?php echo $success ? ' success-view' : ''; ?>">
     <main class="create-wrap">
     <div class="container-main">
+        <?php if (!$success): ?>
         <div class="header">
+            <div class="water-bubbles" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
             <div class="header-badge"><i class="fas fa-droplet"></i> New customer</div>
             <h1>HydroMIS</h1>
             <p>Simple registration for faster water delivery and order tracking.</p>
             <div class="header-note"><i class="fas fa-shield-halved"></i> Your information stays private and secure.</div>
         </div>
+        <?php endif; ?>
 
         <div class="content">
             <?php if ($success): ?>
@@ -469,40 +530,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                     <p class="success-subtitle">Your personal HydroMIS access pass is ready. Save the QR code and present it whenever you need fast account access.</p>
 
                     <div class="digital-pass">
-                        <div class="pass-top"><div class="pass-brand"><i class="fas fa-droplet"></i> HydroMIS</div><span class="pass-type">Customer Access Pass</span></div>
+                        <div class="pass-top"><div class="pass-brand"><span class="pass-logo"><img src="imagess/hydromis-logo-v2.png?v=20260802" alt="HydroMIS logo"></span> HydroMIS</div><span class="pass-type">Customer Access Pass</span></div>
                         <div class="pass-customer-name"><?php echo htmlspecialchars($_POST['full_name']); ?></div>
+                        <p class="pass-login-guide">Use this mobile number to log in<strong><?php echo htmlspecialchars($contact_number); ?></strong></p>
                         <div class="qr-frame">
                             <img id="customerQrImage" src="qrcodes/<?php echo rawurlencode($new_user_id); ?>.png" alt="HydroMIS customer QR code for <?php echo htmlspecialchars($_POST['full_name']); ?>">
                         </div>
                         <p class="pass-hint"><i class="fas fa-expand"></i> Keep the full code visible when scanning</p>
                         <button type="button" class="qr-download" id="downloadAccessPass"
                             data-customer-name="<?php echo htmlspecialchars($_POST['full_name'], ENT_QUOTES); ?>"
+                            data-contact-number="<?php echo htmlspecialchars($contact_number, ENT_QUOTES); ?>"
                             data-user-id="<?php echo htmlspecialchars($new_user_id, ENT_QUOTES); ?>">
                             <i class="fas fa-download"></i> Download access pass
                         </button>
                     </div>
 
-                    <div class="account-details">
-                        <div class="account-detail">
-                            <span class="account-detail-label">User ID</span>
-                            <span class="account-detail-value"><?php echo htmlspecialchars($new_user_id); ?></span>
-                        </div>
-                        <div class="account-detail">
-                            <span class="account-detail-label">Account holder</span>
-                            <span class="account-detail-value"><?php echo htmlspecialchars($_POST['full_name']); ?></span>
-                        </div>
-                        <div class="account-detail">
-                            <span class="account-detail-label">Mobile number</span>
-                            <span class="account-detail-value"><?php echo htmlspecialchars($contact_number); ?></span>
-                        </div>
-                        <div class="account-detail">
-                            <span class="account-detail-label">Account status</span>
-                            <span class="account-detail-value"><span class="approval-pill"><i class="fas fa-circle"></i> Pending approval</span></span>
-                        </div>
-                    </div>
-
                     <div class="success-actions-grid">
-                        <a href="home.php" class="btn-action home-action"><i class="fas fa-home"></i> Back to home</a>
+                        <a href="user/scan_qr.php" class="btn-action home-action"><i class="fas fa-right-to-bracket"></i> User Login</a>
                     </div>
                 </div>
             <?php else: ?>
@@ -522,7 +566,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                     
                     <div class="form-group">
                         <label for="full_name"><i class="fas fa-user mr-2"></i>Full Name *</label>
-                        <input type="text" class="form-control" name="full_name" id="full_name" placeholder="e.g. Juan Dela Cruz" autocomplete="name" required value="<?php echo isset($_POST['full_name']) ? htmlspecialchars($_POST['full_name']) : ''; ?>">
+                        <input type="text" class="form-control" name="full_name" id="full_name" placeholder="e.g. Juan Dela Cruz" autocomplete="name" pattern="[A-Za-zÀ-ÖØ-öø-ÿ ]+" title="Use letters and spaces only." maxlength="100" required value="<?php echo isset($_POST['full_name']) ? htmlspecialchars($_POST['full_name']) : ''; ?>">
                     </div>
 
                     <div class="form-group">
@@ -568,12 +612,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
 
                     <div class="form-group">
                         <label for="street_number"><i class="fas fa-home mr-2"></i>Street Number or Purok *</label>
-                        <input type="text" class="form-control" name="street_number" id="street_number" placeholder="e.g. Purok 2 or 24 Rizal Street" autocomplete="street-address" required value="<?php echo isset($_POST['street_number']) ? htmlspecialchars($_POST['street_number']) : ''; ?>">
+                        <input type="text" class="form-control" name="street_number" id="street_number" placeholder="e.g. Purok 2 or 24 Rizal Street" autocomplete="address-line1" pattern="[A-Za-zÀ-ÖØ-öø-ÿ0-9 ]+" title="Use letters, numbers, and spaces only." maxlength="100" required value="<?php echo isset($_POST['street_number']) ? htmlspecialchars($_POST['street_number']) : ''; ?>">
                     </div>
 
                     <div class="form-group">
                         <label for="contact_number"><i class="fas fa-phone mr-2"></i>Contact Number *</label>
-                        <input type="tel" class="form-control" name="contact_number" id="contact_number" placeholder="e.g. 0912 345 6789" autocomplete="tel" inputmode="tel" required value="<?php echo isset($_POST['contact_number']) ? htmlspecialchars($_POST['contact_number']) : ''; ?>">
+                        <input type="tel" class="form-control" name="contact_number" id="contact_number" placeholder="e.g. 09123456789" autocomplete="tel" inputmode="numeric" pattern="09[0-9]{9}" minlength="11" maxlength="11" title="Enter exactly 11 numbers beginning with 09." required value="<?php echo isset($_POST['contact_number']) ? htmlspecialchars($_POST['contact_number']) : ''; ?>">
                         <small class="field-help">We’ll use this number for order and delivery updates.</small>
                     </div>
 
@@ -707,6 +751,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
         }
 
         const registrationForm = document.getElementById('registrationForm');
+        const fullNameInput = document.getElementById('full_name');
+        const streetNumberInput = document.getElementById('street_number');
+        const contactNumberInput = document.getElementById('contact_number');
+
+        if (fullNameInput) {
+            fullNameInput.addEventListener('input', function() {
+                this.value = this.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ ]/g, '').replace(/\s{2,}/g, ' ');
+            });
+        }
+        if (streetNumberInput) {
+            streetNumberInput.addEventListener('input', function() {
+                this.value = this.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ0-9 ]/g, '').replace(/\s{2,}/g, ' ');
+            });
+        }
+        if (contactNumberInput) {
+            contactNumberInput.addEventListener('input', function() {
+                this.value = this.value.replace(/\D/g, '').slice(0, 11);
+            });
+        }
+
         if (registrationForm) {
             registrationForm.addEventListener('submit', function() {
                 const button = this.querySelector('.btn-submit');
@@ -717,16 +781,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
 
         const passDownloadButton = document.getElementById('downloadAccessPass');
         if (passDownloadButton) {
-            passDownloadButton.addEventListener('click', function() {
+            passDownloadButton.addEventListener('click', async function() {
                 const qrImage = document.getElementById('customerQrImage');
                 if (!qrImage || !qrImage.complete || !qrImage.naturalWidth) {
                     alert('The QR code is still loading. Please try again.');
                     return;
                 }
+                const logoImage = document.querySelector('.pass-logo img');
+                if (!logoImage) {
+                    alert('The HydroMIS logo is unavailable. Please refresh and try again.');
+                    return;
+                }
+                if (!logoImage.complete || !logoImage.naturalWidth) {
+                    try { await logoImage.decode(); } catch (error) {
+                        alert('The HydroMIS logo is still loading. Please try again.');
+                        return;
+                    }
+                }
 
                 const canvas = document.createElement('canvas');
                 canvas.width = 860;
-                canvas.height = 900;
+                canvas.height = 980;
                 const ctx = canvas.getContext('2d');
                 const roundRect = (x, y, width, height, radius) => {
                     const r = Math.min(radius, width / 2, height / 2);
@@ -747,18 +822,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                 ctx.arc(858, -8, 188, 0, Math.PI * 2);
                 ctx.fill();
 
-                // HydroMIS droplet brand tile.
-                roundRect(28, 45, 76, 76, 20);
-                ctx.fillStyle = '#0799ca';
-                ctx.fill();
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.moveTo(66, 65);
-                ctx.bezierCurveTo(55, 82, 52, 88, 52, 96);
-                ctx.bezierCurveTo(52, 105, 58, 111, 66, 111);
-                ctx.bezierCurveTo(74, 111, 80, 105, 80, 96);
-                ctx.bezierCurveTo(80, 88, 77, 82, 66, 65);
-                ctx.fill();
+                // Latest transparent HydroMIS logo—no square brand tile.
+                ctx.save();
+                ctx.shadowColor = 'rgba(13, 113, 189, .24)';
+                ctx.shadowBlur = 12;
+                ctx.shadowOffsetY = 5;
+                ctx.drawImage(logoImage, 26, 36, 92, 92);
+                ctx.restore();
                 ctx.fillStyle = '#15344f';
                 ctx.font = '700 31px Arial, sans-serif';
                 ctx.textAlign = 'left';
@@ -773,34 +843,41 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                 ctx.font = '700 43px Arial, sans-serif';
                 ctx.textAlign = 'center';
                 const customerName = this.dataset.customerName || 'HydroMIS Customer';
-                ctx.fillText(customerName, 430, 195, 740);
+                ctx.fillText(customerName, 430, 178, 740);
+
+                ctx.fillStyle = '#6b8294';
+                ctx.font = '500 20px Arial, sans-serif';
+                ctx.fillText('Use this mobile number to log in', 430, 218);
+                ctx.fillStyle = '#0879a8';
+                ctx.font = '700 28px monospace';
+                ctx.fillText(this.dataset.contactNumber || '', 430, 254);
 
                 // Raised white QR panel.
                 ctx.save();
                 ctx.shadowColor = 'rgba(20, 50, 72, .14)';
                 ctx.shadowBlur = 30;
                 ctx.shadowOffsetY = 12;
-                roundRect(132, 245, 596, 596, 38);
+                roundRect(132, 305, 596, 596, 38);
                 ctx.fillStyle = '#ffffff';
                 ctx.fill();
                 ctx.restore();
 
                 // Keep image smoothing off so every QR module remains sharp.
                 ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(qrImage, 164, 277, 532, 532);
+                ctx.drawImage(qrImage, 164, 337, 532, 532);
 
                 // Cyan corner details from the reference card.
                 ctx.strokeStyle = '#08b6bd';
                 ctx.lineWidth = 5;
                 ctx.beginPath();
-                ctx.moveTo(153, 350); ctx.lineTo(153, 277);
-                ctx.quadraticCurveTo(153, 260, 170, 260);
-                ctx.lineTo(238, 260);
+                ctx.moveTo(153, 410); ctx.lineTo(153, 337);
+                ctx.quadraticCurveTo(153, 320, 170, 320);
+                ctx.lineTo(238, 320);
                 ctx.stroke();
                 ctx.beginPath();
-                ctx.moveTo(707, 736); ctx.lineTo(707, 804);
-                ctx.quadraticCurveTo(707, 824, 687, 824);
-                ctx.lineTo(618, 824);
+                ctx.moveTo(707, 796); ctx.lineTo(707, 864);
+                ctx.quadraticCurveTo(707, 884, 687, 884);
+                ctx.lineTo(618, 884);
                 ctx.stroke();
 
                 const link = document.createElement('a');

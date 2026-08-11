@@ -26,6 +26,10 @@ if (strtolower((string)($scanned_data['status'] ?? 'pending')) !== 'approved') {
     header('Location: scan_qr.php?approval_required=' . urlencode((string)($scanned_data['status'] ?? 'pending')));
     exit;
 }
+$has_free_delivery_reward = false;
+$safe_reward_user = $conn->real_escape_string((string)$user_id);
+$free_delivery_result = $conn->query("SELECT id FROM reward_claims WHERE user_id='$safe_reward_user' AND reward_code='free_delivery' AND claim_status='approved' LIMIT 1");
+$has_free_delivery_reward = $free_delivery_result && $free_delivery_result->num_rows > 0;
 
 $allowed_sizes = ['5gal-round', '2.5gal-slim', '5gal-slim'];
 $allowed_status = ['new', 'existing'];
@@ -59,13 +63,13 @@ $type_map = [
 
 $price_map = [
     '5gal-round' => ['new' => 20, 'pickup' => 20],
-    '2.5gal-slim' => ['new' => 30, 'pickup' => 20],
+    '2.5gal-slim' => ['new' => 35, 'pickup' => 15],
     '5gal-slim' => ['new' => 50, 'pickup' => 40]
 ];
 
 $pickup_base_map = [
     '5gal-round' => 20,
-    '2.5gal-slim' => 20,
+    '2.5gal-slim' => 15,
     '5gal-slim' => 40
 ];
 
@@ -507,24 +511,31 @@ $container_image_map = [
 
         /* Premium review and confirmation experience */
         :root{--review-blue:#1769d2;--review-aqua:#09b4c8;--review-ink:#10263a;--review-green:#0b9b80;--review-ease:cubic-bezier(.22,1,.36,1)}
-        body.public-ui{background:radial-gradient(circle at 10% 15%,rgba(9,180,200,.15),transparent 28%),radial-gradient(circle at 90% 85%,rgba(23,105,210,.13),transparent 30%),linear-gradient(145deg,#f0f9fd,#fbfdff 55%,#ecf6fb);color:var(--review-ink)}.navbar{position:relative;z-index:5;background:rgba(255,255,255,.8);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 8px 28px rgba(15,52,78,.06);animation:reviewNavIn .6s var(--review-ease) both}.navbar-brand img{width:36px;height:36px;padding:4px;border-radius:11px;background:linear-gradient(135deg,var(--review-blue),var(--review-aqua));box-shadow:0 8px 20px rgba(9,130,170,.2)}.review-wrap{max-width:760px;padding:40px 18px 70px}.sheet{border:1px solid rgba(255,255,255,.9);border-radius:27px;background:rgba(255,255,255,.94);box-shadow:0 30px 80px rgba(14,55,85,.15),0 4px 12px rgba(14,55,85,.05);animation:reviewCardIn .8s .08s var(--review-ease) both}.review-head{display:flex;align-items:center;justify-content:space-between;padding:22px 24px;border-bottom:1px solid #e8eff4}.review-head-main{display:flex;align-items:center;gap:12px}.review-head-icon{display:grid;place-items:center;width:43px;height:43px;border-radius:13px;background:linear-gradient(145deg,var(--review-blue),var(--review-aqua));color:#fff;box-shadow:0 10px 22px rgba(23,105,210,.2)}.review-head h2{margin:0 0 3px;font-size:19px;font-weight:800}.review-head p{margin:0;color:#71869a;font-size:11px}.review-step{padding:7px 10px;border:1px solid #d8e7ef;border-radius:999px;background:#f5f9fc;color:#5c768b;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.row-box{padding:20px 24px;border-color:#e8eff4}.item-thumb{width:70px;height:70px;padding:7px;object-fit:contain;border:1px solid #e0e9ef;border-radius:16px;background:radial-gradient(circle,#fff,#f0f5f8);mix-blend-mode:multiply}.item-title{color:var(--review-ink);font-size:20px}.item-subtitle{color:#7890a2;font-size:10px;letter-spacing:.08em}.qty-box{min-width:142px;height:54px;border:1px solid #d6e5ed;border-radius:14px;background:#f6fafc;box-shadow:inset 0 1px 2px rgba(16,38,58,.03)}.qty-btn{height:100%;color:var(--review-blue);font-size:22px;transition:background .2s ease,transform .15s ease}.qty-btn:hover{background:#eaf4ff}.qty-btn:active{transform:scale(.88)}.qty-value{font-size:22px;color:var(--review-ink)}.mode-row{gap:13px}.mode-btn{min-height:55px;border:1px solid #dce6ed;border-radius:14px;background:#f5f8fa;color:#71869a;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease}.mode-btn:hover{transform:translateY(-2px);background:#fff;border-color:#bad8e5}.mode-btn.active{border-color:var(--review-blue);background:linear-gradient(135deg,#1769d2,#168ec8);box-shadow:0 13px 26px rgba(23,105,210,.23);transform:none}.shop-card{margin:20px 24px;padding:22px;border:1px solid #e0e9ef;border-radius:18px;background:linear-gradient(145deg,#f9fcfe,#f1f7fa)}.shop-title{color:var(--review-ink);font-size:17px}.verified-station{display:inline-flex;align-items:center;gap:6px;margin-top:6px;color:#16866f;font-size:10px;font-weight:800}.verified-station i{color:#16a085}.meta-list{font-size:12px}.rating-stars{display:inline-flex;gap:3px;margin:0 5px;color:#f5a623}.rating-stars i{width:auto;margin:0}.more-info{color:var(--review-blue);font-size:11px}.divider{border-color:#dde8ee}.totals{gap:0}.total-line{display:flex;justify-content:space-between;align-items:center;padding:8px 0;color:#61788c;font-size:13px}.total-line strong{color:#29465d}.total-line.grand-total{margin-top:7px;padding-top:14px;border-top:1px dashed #cbdbe4;color:var(--review-ink);font-size:15px;font-weight:800}.total-line.grand-total strong{color:var(--review-green);font-size:21px}.actions{padding:4px 24px 24px}.continue-btn{position:relative;min-height:56px;overflow:hidden;border-radius:14px;background:linear-gradient(120deg,#0b967f,#09b4a2,#087e73);background-size:180% 180%;font-size:16px;font-weight:800;box-shadow:0 15px 32px rgba(8,145,125,.25);animation:reviewGradient 6s ease infinite;transition:transform .2s ease,box-shadow .2s ease}.continue-btn::after{content:'';position:absolute;inset:0;transform:translateX(-120%) skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transition:transform .7s var(--review-ease)}.continue-btn:hover::after{transform:translateX(120%) skewX(-20deg)}.continue-btn:hover{transform:translateY(-2px);box-shadow:0 19px 38px rgba(8,145,125,.32);background:linear-gradient(120deg,#0b967f,#09b4a2,#087e73)}.continue-btn.is-loading{pointer-events:none;opacity:.84}.back-link{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border-radius:9px;color:#577187;font-size:12px;transition:background .2s ease,transform .2s ease}.back-link:hover{background:#eff6fa;transform:translateX(-2px);text-decoration:none}
-        @keyframes reviewNavIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}@keyframes reviewCardIn{from{opacity:0;transform:translateY(26px) scale(.988)}to{opacity:1;transform:none}}@keyframes reviewGradient{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}
+        body.public-ui{background:radial-gradient(circle at 10% 15%,rgba(9,180,200,.15),transparent 28%),radial-gradient(circle at 90% 85%,rgba(23,105,210,.13),transparent 30%),linear-gradient(145deg,#f0f9fd,#fbfdff 55%,#ecf6fb);color:var(--review-ink)}.navbar{position:relative;z-index:5;background:rgba(255,255,255,.8);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 8px 28px rgba(15,52,78,.06);animation:reviewNavIn .6s var(--review-ease) both}.review-brand-logo{position:relative;isolation:isolate;display:grid;place-items:center;width:43px;height:43px;border:0;border-radius:50%;background:transparent;box-shadow:none;animation:reviewLogoFloat 4.5s ease-in-out infinite}.review-brand-logo::after{content:'';position:absolute;inset:0;z-index:-1;border-radius:50%;padding:1.5px;background:conic-gradient(from 20deg,transparent 0 24%,#35d9eb 35%,#2389ec 49%,transparent 61% 81%,#49e6cd 92%,transparent);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:reviewLogoOrbit 5.5s linear infinite;filter:drop-shadow(0 0 4px rgba(31,177,224,.55))}.review-brand-logo img{display:block;width:38px!important;height:38px!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;outline:0!important;animation:none!important;object-fit:contain;filter:drop-shadow(0 5px 7px rgba(6,78,139,.22));transition:transform .4s ease,filter .4s ease}.navbar-brand:hover .review-brand-logo img{transform:rotate(4deg) scale(1.07);filter:drop-shadow(0 8px 10px rgba(6,78,139,.32))}.review-wrap{max-width:760px;padding:40px 18px 70px}.sheet{border:1px solid rgba(255,255,255,.9);border-radius:27px;background:rgba(255,255,255,.94);box-shadow:0 30px 80px rgba(14,55,85,.15),0 4px 12px rgba(14,55,85,.05);animation:reviewCardIn .8s .08s var(--review-ease) both}.review-head{display:flex;align-items:center;justify-content:space-between;padding:22px 24px;border-bottom:1px solid #e8eff4}.review-head-main{display:flex;align-items:center;gap:12px}.review-head-icon{display:grid;place-items:center;width:43px;height:43px;border-radius:13px;background:linear-gradient(145deg,var(--review-blue),var(--review-aqua));color:#fff;box-shadow:0 10px 22px rgba(23,105,210,.2)}.review-head h2{margin:0 0 3px;font-size:19px;font-weight:800}.review-head p{margin:0;color:#71869a;font-size:11px}.review-step{padding:7px 10px;border:1px solid #d8e7ef;border-radius:999px;background:#f5f9fc;color:#5c768b;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.row-box{padding:20px 24px;border-color:#e8eff4}.item-thumb{width:70px;height:70px;padding:7px;object-fit:contain;border:1px solid #e0e9ef;border-radius:16px;background:radial-gradient(circle,#fff,#f0f5f8);mix-blend-mode:multiply}.item-title{color:var(--review-ink);font-size:20px}.item-subtitle{color:#7890a2;font-size:10px;letter-spacing:.08em}.qty-box{min-width:142px;height:54px;border:1px solid #d6e5ed;border-radius:14px;background:#f6fafc;box-shadow:inset 0 1px 2px rgba(16,38,58,.03)}.qty-btn{height:100%;color:var(--review-blue);font-size:22px;transition:background .2s ease,transform .15s ease}.qty-btn:hover{background:#eaf4ff}.qty-btn:active{transform:scale(.88)}.qty-value{font-size:22px;color:var(--review-ink)}.mode-row{gap:13px}.mode-btn{min-height:55px;border:1px solid #dce6ed;border-radius:14px;background:#f5f8fa;color:#71869a;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease}.mode-btn:hover{transform:translateY(-2px);background:#fff;border-color:#bad8e5}.mode-btn.active{border-color:var(--review-blue);background:linear-gradient(135deg,#1769d2,#168ec8);box-shadow:0 13px 26px rgba(23,105,210,.23);transform:none}.shop-card{margin:20px 24px;padding:22px;border:1px solid #e0e9ef;border-radius:18px;background:linear-gradient(145deg,#f9fcfe,#f1f7fa)}.shop-title{color:var(--review-ink);font-size:17px}.verified-station{display:inline-flex;align-items:center;gap:6px;margin-top:6px;color:#16866f;font-size:10px;font-weight:800}.verified-station i{color:#16a085}.meta-list{font-size:12px}.rating-stars{display:inline-flex;gap:3px;margin:0 5px;color:#f5a623}.rating-stars i{width:auto;margin:0}.more-info{color:var(--review-blue);font-size:11px}.divider{border-color:#dde8ee}.totals{gap:0}.total-line{display:flex;justify-content:space-between;align-items:center;padding:8px 0;color:#61788c;font-size:13px}.total-line strong{color:#29465d}.total-line.grand-total{margin-top:7px;padding-top:14px;border-top:1px dashed #cbdbe4;color:var(--review-ink);font-size:15px;font-weight:800}.total-line.grand-total strong{color:var(--review-green);font-size:21px}.actions{padding:4px 24px 24px}.continue-btn{position:relative;min-height:56px;overflow:hidden;border-radius:14px;background:linear-gradient(120deg,#0b967f,#09b4a2,#087e73);background-size:180% 180%;font-size:16px;font-weight:800;box-shadow:0 15px 32px rgba(8,145,125,.25);animation:reviewGradient 6s ease infinite;transition:transform .2s ease,box-shadow .2s ease}.continue-btn::after{content:'';position:absolute;inset:0;transform:translateX(-120%) skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transition:transform .7s var(--review-ease)}.continue-btn:hover::after{transform:translateX(120%) skewX(-20deg)}.continue-btn:hover{transform:translateY(-2px);box-shadow:0 19px 38px rgba(8,145,125,.32);background:linear-gradient(120deg,#0b967f,#09b4a2,#087e73)}.continue-btn.is-loading{pointer-events:none;opacity:.84}.back-link{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border-radius:9px;color:#577187;font-size:12px;transition:background .2s ease,transform .2s ease}.back-link:hover{background:#eff6fa;transform:translateX(-2px);text-decoration:none}
+        @keyframes reviewNavIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}@keyframes reviewCardIn{from{opacity:0;transform:translateY(26px) scale(.988)}to{opacity:1;transform:none}}@keyframes reviewGradient{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}@keyframes reviewLogoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}@keyframes reviewLogoOrbit{to{transform:rotate(360deg)}}
         @media(max-width:560px){.review-wrap{padding:20px 12px 54px}.sheet{border-radius:22px}.review-head{padding:18px}.review-step{display:none}.row-box{padding:17px}.item-row{align-items:flex-start}.item-thumb{width:58px;height:58px}.item-title{font-size:16px}.qty-box{min-width:116px;height:48px}.qty-btn{width:32px}.qty-value{width:48px;font-size:20px}.mode-row{grid-template-columns:1fr}.shop-card{margin:16px;padding:18px}.actions{padding:2px 16px 20px}.total-line{font-size:12px}}
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+        /* Bright water-station checkout layout. */
+        body.public-ui{position:relative;min-height:100vh;background:linear-gradient(145deg,#e8f8fc 0%,#f9fdff 46%,#eaf6fb 100%);overflow-x:hidden}
+        body.public-ui::before{content:'';position:fixed;inset:0;z-index:-2;pointer-events:none;background:radial-gradient(ellipse at 18% 16%,rgba(45,211,225,.22),transparent 28%),radial-gradient(ellipse at 88% 78%,rgba(40,126,224,.14),transparent 32%);animation:reviewWaterGlow 10s ease-in-out infinite alternate}
+        body.public-ui::after{content:'';position:fixed;inset:-20%;z-index:-1;pointer-events:none;opacity:.25;background:repeating-radial-gradient(ellipse at 28% 12%,transparent 0 34px,rgba(70,206,225,.16) 36px,transparent 39px 68px);transform:rotate(-8deg);animation:reviewCaustics 18s linear infinite}
+        .navbar{display:none!important}.review-wrap{width:min(1180px,100%);max-width:1180px;min-height:100vh;display:flex;align-items:center;padding:34px 22px}.sheet{width:100%;overflow:hidden;border-radius:30px;background:rgba(255,255,255,.9);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 35px 90px rgba(25,86,116,.18),inset 0 1px rgba(255,255,255,.95)}
+        .review-head{padding:23px 28px 17px;border:0}.review-head-icon{width:54px;height:54px;border:0;border-radius:50%;background:transparent;box-shadow:none}.review-head-icon .review-brand-logo{width:54px;height:54px}.review-head-icon .review-brand-logo img{width:48px!important;height:48px!important}.review-head h2{font-size:22px;font-weight:750;letter-spacing:-.025em}.review-head p{font-size:12px}.review-step{background:#e9fbf7;border-color:#bcece0;color:#087d69}
+        .review-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);border-top:1px solid #e3edf2}.review-config{padding:25px 27px 28px;border-right:1px solid #e3edf2}.review-config .row-box{padding:0;border:0}.review-config .row-box+.row-box{margin-top:23px;padding-top:23px;border-top:1px solid #e6eef2}.item-row{padding:18px;border:1px solid #dceaf0;border-radius:20px;background:linear-gradient(145deg,#fbfeff,#edf8fb);box-shadow:0 12px 28px rgba(31,104,134,.08)}.item-thumb{width:112px;height:112px;padding:4px;border:0;border-radius:18px;background:radial-gradient(circle at 50% 42%,#fff,rgba(201,235,244,.64) 70%,transparent);filter:drop-shadow(0 14px 16px rgba(15,94,138,.2));mix-blend-mode:normal;animation:gallonFloat 4.8s ease-in-out infinite}.item-title{font-size:19px}.item-subtitle{margin-top:5px;color:#168aa5;font-size:10px}.qty-box{background:rgba(255,255,255,.82);box-shadow:0 9px 20px rgba(24,91,122,.1)}
+        .mode-row{gap:10px}.mode-btn{min-height:62px;padding:12px;border-radius:15px;font-size:13px;font-weight:650;background:#f5fafc}.mode-btn i{color:#249bbd}.mode-btn.active{background:linear-gradient(135deg,#1478d2,#13adc2);border-color:transparent;box-shadow:0 12px 25px rgba(20,133,184,.22)}.mode-btn.active i{color:#fff}
+        .review-summary{display:flex;flex-direction:column;padding:25px 25px 24px;background:linear-gradient(155deg,rgba(244,251,253,.88),rgba(235,246,250,.9))}.summary-kicker{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;color:#557487;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.summary-kicker i{color:#12aa91}.shop-card{position:relative;margin:0;padding:22px 21px;border:1px solid #d8e7ed;border-radius:18px;background:#fff;box-shadow:0 15px 35px rgba(25,82,108,.09)}.shop-card::before,.shop-card::after{content:'';position:absolute;left:0;right:0;height:7px;background:radial-gradient(circle at 7px 0,transparent 6px,#fff 6.5px) 0 0/14px 7px repeat-x}.shop-card::before{top:-1px;transform:rotate(180deg)}.shop-card::after{bottom:-1px}.total-line{padding:10px 0;font-size:13px}.total-line.grand-total{margin-top:10px;padding-top:17px}.total-line.grand-total strong{font-size:25px}.trust-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:16px 0;color:#5e7e90;font-size:9px;text-align:center}.trust-row span{display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 3px;border:1px solid #dceaf0;border-radius:11px;background:rgba(255,255,255,.65)}.trust-row i{color:#10a98f;font-size:13px}.review-summary .actions{margin-top:auto;padding:0}.continue-btn{min-height:53px;font-size:14px}.sub-actions{margin-top:12px}.back-link{font-size:11px;font-weight:600}
+        @keyframes reviewWaterGlow{to{filter:hue-rotate(9deg);transform:scale(1.05)}}@keyframes reviewCaustics{to{transform:translate3d(7%,-4%,0) rotate(-4deg)}}@keyframes gallonFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-7px) rotate(1deg)}}
+        @media(max-width:820px){.review-wrap{align-items:flex-start;padding:18px 12px 45px}.review-grid{grid-template-columns:1fr}.review-config{padding:21px;border-right:0;border-bottom:1px solid #e3edf2}.review-summary{padding:21px}.review-head{padding:20px}.item-thumb{width:88px;height:88px}}
+        @media(max-width:520px){.sheet{border-radius:23px}.review-head-icon{width:46px;height:46px}.review-head-icon .review-brand-logo{width:46px;height:46px}.review-head-icon .review-brand-logo img{width:41px!important;height:41px!important}.review-head h2{font-size:19px}.review-step{display:none}.review-config,.review-summary{padding:17px}.item-row{align-items:center;padding:13px}.item-thumb{width:70px;height:70px}.qty-box{min-width:112px}.mode-row{grid-template-columns:1fr 1fr}.mode-btn{min-height:57px;font-size:11px}.trust-row{gap:5px}.trust-row span{font-size:8px}}
+        .confirm-overlay{position:fixed;z-index:1000;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,35,52,.58);backdrop-filter:blur(5px);opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease}.confirm-overlay.open{opacity:1;visibility:visible}.confirm-card{width:min(100%,410px);overflow:hidden;border:1px solid rgba(255,255,255,.7);border-radius:24px;background:#fff;box-shadow:0 28px 70px rgba(10,42,61,.3);transform:translateY(14px) scale(.98);transition:transform .22s ease}.confirm-overlay.open .confirm-card{transform:none}.confirm-head{padding:25px 24px 18px;text-align:center}.confirm-icon{display:grid;place-items:center;width:58px;height:58px;margin:0 auto 14px;border-radius:18px;background:linear-gradient(145deg,#d9f8f2,#e8f8ff);color:#0bac92;font-size:23px}.confirm-head h3{margin:0;color:#173247;font-size:21px;font-weight:800}.confirm-head p{margin:7px 0 0;color:#6b8292;font-size:12px}.confirm-details{margin:0 20px;padding:15px 17px;border:1px solid #dceaf0;border-radius:15px;background:#f5fafc}.confirm-row{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:7px 0;color:#6b8292;font-size:12px}.confirm-row strong{color:#213e53;text-align:right}.confirm-row.total{margin-top:6px;padding-top:13px;border-top:1px dashed #cddfe6;font-size:14px}.confirm-row.total strong{color:#08a486;font-size:19px}.confirm-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:10px;padding:20px}.confirm-actions button{min-height:48px;border:0;border-radius:13px;font:800 12px 'Manrope',sans-serif;cursor:pointer}.confirm-cancel{background:#edf3f6;color:#587083}.confirm-proceed{background:linear-gradient(135deg,#0cae91,#0aa5be);color:#fff;box-shadow:0 10px 20px rgba(10,169,161,.22)}.confirm-actions button:focus-visible{outline:3px solid rgba(14,165,233,.3);outline-offset:2px}@media(max-width:420px){.confirm-actions{grid-template-columns:1fr}.confirm-proceed{grid-row:1}.confirm-card{border-radius:20px}}
     </style>
+    <script src="../js/ui-protection.js" defer></script>
 </head>
 <body class="public-ui">
-    <nav class="navbar">
-        <div class="container-fluid">
-            <a href="../home.php" class="navbar-brand">
-                <img src="../<?php echo htmlspecialchars($systemLogo); ?>" alt="HydroMIS logo"> HydroMIS
-            </a>
-        </div>
-    </nav>
-
     <div class="review-wrap">
         <div class="sheet">
-            <div class="review-head"><div class="review-head-main"><div class="review-head-icon"><i class="fas fa-clipboard-check"></i></div><div><h2>Review your order</h2><p>Confirm quantity and fulfillment method.</p></div></div><span class="review-step">Step 2 of 2</span></div>
+            <div class="review-head"><div class="review-head-main"><div class="review-head-icon"><span class="review-brand-logo"><img src="../imagess/hydromis-logo-v2.png?v=20260802" alt="HydroMIS logo"></span></div><div><h2>Review your order</h2><p>Confirm your container, quantity, and fulfillment method.</p></div></div><span class="review-step">Secure checkout</span></div>
+            <div class="review-grid"><div class="review-config">
             <div class="row-box">
                 <div class="item-row">
                     <div class="item-meta">
@@ -560,7 +571,8 @@ $container_image_map = [
                     </button>
                 </div>
             </div>
-
+            </div><aside class="review-summary">
+            <div class="summary-kicker"><span>Order receipt</span><i class="fas fa-receipt"></i></div>
             <div class="shop-card">
                 <div class="totals">
                     <div class="total-line"><span>Water</span><strong>₱<span id="waterTotal">0.00</span></strong></div>
@@ -584,6 +596,27 @@ $container_image_map = [
                     <a href="purchase.php?user_id=<?php echo urlencode($user_id); ?>" class="back-link"><i class="fas fa-arrow-left"></i> Back to container selection</a>
                 </div>
             </div>
+            </aside></div>
+        </div>
+    </div>
+
+    <div class="confirm-overlay" id="confirmOverlay" aria-hidden="true">
+        <div class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+            <div class="confirm-head">
+                <div class="confirm-icon"><i class="fas fa-clipboard-check"></i></div>
+                <h3 id="confirmTitle">Confirm your order</h3>
+                <p>Please check these details before continuing to payment.</p>
+            </div>
+            <div class="confirm-details">
+                <div class="confirm-row"><span>Order</span><strong id="confirmOrder"></strong></div>
+                <div class="confirm-row"><span>Container</span><strong id="confirmContainer"></strong></div>
+                <div class="confirm-row"><span>Fulfillment</span><strong id="confirmFulfillment"></strong></div>
+                <div class="confirm-row total"><span>Total</span><strong id="confirmTotal"></strong></div>
+            </div>
+            <div class="confirm-actions">
+                <button type="button" class="confirm-cancel" id="confirmCancel">Go back</button>
+                <button type="button" class="confirm-proceed" id="confirmProceed"><i class="fas fa-lock"></i> Proceed to checkout</button>
+            </div>
         </div>
     </div>
 
@@ -593,6 +626,7 @@ $container_image_map = [
             const pickupBaseMap = <?php echo json_encode($pickup_base_map); ?>;
             const sizeMap = <?php echo json_encode($size_map); ?>;
             const typeMap = <?php echo json_encode($type_map); ?>;
+            const hasFreeDeliveryReward = <?php echo $has_free_delivery_reward ? 'true' : 'false'; ?>;
 
             const containerSize = <?php echo json_encode($container_size); ?>;
             let containerStatus = <?php echo json_encode($container_status); ?>;
@@ -615,6 +649,11 @@ $container_image_map = [
             const discountTotal = document.getElementById('discountTotal');
             const continueBtn = document.getElementById('continueBtn');
             const itemTitle = document.getElementById('itemTitle');
+            const finalForm = document.getElementById('finalForm');
+            const confirmOverlay = document.getElementById('confirmOverlay');
+            const confirmCancel = document.getElementById('confirmCancel');
+            const confirmProceed = document.getElementById('confirmProceed');
+            let orderConfirmed = false;
 
             const finalStatus = document.getElementById('finalStatus');
             const finalFulfillment = document.getElementById('finalFulfillment');
@@ -639,13 +678,13 @@ $container_image_map = [
 
                 const discountCount = Math.floor(quantity / 5);
                 const discount = discountCount > 0 ? (discountCount * 5) : 0;
-                const deliveryFee = fulfillmentMethod === 'delivery' ? 10 * quantity : 0;
+                const deliveryFee = fulfillmentMethod === 'delivery' && !hasFreeDeliveryReward ? 10 * quantity : 0;
                 const finalAmount = water + newContainer + deliveryFee - discount;
 
                 qtyDisplay.textContent = String(quantity);
                 waterTotal.textContent = water.toFixed(2);
                 containerTotal.textContent = newContainer.toFixed(2);
-                containerLine.style.display = containerStatus === 'new' ? 'block' : 'none';
+                containerLine.style.display = containerStatus === 'new' ? 'flex' : 'none';
                 reviewTotal.textContent = finalAmount.toFixed(2);
                 deliveryFeeDisplay.textContent = deliveryFee > 0 ? '₱' + deliveryFee.toFixed(2) : 'Free';
                 discountTotal.textContent = discount.toFixed(2);
@@ -696,9 +735,43 @@ $container_image_map = [
                 updateSummary();
             });
 
-            document.getElementById('finalForm').addEventListener('submit', function() {
-                continueBtn.classList.add('is-loading');
-                continueBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Opening checkout...';
+            finalForm.addEventListener('submit', function(event) {
+                if (orderConfirmed) {
+                    continueBtn.classList.add('is-loading');
+                    continueBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Opening checkout...';
+                    return;
+                }
+
+                event.preventDefault();
+                const containerChoice = containerStatus === 'new' ? 'Buy new container' : 'I have a container';
+                const fulfillmentChoice = fulfillmentMethod === 'delivery' ? 'Delivery' : 'Self pickup';
+                document.getElementById('confirmOrder').textContent = quantity + ' x ' + itemTitle.textContent;
+                document.getElementById('confirmContainer').textContent = containerChoice;
+                document.getElementById('confirmFulfillment').textContent = fulfillmentChoice;
+                document.getElementById('confirmTotal').textContent = '\u20B1' + reviewTotal.textContent;
+                confirmOverlay.classList.add('open');
+                confirmOverlay.setAttribute('aria-hidden', 'false');
+                confirmProceed.focus();
+            });
+
+            function closeConfirmation() {
+                confirmOverlay.classList.remove('open');
+                confirmOverlay.setAttribute('aria-hidden', 'true');
+                continueBtn.focus();
+            }
+
+            confirmCancel.addEventListener('click', closeConfirmation);
+            confirmOverlay.addEventListener('click', function(event) {
+                if (event.target === confirmOverlay) closeConfirmation();
+            });
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape' && confirmOverlay.classList.contains('open')) closeConfirmation();
+            });
+            confirmProceed.addEventListener('click', function() {
+                orderConfirmed = true;
+                confirmProceed.disabled = true;
+                confirmProceed.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Opening...';
+                finalForm.requestSubmit();
             });
 
             updateSummary();

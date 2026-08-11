@@ -127,10 +127,10 @@ html, body {
 .brand-icon {
     width: 38px; height: 38px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #1e9e8f, #0e6d7a);
+    background: transparent;
     display: flex; align-items: center; justify-content: center;
     font-size: 17px; color: #fff;
-    box-shadow: 0 4px 14px rgba(45,212,191,0.3);
+    box-shadow: none;
     flex-shrink: 0;
 }
 .brand-name {
@@ -480,6 +480,9 @@ html, body {
     border-radius: 20px;
 }
     </style>
+    <script src="../js/ui-protection.js" defer></script>
+    <link rel="stylesheet" href="../css/admin-theme.css">
+    <script src="../js/admin-theme.js"></script>
 </head>
 <body>
 <div class="shell">
@@ -517,6 +520,7 @@ html, body {
             <div>
                 <div class="nav-section-label">System</div>
                 <div class="nav-group">
+                    <a href="activity_logs.php" class="nav-item"><i class="fas fa-clock-rotate-left"></i> Activity Log</a>
                     <a href="dashboard.php?open_settings=1" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
                 </div>
             </div>
@@ -533,7 +537,7 @@ html, body {
                 </div>
                 <div>
                     <div class="admin-name"><?= htmlspecialchars($_SESSION['full_name'] ?? 'Admin') ?></div>
-                    <div class="admin-role">Super Admin</div>
+                    <div class="admin-role">Administrator</div>
                 </div>
                 <a href="../logout.php" class="logout-link" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
             </div>
@@ -563,7 +567,7 @@ html, body {
 
             <!-- Heading -->
             <div style="margin-bottom: 20px;">
-                <div class="page-title">💳 Transactions</div>
+                <div class="page-title">Transactions</div>
                 <div class="page-subtitle">View and manage all customer transactions</div>
             </div>
 
@@ -698,6 +702,12 @@ html, body {
                                         <i class="fas fa-box"></i> <?php echo ($row['container_status'] ?? '') === 'new' ? 'New container' : 'Customer container'; ?>
                                         &nbsp;·&nbsp; <i class="fas <?php echo ($row['fulfillment_method'] ?? '') === 'pickup' ? 'fa-store' : 'fa-truck'; ?>"></i>
                                         <?php echo ($row['fulfillment_method'] ?? '') === 'pickup' ? 'Self pickup' : 'Delivery'; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (trim((string)($row['notes'] ?? '')) !== ''): ?>
+                                    <div style="margin-top:8px;padding:8px 10px;border-left:3px solid var(--aqua);border-radius:7px;background:var(--aqua-dim);color:var(--text);font-size:11px;line-height:1.45;white-space:normal;">
+                                        <strong style="display:block;margin-bottom:3px;color:var(--aqua);"><i class="fas fa-message"></i> Customer instructions</strong>
+                                        <?php echo nl2br(htmlspecialchars($row['notes'])); ?>
                                     </div>
                                     <?php endif; ?>
                                 </td>

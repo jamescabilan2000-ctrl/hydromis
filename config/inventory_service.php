@@ -10,6 +10,8 @@ function ensure_inventory_schema($conn): void {
     $conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS fulfillment_method VARCHAR(20) NULL");
     $conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS inventory_item_id INT NULL");
     $conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS inventory_reserved TINYINT(1) NOT NULL DEFAULT 0");
+    $conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS new_container_inventory_item_id INT NULL");
+    $conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS new_container_inventory_reserved TINYINT(1) NOT NULL DEFAULT 0");
     $conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cancellation_reason VARCHAR(255) NULL");
 
     $defaults = [
@@ -25,14 +27,27 @@ function inventory_code_for_container(string $containerSize): ?string {
     return ['2.5gal-slim'=>'CNT-25-SLIM','5gal-slim'=>'CNT-5-SLIM','5gal-round'=>'CNT-5-ROUND'][$containerSize] ?? null;
 }
 
+function new_container_inventory_item($conn, bool $forUpdate = false): ?array {
+    $lock = $forUpdate ? ' FOR UPDATE' : '';
+    $result = $conn->query("SELECT id,item_code,item_name,quantity FROM inventory_items WHERE category='Container' AND LOWER(TRIM(item_name))='new container' ORDER BY id ASC LIMIT 1$lock");
+    return $result ? ($result->fetch_assoc() ?: null) : null;
+}
+
 function add_user_notification($conn, string $userId, ?string $transactionId, string $title, string $message, string $type = 'info'): void {
     $stmt = $conn->prepare("INSERT INTO user_notifications (user_id,transaction_id,title,message,notification_type) VALUES (?,?,?,?,?)");
     if ($stmt) { $stmt->bind_param('sssss', $userId, $transactionId, $title, $message, $type); $stmt->execute(); }
 }
 
 function release_order_inventory($conn, array $order, string $actor, string $reason): bool {
-    if (empty($order['inventory_reserved']) || empty($order['inventory_item_id']) || (int)$order['quantity'] < 1) return true;
-    $itemId=(int)$order['inventory_item_id']; $qty=(int)$order['quantity'];
+    $qty=(int)$order['quantity']; if($qty<1)return true;
+    if(!empty($order['new_container_inventory_reserved'])&&!empty($order['new_container_inventory_item_id'])){
+        $newId=(int)$order['new_container_inventory_item_id'];$newQ=$conn->query("SELECT quantity FROM inventory_items WHERE id=$newId FOR UPDATE");$newItem=$newQ?$newQ->fetch_assoc():null;if(!$newItem)return false;
+        $newBefore=(int)$newItem['quantity'];$newAfter=$newBefore+$qty;if(!$conn->query("UPDATE inventory_items SET quantity=$newAfter,updated_by='".$conn->real_escape_string($actor)."' WHERE id=$newId"))return false;
+        $newLog=$conn->prepare("INSERT INTO inventory_movements (item_id,movement_type,quantity_change,previous_quantity,new_quantity,reason,staff_id) VALUES (?,'release',?,?,?,?,?)");if($newLog){$newLog->bind_param('iiiiss',$newId,$qty,$newBefore,$newAfter,$reason,$actor);$newLog->execute();}
+        $conn->query("UPDATE transactions SET new_container_inventory_reserved=0 WHERE transaction_id='".$conn->real_escape_string($order['transaction_id'])."'");
+    }
+    if(empty($order['inventory_reserved'])||empty($order['inventory_item_id']))return true;
+    $itemId=(int)$order['inventory_item_id'];
     $q=$conn->query("SELECT quantity FROM inventory_items WHERE id=$itemId FOR UPDATE");
     $item=$q?$q->fetch_assoc():null; if(!$item)return false;
     $before=(int)$item['quantity'];$after=$before+$qty;
@@ -60,8 +75,7 @@ function approve_or_cancel_order_for_stock($conn, string $transactionId, string 
         elseif(stripos($description,'5 Gallon (Slim)')!==false)$containerSize='5gal-slim';
         elseif(stripos($description,'5 Gallon (Round)')!==false)$containerSize='5gal-round';
     }
-    $isNew=$containerStatus==='new';
-    if($isNew && empty($order['inventory_reserved'])){
+    if(empty($order['inventory_reserved'])){
         $code=inventory_code_for_container($containerSize);$safeCode=$conn->real_escape_string((string)$code);
         $stock=$code?$conn->query("SELECT id,quantity,item_name FROM inventory_items WHERE item_code='$safeCode' FOR UPDATE"):false;
         $item=$stock?$stock->fetch_assoc():null;$needed=(int)$order['quantity'];

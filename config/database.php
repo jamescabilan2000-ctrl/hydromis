@@ -401,7 +401,8 @@ class DBCompatConnection {
             ['rider_users', 'age', 'INT'],
             ['rider_users', 'address', 'TEXT'],
             ['rider_users', 'contact_number', 'VARCHAR(20)'],
-            ['admin_profiles', 'avatar_path', 'VARCHAR(255) NULL']
+            ['admin_profiles', 'avatar_path', 'VARCHAR(255) NULL'],
+            ['admin_users', 'profile_image', 'VARCHAR(255) NULL']
         ];
 
         // AES-GCM values are longer than their plaintext. Lookup columns contain
@@ -412,6 +413,10 @@ class DBCompatConnection {
             ['rider_users', 'username_lookup', 'CHAR(64) NULL'],
             ['rider_users', 'contact_lookup', 'CHAR(64) NULL'],
             ['admin_users', 'username_lookup', 'CHAR(64) NULL']
+            ,['admin_users', 'source_user_id', 'VARCHAR(50) NULL']
+            ,['admin_users', 'login_enabled', 'TINYINT(1) NOT NULL DEFAULT 1']
+            ,['rider_users', 'source_user_id', 'VARCHAR(50) NULL']
+            ,['rider_users', 'login_enabled', 'TINYINT(1) NOT NULL DEFAULT 1']
         ];
         foreach ($securityColumns as $col) {
             [$table, $column, $definition] = $col;
@@ -492,6 +497,9 @@ if ($conn->connect_error) {
 
 $conn->set_charset('utf8mb4');
 
+require_once __DIR__ . '/loyalty_service.php';
+enforce_annual_loyalty_reset($conn);
+
 function sanitize($input) {
     global $conn;
     return $conn->real_escape_string(htmlspecialchars($input));
@@ -520,4 +528,7 @@ function generateUserID() {
 
     throw new RuntimeException('Unable to generate a unique customer ID.');
 }
+
+require_once __DIR__ . '/activity_logger.php';
+auto_log_system_request($conn);
 ?>

@@ -8,6 +8,8 @@ require_once '../config/inventory_service.php';
 ensure_inventory_schema($conn);
 
 $delivery_operations_view = (($_GET['view'] ?? '') === 'deliveries');
+$operations_section = strtolower((string)($_GET['section'] ?? 'deliveries'));
+if (!in_array($operations_section, ['deliveries', 'pickups', 'feedbacks'], true)) $operations_section = 'deliveries';
 
 function format_currency($amount) {
     return 'PHP ' . number_format((float)$amount, 2);
@@ -108,7 +110,9 @@ if (!$demo_pending_check || $demo_pending_check->num_rows === 0) {
   if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $transaction_id = sanitize($_POST['transaction_id']);
     $action = sanitize($_POST['action']);
+    $return_section = in_array(($_POST['return_section'] ?? ''), ['pickups', 'feedbacks'], true) ? $_POST['return_section'] : '';
     $sql = '';
+    $assignment_notification = null;
 
     if ($action === 'approve') {
         [$approvedOrder, $stockMessage] = approve_or_cancel_order_for_stock($conn, $transaction_id, (string)$_SESSION['admin_id']);
@@ -121,12 +125,46 @@ if (!$demo_pending_check || $demo_pending_check->num_rows === 0) {
         $_SESSION['staff_flash'] = "Transaction {$transaction_id} denied.";
         $_SESSION['staff_flash_type'] = 'danger';
     } elseif ($action === 'on_the_way' || $action === 'on_way') {
-        $sql = "UPDATE transactions SET delivery_status = 'on_way' WHERE transaction_id = '$transaction_id'";
-        $_SESSION['staff_flash'] = "Transaction {$transaction_id} marked as on the way.";
-        $_SESSION['staff_flash_type'] = 'info';
+        $sql = '';
+        $_SESSION['staff_flash'] = 'Only the assigned rider can start a delivery.';
+        $_SESSION['staff_flash_type'] = 'warning';
     } elseif ($action === 'delivered') {
-        $sql = "UPDATE transactions SET delivery_status = 'delivered' WHERE transaction_id = '$transaction_id'";
-        $_SESSION['staff_flash'] = "Transaction {$transaction_id} marked as delivered.";
+        $sql = '';
+        $_SESSION['staff_flash'] = 'Only the assigned rider can complete a delivery.';
+        $_SESSION['staff_flash_type'] = 'warning';
+    } elseif ($action === 'notify_pickup_ready') {
+        $sql = '';
+        $pickupResult = $conn->query("SELECT user_id FROM transactions
+            WHERE transaction_id = '$transaction_id' AND status = 'approved'
+              AND fulfillment_method = 'pickup' AND COALESCE(delivery_status, 'pending') <> 'delivered'
+            LIMIT 1");
+        $pickupOrder = $pickupResult ? $pickupResult->fetch_assoc() : null;
+        if ($pickupOrder) {
+            add_user_notification(
+                $conn,
+                (string)$pickupOrder['user_id'],
+                $transaction_id,
+                'Your pickup order is ready',
+                'Your order is ready for collection at the HydroMIS water refilling station.',
+                'order'
+            );
+            $_SESSION['staff_flash'] = "Customer notified that pickup order {$transaction_id} is ready.";
+            $_SESSION['staff_flash_type'] = 'success';
+        } else {
+            $_SESSION['staff_flash'] = 'This pickup order is no longer available for notification.';
+            $_SESSION['staff_flash_type'] = 'warning';
+        }
+    } elseif ($action === 'pickup_collected') {
+        $sql = "UPDATE transactions SET delivery_status = 'delivered', payment_status = 'paid',
+                payment_date = COALESCE(payment_date, NOW())
+            WHERE transaction_id = '$transaction_id' AND status = 'approved'
+              AND fulfillment_method = 'pickup' AND COALESCE(delivery_status, 'pending') <> 'delivered'";
+        $_SESSION['staff_flash'] = "Pickup order {$transaction_id} marked as collected.";
+        $_SESSION['staff_flash_type'] = 'success';
+    } elseif ($action === 'verify_payment_fast') {
+        $sql = "UPDATE transactions SET payment_status = 'paid', payment_date = NOW()
+            WHERE transaction_id = '$transaction_id' AND status = 'approved' AND payment_status <> 'paid'";
+        $_SESSION['staff_flash'] = "Payment for {$transaction_id} verified.";
         $_SESSION['staff_flash_type'] = 'success';
     } elseif ($action === 'assign_rider') {
         $rider_id = sanitize($_POST['rider_id'] ?? '');
@@ -152,11 +190,11 @@ if (!$demo_pending_check || $demo_pending_check->num_rows === 0) {
                 if ($transactions_has_assigned_rider) {
                     $assignment_sets[] = "assigned_rider = '$rider_id'";
                 }
-                $assignment_sets[] = "delivery_status = 'assigned'";
+                $assignment_sets[] = "delivery_status = 'pending'";
                 $assignment_sets[] = "status = 'approved'";
                 $assignment_sets[] = "approved_by = '{$staff_id}'";
                 $sql = "UPDATE transactions SET " . implode(', ', $assignment_sets) . " WHERE transaction_id = '$transaction_id' AND status = 'approved' AND payment_status = 'paid' AND COALESCE(fulfillment_method,'delivery') = 'delivery'";
-                $conn->query("INSERT INTO rider_notifications (rider_id, transaction_id, title, message) VALUES ('$rider_id', '$transaction_id', 'New delivery assigned', 'You have been assigned to order $transaction_id. Please open your rider dashboard to review it.')");
+                $assignment_notification = ['rider_id' => $rider_id, 'transaction_id' => $transaction_id];
                 $_SESSION['staff_flash'] = "Assigned {$rider_info['full_name']} to transaction {$transaction_id}. Rider notified.";
                 $_SESSION['staff_flash_type'] = 'success';
             } else {
@@ -173,36 +211,94 @@ if (!$demo_pending_check || $demo_pending_check->num_rows === 0) {
         if (!$conn->query($sql)) {
             $_SESSION['staff_flash'] = 'Action failed: ' . $conn->error;
             $_SESSION['staff_flash_type'] = 'danger';
-        } elseif ($action === 'assign_rider' && $conn->affected_rows === 0) {
-            $_SESSION['staff_flash'] = "No rider assignment saved for {$transaction_id}.";
-            $_SESSION['staff_flash_type'] = 'warning';
+        } elseif ($action === 'on_the_way' || $action === 'on_way') {
+            if ($conn->affected_rows > 0) {
+                $customerResult = $conn->query("SELECT user_id FROM transactions WHERE transaction_id='$transaction_id' LIMIT 1");
+                $customerOrder = $customerResult ? $customerResult->fetch_assoc() : null;
+                if ($customerOrder) {
+                    add_user_notification($conn,(string)$customerOrder['user_id'],$transaction_id,'Your delivery is on the way','Your rider has started the delivery. You can open Track Order to follow its progress.','delivery');
+                }
+            }
+        } elseif ($action === 'verify_payment_fast' && $conn->affected_rows > 0) {
+            $conn->query("UPDATE payments SET payment_status = 'paid' WHERE transaction_id = '$transaction_id'");
+        } elseif ($action === 'pickup_collected' && $conn->affected_rows > 0) {
+            $conn->query("UPDATE payments SET payment_status = 'paid' WHERE transaction_id = '$transaction_id'");
+            $pickupCustomerResult = $conn->query("SELECT user_id FROM transactions WHERE transaction_id='$transaction_id' LIMIT 1");
+            $pickupCustomer = $pickupCustomerResult ? $pickupCustomerResult->fetch_assoc() : null;
+            if ($pickupCustomer) {
+                add_user_notification($conn, (string)$pickupCustomer['user_id'], $transaction_id, 'Pickup completed', 'Your pickup order has been marked as collected. Thank you!', 'order');
+            }
+        } elseif ($action === 'assign_rider') {
+            if ($conn->affected_rows === 0) {
+                $_SESSION['staff_flash'] = "No rider assignment saved for {$transaction_id}.";
+                $_SESSION['staff_flash_type'] = 'warning';
+            } elseif ($assignment_notification) {
+                $notification_title = 'New delivery assigned';
+                $notification_message = "You have been assigned to order {$assignment_notification['transaction_id']}. Please open your rider dashboard to review it.";
+                $notification_stmt = $conn->prepare("INSERT INTO rider_notifications (rider_id, transaction_id, title, message) VALUES (?, ?, ?, ?)");
+                $notification_stmt->bind_param('ssss', $assignment_notification['rider_id'], $assignment_notification['transaction_id'], $notification_title, $notification_message);
+                if (!$notification_stmt->execute()) {
+                    $_SESSION['staff_flash'] = "Rider assigned to {$transaction_id}, but the notification could not be created.";
+                    $_SESSION['staff_flash_type'] = 'warning';
+                }
+            }
         }
     }
 
-    header('Location: dashboard.php?view=deliveries');
+    header('Location: dashboard.php?view=deliveries' . ($return_section !== '' ? '&section=' . urlencode($return_section) : ''));
     exit();
 }
 
 $conn->query("CREATE TABLE IF NOT EXISTS reward_claims (id INT AUTO_INCREMENT PRIMARY KEY, transaction_id VARCHAR(50) NOT NULL UNIQUE, user_id VARCHAR(50) NOT NULL, reward_code VARCHAR(80) NOT NULL, reward_title VARCHAR(255) NOT NULL, points_used INT NOT NULL, claim_status VARCHAR(20) NOT NULL DEFAULT 'pending', claimed_by VARCHAR(80) NULL, claimed_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_reward_claim_status (claim_status), INDEX idx_reward_claim_user (user_id))");
-$pending  = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='pending'", 'count', 0);
+$analytics_period = strtolower((string)($_GET['analytics_period'] ?? 'day'));
+if (!in_array($analytics_period, ['day', 'month', 'year'], true)) $analytics_period = 'day';
+$analytics_date = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_GET['analytics_date'] ?? '')) ? $_GET['analytics_date'] : date('Y-m-d');
+$analytics_month = preg_match('/^\d{4}-\d{2}$/', (string)($_GET['analytics_month'] ?? '')) ? $_GET['analytics_month'] : date('Y-m');
+$analytics_year = preg_match('/^\d{4}$/', (string)($_GET['analytics_year'] ?? '')) ? (int)$_GET['analytics_year'] : (int)date('Y');
+if ($analytics_period === 'day') {
+    $analytics_condition = "DATE(created_at)='" . $conn->real_escape_string($analytics_date) . "'";
+    $analytics_updated_condition = "DATE(updated_at)='" . $conn->real_escape_string($analytics_date) . "'";
+    $analytics_label = date('M d, Y', strtotime($analytics_date));
+    $analytics_divisor = 1;
+} elseif ($analytics_period === 'month') {
+    $analytics_condition = "DATE_FORMAT(created_at,'%Y-%m')='" . $conn->real_escape_string($analytics_month) . "'";
+    $analytics_updated_condition = "DATE_FORMAT(updated_at,'%Y-%m')='" . $conn->real_escape_string($analytics_month) . "'";
+    $analytics_label = date('F Y', strtotime($analytics_month . '-01'));
+    $analytics_divisor = (int)date('t', strtotime($analytics_month . '-01'));
+} else {
+    $analytics_condition = "YEAR(created_at)={$analytics_year}";
+    $analytics_updated_condition = "YEAR(updated_at)={$analytics_year}";
+    $analytics_label = (string)$analytics_year;
+    $analytics_divisor = 365;
+}
+$analytics_exclusions = "transaction_id NOT LIKE 'RWD-%' AND COALESCE(description,'') NOT LIKE 'Reward Redemption - %'";
+$pending  = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='pending' AND {$analytics_condition} AND {$analytics_exclusions}", 'count', 0);
 $reward_claims_pending = (int)$scalar_value("SELECT COUNT(*) as count FROM reward_claims WHERE claim_status='pending'", 'count', 0);
-$approved = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='approved' AND transaction_id NOT LIKE 'RWD-%' AND COALESCE(description,'') NOT LIKE 'Reward Redemption - %'", 'count', 0);
-$denied   = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='denied'", 'count', 0);
-$revenue  = (float)$scalar_value("SELECT COALESCE(SUM(amount),0) AS total FROM transactions WHERE status='approved'", 'total', 0);
+$approved = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='approved' AND {$analytics_condition} AND {$analytics_exclusions}", 'count', 0);
+$approved_operations = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='approved' AND transaction_id NOT LIKE 'RWD-%' AND COALESCE(description,'') NOT LIKE 'Reward Redemption - %'", 'count', 0);
+$denied   = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='denied' AND {$analytics_condition} AND {$analytics_exclusions}", 'count', 0);
+$revenue  = (float)$scalar_value("SELECT COALESCE(SUM(amount),0) AS total FROM transactions WHERE status='approved' AND {$analytics_condition} AND {$analytics_exclusions}", 'total', 0);
 $in_transit = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='approved' AND delivery_status IN ('on_way','on_the_way')", 'count', 0);
-$delivered_today = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE delivery_status='delivered' AND DATE(updated_at)=CURDATE()", 'count', 0);
+$delivered_today = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE delivery_status='delivered' AND {$analytics_updated_condition} AND {$analytics_exclusions}", 'count', 0);
 
 $analyticsDays = [];
-for ($i = 6; $i >= 0; $i--) {
-    $dateKey = date('Y-m-d', strtotime("-$i days"));
-    $analyticsDays[$dateKey] = ['label' => date('D', strtotime($dateKey)), 'orders' => 0, 'revenue' => 0.0];
+if ($analytics_period === 'day') {
+    for ($i=0;$i<6;$i++) $analyticsDays[(string)$i] = ['label'=>date('ga', mktime($i*4)), 'orders'=>0, 'revenue'=>0.0];
+    $bucket_expression = "FLOOR(HOUR(created_at)/4)";
+} elseif ($analytics_period === 'month') {
+    for ($i=0;$i<5;$i++) $analyticsDays[(string)$i] = ['label'=>'W'.($i+1), 'orders'=>0, 'revenue'=>0.0];
+    $bucket_expression = "FLOOR((DAY(created_at)-1)/7)";
+} else {
+    for ($i=1;$i<=12;$i++) $analyticsDays[(string)$i] = ['label'=>date('M', mktime(0,0,0,$i,1)), 'orders'=>0, 'revenue'=>0.0];
+    $bucket_expression = "MONTH(created_at)";
 }
-$analyticsResult = $conn->query("SELECT DATE(created_at) AS day, COUNT(*) AS orders, COALESCE(SUM(CASE WHEN status='approved' THEN amount ELSE 0 END),0) AS revenue FROM transactions WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY DATE(created_at) ORDER BY day");
+$analyticsResult = $conn->query("SELECT {$bucket_expression} AS bucket, COUNT(*) AS orders, COALESCE(SUM(CASE WHEN status='approved' THEN amount ELSE 0 END),0) AS revenue FROM transactions WHERE {$analytics_condition} AND {$analytics_exclusions} GROUP BY bucket ORDER BY bucket");
 if ($analyticsResult) {
     while ($row = $analyticsResult->fetch_assoc()) {
-        if (isset($analyticsDays[$row['day']])) {
-            $analyticsDays[$row['day']]['orders'] = (int)$row['orders'];
-            $analyticsDays[$row['day']]['revenue'] = (float)$row['revenue'];
+        $bucket = (string)$row['bucket'];
+        if (isset($analyticsDays[$bucket])) {
+            $analyticsDays[$bucket]['orders'] = (int)$row['orders'];
+            $analyticsDays[$bucket]['revenue'] = (float)$row['revenue'];
         }
     }
 }
@@ -216,14 +312,6 @@ $pending_trans = $conn->query("
     JOIN users u ON t.user_id = u.user_id
     WHERE t.status = 'pending'
     ORDER BY t.created_at ASC
-");
-
-$all_trans = $conn->query("
-    SELECT t.*, u.full_name
-    FROM transactions t
-    JOIN users u ON t.user_id = u.user_id
-    ORDER BY t.created_at DESC
-    LIMIT 10
 ");
 
 $rider_list = [];
@@ -252,6 +340,17 @@ $approved_trans = $conn->query("
       AND COALESCE(t.description,'') NOT LIKE 'Reward Redemption - %'
     ORDER BY t.created_at DESC
     LIMIT 10
+");
+
+$pickup_trans = $conn->query("
+    SELECT t.*, u.full_name, u.contact_number, u.email, u.address
+    FROM transactions t
+    JOIN users u ON t.user_id = u.user_id
+    WHERE t.status = 'approved'
+      AND t.fulfillment_method = 'pickup'
+      AND COALESCE(t.delivery_status, 'pending') <> 'delivered'
+      AND t.transaction_id NOT LIKE 'RWD-%'
+    ORDER BY t.created_at ASC
 ");
 
 $avg_feedback  = (float)$scalar_value("SELECT COALESCE(AVG(rating),0) AS avg_rating FROM feedback_ratings", 'avg_rating', 0);
@@ -1027,7 +1126,8 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
     <!-- Topbar -->
     <div class="topbar">
       <div class="topbar-left">
-        <div class="topbar-title"><?php echo $delivery_operations_view ? 'Delivery Operations' : 'Analytics Dashboard'; ?></div>
+        <div class="topbar-title"><?php echo $delivery_operations_view ? ($operations_section === 'pickups' ? 'Pickup Orders' : ($operations_section === 'feedbacks' ? 'Customer Feedback' : 'Delivery Operations')) : 'Analytics Dashboard'; ?></div>
+        <?php if ($delivery_operations_view): ?><div class="topbar-subtitle"><?php echo $operations_section === 'pickups' ? 'Prepare and complete customer pickup orders' : ($operations_section === 'feedbacks' ? 'Review ratings and comments from customers' : 'Assign riders and monitor active delivery runs'); ?></div><?php endif; ?>
       </div>
     </div>
 
@@ -1043,27 +1143,16 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
       </div>
       <?php endif; ?>
 
-      <!-- Pending Banner -->
-      <?php if (!$delivery_operations_view && $pending > 0): ?>
-      <div class="pending-banner">
-        <div class="pulse-dot"></div>
-        <div>
-          <strong><?php echo $pending; ?> transaction<?php echo $pending !== 1 ? 's' : ''; ?></strong>
-          awaiting your review — approve or deny to update delivery queue
-        </div>
-        <a href="pending.php" class="btn btn-warning btn-sm">
-          <i class="fas fa-arrow-right"></i> Review Now
-        </a>
-      </div>
+      <?php if (!$delivery_operations_view): ?>
+      <form method="get" class="card" id="analyticsPeriodForm" style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:18px;padding:14px 16px;">
+        <div style="display:flex;flex-direction:column;gap:6px;"><label for="analyticsPeriod" style="color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">Analytics period</label><select id="analyticsPeriod" name="analytics_period" style="min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);font:700 12px var(--font-body);"><option value="day" <?php echo $analytics_period==='day'?'selected':''; ?>>Day</option><option value="month" <?php echo $analytics_period==='month'?'selected':''; ?>>Month</option><option value="year" <?php echo $analytics_period==='year'?'selected':''; ?>>Year</option></select></div>
+        <div class="analytics-period-value" data-period="day" style="display:flex;flex-direction:column;gap:6px;"><label style="color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase;">Select day</label><input type="date" name="analytics_date" value="<?php echo htmlspecialchars($analytics_date); ?>" style="min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);"></div>
+        <div class="analytics-period-value" data-period="month" style="display:flex;flex-direction:column;gap:6px;"><label style="color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase;">Select month</label><input type="month" name="analytics_month" value="<?php echo htmlspecialchars($analytics_month); ?>" style="min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);"></div>
+        <div class="analytics-period-value" data-period="year" style="display:flex;flex-direction:column;gap:6px;"><label style="color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase;">Select year</label><input type="number" min="2020" max="<?php echo date('Y')+1; ?>" name="analytics_year" value="<?php echo $analytics_year; ?>" style="width:110px;min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);"></div>
+        <button type="submit" class="btn btn-primary btn-sm" style="min-height:40px;"><i class="fas fa-chart-line"></i> Apply</button>
+        <span style="margin-left:auto;align-self:center;color:var(--muted);font-size:12px;"><i class="fas fa-calendar"></i> <?php echo htmlspecialchars($analytics_label); ?></span>
+      </form>
       <?php endif; ?>
-
-      <!-- Hero -->
-      <div class="page-hero">
-        <div>
-          <h1><?php if ($delivery_operations_view): ?>Delivery Operations<?php else: ?>Good <?php $h = (int)date('H'); echo $h < 12 ? 'Morning' : ($h < 17 ? 'Afternoon' : 'Evening'); ?>, <?php echo htmlspecialchars(explode(' ', $_SESSION['full_name'])[0]); ?> 👋<?php endif; ?></h1>
-          <p><?php echo $delivery_operations_view ? 'Assign riders and monitor active delivery runs.' : 'Analytics overview of transactions, revenue, delivery progress, riders, and feedback.'; ?></p>
-        </div>
-      </div>
 
       <!-- Stats -->
       <?php if (!$delivery_operations_view): ?>
@@ -1098,7 +1187,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
             <span class="stat-trend <?php echo $in_transit > 0 ? 'trend-up' : 'trend-neu'; ?>">In transit</span>
           </div>
           <div class="stat-val"><?php echo $in_transit; ?></div>
-          <div class="stat-label"><?php echo $delivered_today; ?> delivered today</div>
+          <div class="stat-label"><?php echo $delivered_today; ?> delivered in selected period</div>
         </div>
       </div>
       <?php endif; ?>
@@ -1106,7 +1195,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
       <?php if (!$delivery_operations_view): ?>
       <section class="analytics-grid section">
         <div class="card analytics-chart-card">
-          <div class="card-head"><div class="card-title"><span class="dot dot-blue"></span>7-Day Order Activity</div><span class="card-meta"><?php echo $weekOrders; ?> orders</span></div>
+          <div class="card-head"><div class="card-title"><span class="dot dot-blue"></span><?php echo ucfirst($analytics_period); ?> Order Activity</div><span class="card-meta"><?php echo $weekOrders; ?> orders</span></div>
           <div class="analytics-bars">
             <?php foreach ($analyticsDays as $day): ?>
             <div class="analytics-bar-item" title="<?php echo $day['orders']; ?> orders · <?php echo format_currency($day['revenue']); ?>">
@@ -1118,10 +1207,10 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
           </div>
         </div>
         <div class="card analytics-summary">
-          <div class="card-head"><div class="card-title"><span class="dot dot-green"></span>This Week</div></div>
+          <div class="card-head"><div class="card-title"><span class="dot dot-green"></span><?php echo htmlspecialchars($analytics_label); ?></div></div>
           <div class="analytics-metric"><i class="fas fa-receipt"></i><div><strong><?php echo $weekOrders; ?></strong><span>Total orders</span></div></div>
           <div class="analytics-metric"><i class="fas fa-peso-sign"></i><div><strong><?php echo format_currency($weekRevenue); ?></strong><span>Approved revenue</span></div></div>
-          <div class="analytics-metric"><i class="fas fa-chart-line"></i><div><strong><?php echo number_format($weekOrders / 7, 1); ?></strong><span>Average orders per day</span></div></div>
+          <div class="analytics-metric"><i class="fas fa-chart-line"></i><div><strong><?php echo number_format($weekOrders / max(1,$analytics_divisor), 1); ?></strong><span>Average orders per day</span></div></div>
         </div>
       </section>
       <?php endif; ?>
@@ -1211,6 +1300,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
         </div>
         <?php endif; ?>
 
+        <?php if ($operations_section === 'deliveries'): ?>
         <!-- Delivery Runs -->
         <div class="card">
           <div class="card-head">
@@ -1218,7 +1308,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
               <span class="dot dot-blue"></span>
               Delivery Runs
             </div>
-            <span class="card-meta"><?php echo $approved; ?> approved</span>
+            <span class="card-meta"><?php echo $approved_operations; ?> approved</span>
           </div>
           <div class="delivery-list">
             <?php if ($approved_trans && $approved_trans->num_rows > 0): ?>
@@ -1270,7 +1360,12 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                   <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-user-check"></i> Assign</button>
                 </form>
                 <?php elseif (!$paymentVerified): ?>
-                <div style="font-size:12px;color:var(--amber);"><i class="fas fa-lock"></i> Verify payment before assigning a rider</div>
+                <form method="POST" class="assign-row" onsubmit="return confirm('Verify payment for this order?');">
+                  <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($row['transaction_id']); ?>">
+                  <input type="hidden" name="action" value="verify_payment_fast">
+                  <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-circle-check"></i> Verify Payment</button>
+                  <span style="font-size:11px;color:var(--amber);"><i class="fas fa-lock"></i> Rider assignment unlocks after verification</span>
+                </form>
                 <?php elseif (empty($rider_list)): ?>
                 <div style="font-size:12px;color:var(--muted);"><i class="fas fa-triangle-exclamation"></i> No active riders</div>
                 <?php endif; ?>
@@ -1284,11 +1379,65 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
             <?php endif; ?>
           </div>
         </div>
+        <?php endif; ?>
+
+        <?php if ($operations_section === 'pickups'): ?>
+        <!-- Approved pickup orders awaiting collection -->
+        <div class="card" id="pickup-orders">
+          <div class="card-head">
+            <div class="card-title"><span class="dot dot-amber"></span>Pickup Orders</div>
+            <span class="card-meta"><?php echo $pickup_trans ? $pickup_trans->num_rows : 0; ?> awaiting collection</span>
+          </div>
+          <div class="delivery-list">
+            <?php if ($pickup_trans && $pickup_trans->num_rows > 0): ?>
+              <?php while ($pickup = $pickup_trans->fetch_assoc()): ?>
+              <div class="delivery-item">
+                <div class="delivery-top">
+                  <div>
+                    <div class="delivery-id"><?php echo htmlspecialchars($pickup['transaction_id']); ?></div>
+                    <div class="delivery-cust"><?php echo htmlspecialchars($pickup['full_name']); ?></div>
+                    <div class="delivery-rider"><span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($pickup['contact_number'] ?: 'No contact number'); ?></span></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+                    <span class="badge badge-pending">Preparing</span>
+                    <span style="font-family:var(--font-head);font-weight:700;color:var(--green);font-size:13px;"><?php echo format_currency($pickup['amount']); ?></span>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px 16px;margin:14px 0;padding:13px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.24);font-size:12px;">
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Order</span><strong><?php echo htmlspecialchars(($pickup['water_type'] === 'nowater' ? 'No-Water' : 'Regular Water') . ' · ' . (int)$pickup['quantity'] . ' gallon' . ((int)$pickup['quantity'] === 1 ? '' : 's')); ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Price / Unit</span><strong><?php echo format_currency($pickup['price_per_unit']); ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Container</span><strong><?php echo htmlspecialchars(ucwords(str_replace('-', ' ', (string)($pickup['container_size'] ?: 'Not specified'))) . ' · ' . ucfirst((string)($pickup['container_status'] ?: 'existing'))); ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Payment</span><strong><?php echo htmlspecialchars(strtoupper((string)$pickup['payment_method']) . ' · ' . ucfirst((string)$pickup['payment_status'])); ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Customer ID</span><strong><?php echo htmlspecialchars($pickup['user_id']); ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Ordered</span><strong><?php echo date('M d, Y · h:i A', strtotime($pickup['created_at'])); ?></strong></div>
+                </div>
+                <div class="assign-row">
+                  <form method="POST" onsubmit="return confirm('Notify the customer that this pickup order is ready?');">
+                    <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($pickup['transaction_id']); ?>">
+                    <input type="hidden" name="action" value="notify_pickup_ready">
+                    <input type="hidden" name="return_section" value="pickups">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-bell"></i> Notify Customer</button>
+                  </form>
+                  <form method="POST" onsubmit="return confirm('Mark this pickup order as collected?');">
+                    <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($pickup['transaction_id']); ?>">
+                    <input type="hidden" name="action" value="pickup_collected">
+                    <input type="hidden" name="return_section" value="pickups">
+                    <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check"></i> Mark Collected</button>
+                  </form>
+                </div>
+              </div>
+              <?php endwhile; ?>
+            <?php else: ?>
+              <div class="empty"><i class="fas fa-store"></i><p>No pickup orders awaiting collection</p></div>
+            <?php endif; ?>
+          </div>
+        </div>
+        <?php endif; ?>
       </div>
 
       <?php endif; ?>
 
-      <?php if (!$delivery_operations_view): ?>
+      <?php if (false): // Recent transactions are available in Payment History. ?>
       <!-- Recent Transactions -->
       <div class="card section">
         <div class="card-head">
@@ -1314,9 +1463,16 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
               <?php if ($all_trans && $all_trans->num_rows > 0): ?>
                 <?php while ($row = $all_trans->fetch_assoc()): ?>
                 <tr>
-                  <td><span class="t-id"><?php echo htmlspecialchars($row['transaction_id']); ?></span></td>
+                  <td><span class="t-id" title="<?php echo htmlspecialchars($row['transaction_id']); ?>"><?php echo htmlspecialchars(str_starts_with((string)$row['transaction_id'], 'RWD-') && strlen((string)$row['transaction_id']) > 12 ? 'RWD-' . substr((string)$row['transaction_id'], 4, 8) : $row['transaction_id']); ?></span></td>
                   <td><span class="t-name"><?php echo htmlspecialchars($row['full_name']); ?></span></td>
-                  <td><span class="t-amount"><?php echo format_currency($row['amount']); ?></span></td>
+                  <td>
+                    <span class="t-amount"><?php echo format_currency($row['amount']); ?></span>
+                    <?php if (str_starts_with((string)$row['transaction_id'], 'RWD-')): ?>
+                    <span style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:4px 8px;border:1px solid rgba(167,139,250,.28);border-radius:999px;background:rgba(167,139,250,.12);color:#c4b5fd;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;">
+                      <i class="fas fa-gift"></i> Points redemption
+                    </span>
+                    <?php endif; ?>
+                  </td>
                   <td style="font-size:13px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                     <?php echo htmlspecialchars($row['description']); ?>
                     <?php if (!empty($row['container_size'])): ?>
@@ -1344,6 +1500,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
       </div>
       <?php endif; ?>
 
+      <?php if ($delivery_operations_view && $operations_section === 'feedbacks'): ?>
       <!-- Feedback -->
       <div class="card section">
         <div class="card-head">
@@ -1390,6 +1547,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
           </div>
         <?php endif; ?>
       </div>
+      <?php endif; ?>
 
     </div><!-- /page -->
   </main>
@@ -1403,6 +1561,15 @@ function tick() {
 }
 tick();
 setInterval(tick, 1000);
+
+const analyticsPeriod = document.getElementById('analyticsPeriod');
+function syncAnalyticsPeriodFields() {
+  document.querySelectorAll('.analytics-period-value').forEach(field => {
+    field.style.display = field.dataset.period === analyticsPeriod?.value ? 'flex' : 'none';
+  });
+}
+analyticsPeriod?.addEventListener('change', syncAnalyticsPeriodFields);
+syncAnalyticsPeriodFields();
 
 // Auto-dismiss flash after 5s
 setTimeout(() => {

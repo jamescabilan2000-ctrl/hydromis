@@ -1,6 +1,9 @@
 <?php
 require_once 'check_auth.php';
 require_once '../config/database.php';
+require_once '../config/inventory_service.php';
+
+ensure_inventory_schema($conn);
 
 $conn->query("CREATE TABLE IF NOT EXISTS reward_claims (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -16,31 +19,88 @@ $conn->query("CREATE TABLE IF NOT EXISTS reward_claims (
     INDEX idx_reward_claim_status (claim_status),
     INDEX idx_reward_claim_user (user_id)
 )");
+$conn->query("ALTER TABLE reward_claims ADD COLUMN IF NOT EXISTS customer_seen_at DATETIME NULL");
+$seenMigration = $conn->query("SELECT setting_key FROM system_settings WHERE setting_key='reward_seen_migration_v1' LIMIT 1");
+if (!$seenMigration || $seenMigration->num_rows === 0) {
+    $conn->query("UPDATE reward_claims SET customer_seen_at=NOW() WHERE claim_status='claimed' AND customer_seen_at IS NULL");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key,setting_value,updated_by) VALUES ('reward_seen_migration_v1','1','SYSTEM')");
+}
 
 $flash = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['claim_transaction'])) {
     $transactionId = sanitize(trim($_POST['claim_transaction']));
+    $claimAction = (string)($_POST['claim_action'] ?? 'approve');
     $staffId = sanitize($_SESSION['admin_id'] ?? $_SESSION['staff_id'] ?? $_SESSION['user_id'] ?? 'STAFF');
-    $claim = $conn->query("SELECT claim_status FROM reward_claims WHERE transaction_id = '$transactionId' LIMIT 1");
+    $claim = $conn->query("SELECT user_id, reward_code, reward_title, claim_status FROM reward_claims WHERE transaction_id = '$transactionId' LIMIT 1");
     $claimRow = $claim ? $claim->fetch_assoc() : null;
-    if ($claimRow && $claimRow['claim_status'] === 'pending') {
-        $conn->query("UPDATE reward_claims SET claim_status = 'claimed', claimed_by = '$staffId', claimed_at = NOW() WHERE transaction_id = '$transactionId'");
-        $flash = 'Reward marked as claimed.';
+    if ($claimRow && $claimRow['claim_status'] === 'pending' && $claimAction === 'approve') {
+        $updated = $conn->query("UPDATE reward_claims SET claim_status='approved',claimed_by='$staffId',claimed_at=NOW(),customer_seen_at=NULL WHERE transaction_id='$transactionId' AND claim_status='pending'");
+        if ($updated === TRUE && $conn->affected_rows > 0) {
+            $rewardTitle = trim((string)($claimRow['reward_title'] ?? 'Reward'));
+            $isOnlineVoucher = ($claimRow['reward_code'] ?? '') === 'free_delivery';
+            add_user_notification(
+                $conn,
+                (string)$claimRow['user_id'],
+                $transactionId,
+                'Reward redemption approved',
+                $isOnlineVoucher
+                    ? 'Your Free Delivery reward is active and will be applied automatically to your next delivery order.'
+                    : 'Your reward "' . $rewardTitle . '" is approved. Please come to the HydroMIS water refilling station and show your redemption ID to claim it.',
+                'reward'
+            );
+            $flash = $isOnlineVoucher
+                ? 'Free Delivery approved. It will be used automatically on the customer\'s next delivery order.'
+                : 'Reward approved and the customer was notified to visit the station.';
+        } else {
+            $flash = 'This reward was updated by another staff member. Please refresh the list.';
+        }
+    } elseif ($claimRow && $claimRow['claim_status'] === 'approved' && $claimAction === 'claim') {
+        $updated = $conn->query("UPDATE reward_claims SET claim_status='claimed',claimed_by='$staffId',claimed_at=NOW() WHERE transaction_id='$transactionId' AND claim_status='approved'");
+        if ($updated === TRUE && $conn->affected_rows > 0) {
+            add_user_notification($conn,(string)$claimRow['user_id'],$transactionId,'Reward successfully claimed','HydroMIS staff confirmed that your reward was released and is now marked as claimed.','success');
+            $flash = 'Reward marked as claimed and the customer was notified.';
+        } else {
+            $flash = 'This reward was updated by another staff member. Please refresh the list.';
+        }
     } else {
-        $flash = 'This reward has already been claimed or is unavailable.';
+        $flash = 'This reward is already completed or unavailable for that action.';
     }
 }
 
 $pendingCountResult = $conn->query("SELECT COUNT(*) AS total FROM reward_claims WHERE claim_status = 'pending'");
 $pendingCount = $pendingCountResult ? (int)($pendingCountResult->fetch_assoc()['total'] ?? 0) : 0;
 $historyView = (($_GET['view'] ?? '') === 'history');
+$rewardSearch = trim((string)($_GET['q'] ?? ''));
 $claimViewWhere = $historyView ? '' : "WHERE rc.claim_status = 'pending'";
-$claims = $conn->query("SELECT rc.id, rc.transaction_id, rc.user_id, rc.reward_code, CONCAT(rc.reward_title, ' — ', CASE rc.reward_code WHEN 'free_1_gallon' THEN 'Give 1 gallon of regular water' WHEN 'voucher_20' THEN 'Apply a ₱20 discount to the next refill order' WHEN 'bundle_fast_lane' THEN 'Provide fast-lane service on the next visit' WHEN 'bundle_2_gallons' THEN 'Give 2 gallons of regular water' ELSE 'Release the listed reward' END) AS reward_title, rc.points_used, rc.claim_status, rc.claimed_by, rc.claimed_at, rc.created_at, u.full_name, u.contact_number FROM reward_claims rc LEFT JOIN users u ON u.user_id = rc.user_id $claimViewWhere ORDER BY FIELD(rc.claim_status, 'pending', 'claimed'), rc.created_at DESC");
-$visibleClaimCount = $claims ? $claims->num_rows : 0;
+$claims = $conn->query("SELECT rc.id, rc.transaction_id, rc.user_id, rc.reward_code, CONCAT(rc.reward_title, ' — ', CASE rc.reward_code WHEN 'free_1_gallon' THEN 'Give 1 gallon of regular water' WHEN 'voucher_20' THEN 'Apply a ₱20 discount to the next refill order' WHEN 'delivery_discount' THEN 'Apply a ₱20 discount to the delivery fee' WHEN 'bundle_fast_lane' THEN 'Provide fast-lane service on the next visit' WHEN 'free_delivery' THEN 'Waive the delivery fee on the next eligible order' WHEN 'bundle_2_gallons' THEN 'Give 2 gallons of regular water' ELSE 'Release the listed reward' END) AS reward_title, rc.points_used, rc.claim_status, rc.claimed_by, rc.claimed_at, rc.created_at, u.full_name, u.contact_number FROM reward_claims rc LEFT JOIN users u ON u.user_id = rc.user_id $claimViewWhere ORDER BY FIELD(rc.claim_status, 'pending', 'claimed'), rc.created_at DESC");
+$claimsData = [];
+if ($claims) {
+    while ($claimRow = $claims->fetch_assoc()) $claimsData[] = $claimRow;
+}
+if ($rewardSearch !== '') {
+    $needle = strtolower($rewardSearch);
+    $claimsData = array_values(array_filter($claimsData, function ($claim) use ($needle) {
+        return str_contains(strtolower(implode(' ', [
+            $claim['transaction_id'] ?? '', $claim['user_id'] ?? '',
+            $claim['full_name'] ?? '', $claim['contact_number'] ?? '',
+            $claim['reward_title'] ?? '', $claim['claim_status'] ?? ''
+        ])), $needle);
+    }));
+}
+$visibleClaimCount = count($claimsData);
+$claims = new class($claimsData) {
+    private array $rows;
+    private int $position = 0;
+    public int $num_rows;
+    public function __construct(array $rows) { $this->rows = $rows; $this->num_rows = count($rows); }
+    public function fetch_assoc(): ?array { return $this->rows[$this->position++] ?? null; }
+};
 $claimInstructions = [
     'free_1_gallon' => 'Give 1 gallon of regular water',
     'voucher_20' => 'Apply a ₱20 discount to the next refill order',
+    'delivery_discount' => 'Apply a ₱20 discount to the delivery fee',
     'bundle_fast_lane' => 'Provide fast-lane service on the next visit',
+    'free_delivery' => 'Waive the delivery fee on the next eligible order',
     'bundle_2_gallons' => 'Give 2 gallons of regular water'
 ];
 $staff_active = 'rewards';
@@ -80,6 +140,9 @@ $sharedStaffSidebar = ob_get_clean();
         .nav-badge { margin-left:auto; min-width:24px; padding:4px 7px; border-radius:99px; background:#ff4d58; color:#fff; text-align:center; font-size:11px; }
         .sidebar::after { content:'Staff Account'; display:block; margin-top:auto; padding:19px 14px; border-top:1px solid rgba(255,255,255,.1); color:#82aee5; font:700 12px 'Plus Jakarta Sans',sans-serif; }
         @media(max-width:800px){ .shell{grid-template-columns:1fr}.sidebar{min-height:auto}.sidebar::after{display:none} }
+        .reward-search{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding:10px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.reward-search .search-field{position:relative;min-width:0;flex:1}.reward-search .search-field i{position:absolute;left:14px;top:50%;color:#7792ba;transform:translateY(-50%)}.reward-search input{width:100%;height:44px;padding:0 14px 0 41px;border:1px solid var(--border);border-radius:10px;background:#0e1728;color:var(--text);font:600 13px 'Plus Jakarta Sans',sans-serif;outline:none}.reward-search input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.14)}.reward-search button{height:44px;padding:0 18px;border:0;border-radius:10px;background:var(--blue);color:#fff;font-weight:800;cursor:pointer}.reward-search .clear-search{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:var(--surface2);color:var(--muted);text-decoration:none}@media(max-width:600px){.reward-search{flex-wrap:wrap}.reward-search .search-field{flex-basis:100%}.reward-search button{flex:1}}
+        .approved{background:rgba(59,130,246,.16);color:#93c5fd}
+        body.staff-light .main{color:#17243a}body.staff-light .hero{border-color:#cbdcf0!important;background:linear-gradient(120deg,#e8f2ff,#dbeafe)!important}body.staff-light .hero small{color:#315f9b}body.staff-light .hero strong{color:#17243a}body.staff-light .hero i{color:#2563eb}body.staff-light .card{border-color:#d8e2ee!important;background:#fff!important;box-shadow:0 12px 30px rgba(30,64,100,.08)!important}body.staff-light th{color:#526984;border-color:#d8e2ee}body.staff-light td{color:#243650;border-color:#e1e8f0}body.staff-light .muted{color:#64748b}body.staff-light .reward-search{border-color:#d8e2ee;background:#fff}body.staff-light .reward-search input{background:#f7f9fc!important;color:#17243a!important}body.staff-light .back{color:#315f9b;border-color:#cbd8e7}body.staff-light .pending{background:#fff3cd;color:#9a6700}body.staff-light .claimed{background:#dcfce7;color:#087a55}body.staff-light .approved{background:#dbeafe;color:#1d4ed8}
     </style>
     <link href="../css/staff-sidebar.css" rel="stylesheet">
     <link href="../css/staff-sidebar-size.css" rel="stylesheet">
@@ -88,6 +151,21 @@ $sharedStaffSidebar = ob_get_clean();
         document.addEventListener('DOMContentLoaded', function () {
             const legacySidebar = document.querySelector('.shell > .sidebar');
             if (legacySidebar) legacySidebar.outerHTML = <?php echo json_encode($sharedStaffSidebar); ?>;
+            const themeToggle = document.getElementById('staffThemeToggle');
+            const applyRewardTheme = theme => {
+                const light = theme === 'light';
+                document.body.classList.toggle('staff-light', light);
+                themeToggle?.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
+                if (themeToggle) themeToggle.innerHTML = light
+                    ? '<i class="fas fa-moon"></i><span>Dark mode</span>'
+                    : '<i class="fas fa-sun"></i><span>Light mode</span>';
+            };
+            applyRewardTheme(localStorage.getItem('hydromis-staff-theme') || 'dark');
+            themeToggle?.addEventListener('click', () => {
+                const next = document.body.classList.contains('staff-light') ? 'dark' : 'light';
+                localStorage.setItem('hydromis-staff-theme', next);
+                applyRewardTheme(next);
+            });
             const pageTitle = document.querySelector('.top h1');
             const pageSubtitle = document.querySelector('.top .sub');
             const historyView = <?php echo $historyView ? 'true' : 'false'; ?>;
@@ -96,6 +174,40 @@ $sharedStaffSidebar = ob_get_clean();
             const historyButton = document.querySelector('.top .back');
             const claimsTable = document.querySelector('.main .card');
             if (claimsTable) claimsTable.id = 'conversion-history';
+            if (claimsTable) {
+                const searchForm = document.createElement('form');
+                searchForm.method = 'get';
+                searchForm.className = 'reward-search';
+                const searchField = document.createElement('div');
+                searchField.className = 'search-field';
+                searchField.innerHTML = '<i class="fas fa-magnifying-glass"></i>';
+                const searchInput = document.createElement('input');
+                searchInput.type = 'search';
+                searchInput.name = 'q';
+                searchInput.value = <?php echo json_encode($rewardSearch); ?>;
+                searchInput.placeholder = 'Search customer, contact, reward, or redemption ID';
+                searchInput.setAttribute('aria-label', 'Search reward claims');
+                searchField.appendChild(searchInput);
+                searchForm.appendChild(searchField);
+                if (historyView) {
+                    const viewInput = document.createElement('input');
+                    viewInput.type = 'hidden'; viewInput.name = 'view'; viewInput.value = 'history';
+                    searchForm.appendChild(viewInput);
+                }
+                const searchButton = document.createElement('button');
+                searchButton.type = 'submit';
+                searchButton.innerHTML = '<i class="fas fa-search"></i> Search';
+                searchForm.appendChild(searchButton);
+                if (searchInput.value !== '') {
+                    const clearSearch = document.createElement('a');
+                    clearSearch.className = 'clear-search';
+                    clearSearch.href = historyView ? 'rewards.php?view=history' : 'rewards.php';
+                    clearSearch.setAttribute('aria-label', 'Clear search');
+                    clearSearch.innerHTML = '<i class="fas fa-xmark"></i>';
+                    searchForm.appendChild(clearSearch);
+                }
+                claimsTable.before(searchForm);
+            }
             if (historyButton) {
                 historyButton.href = historyView ? 'rewards.php' : 'rewards.php?view=history';
                 historyButton.innerHTML = historyView ? '<i class="fas fa-gift"></i> Pending Claims' : '<i class="fas fa-clock-rotate-left"></i> Conversion History';
@@ -106,6 +218,40 @@ $sharedStaffSidebar = ob_get_clean();
                 if (heroLabel) heroLabel.textContent = 'Conversion archive';
                 if (heroValue) heroValue.textContent = <?php echo json_encode($visibleClaimCount . ' conversion' . ($visibleClaimCount === 1 ? '' : 's')); ?>;
             }
+            document.querySelectorAll('.claim-btn').forEach(button => {
+                const form = button.closest('form');
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden'; actionInput.name = 'claim_action'; actionInput.value = 'approve';
+                form.appendChild(actionInput);
+                button.innerHTML = '<i class="fas fa-check"></i> Approve';
+                const rewardName = form.closest('tr')?.querySelector('td:nth-child(2) .reward')?.textContent || '';
+                form.onsubmit = () => confirm(
+                    rewardName.toLowerCase().includes('free delivery')
+                        ? 'Approve this one-use Free Delivery voucher for the customer\'s next delivery order?'
+                        : 'Approve this redemption and notify the customer to claim it at the station?'
+                );
+            });
+            document.querySelectorAll('.status.claimed').forEach(status => { status.textContent = 'Claimed'; });
+            document.querySelectorAll('.status.approved').forEach(status => {
+                status.textContent = 'Approved';
+                const row = status.closest('tr');
+                const rewardMeta = row?.querySelector('td:nth-child(2) .muted')?.textContent || '';
+                const transactionId = rewardMeta.split('·')[0].trim();
+                const actionCell = row?.lastElementChild;
+                if (!actionCell || !transactionId) return;
+                const rewardName = row?.querySelector('td:nth-child(2) .reward')?.textContent || '';
+                if (rewardName.toLowerCase().includes('free delivery')) {
+                    actionCell.innerHTML = '<span class="muted"><i class="fas fa-truck-fast"></i> Waiting for customer delivery order</span>';
+                    return;
+                }
+                const form = document.createElement('form'); form.method = 'post';
+                const transactionInput = document.createElement('input'); transactionInput.type = 'hidden'; transactionInput.name = 'claim_transaction'; transactionInput.value = transactionId;
+                const actionInput = document.createElement('input'); actionInput.type = 'hidden'; actionInput.name = 'claim_action'; actionInput.value = 'claim';
+                const button = document.createElement('button'); button.type = 'submit'; button.className = 'claim-btn'; button.innerHTML = '<i class="fas fa-box-open"></i> Mark as claimed';
+                form.append(transactionInput, actionInput, button);
+                form.onsubmit = () => confirm('Confirm that this approved reward has been released to the customer?');
+                actionCell.replaceChildren(form);
+            });
         });
     </script>
 </head>

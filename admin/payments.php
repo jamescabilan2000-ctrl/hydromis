@@ -92,6 +92,9 @@ $payments = new PaymentsArrayResult($payments_data);
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="../css/admin_transactions.css" rel="stylesheet">
+    <script src="../js/ui-protection.js" defer></script>
+    <link rel="stylesheet" href="../css/admin-theme.css">
+    <script src="../js/admin-theme.js"></script>
 </head>
 <body>
 <?php include 'payments.html'; ?>

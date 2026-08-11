@@ -15,6 +15,8 @@
 
 include 'check_auth.php';
 require_once '../config/database.php';
+require_once '../config/inventory_service.php';
+ensure_inventory_schema($conn);
 
 /* ---------- small helpers ---------- */
 
@@ -189,10 +191,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'delivery_info') {
     $msgStmt = $conn->prepare("SELECT id, transaction_id, sender, recipient, message, created_at FROM (
         SELECT id, transaction_id, sender, recipient, message, created_at
         FROM rider_messages
-        WHERE (sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)
+        WHERE transaction_id = ?
+          AND ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?))
         ORDER BY id DESC LIMIT 100
     ) recent_messages ORDER BY id ASC");
-    $msgStmt->bind_param('ssss', $rider_id, $customer_id, $customer_id, $rider_id);
+    $msgStmt->bind_param('sssss', $transaction_id, $rider_id, $customer_id, $customer_id, $rider_id);
     $msgStmt->execute();
     $msgRes = $msgStmt->get_result();
     while ($msg = $msgRes->fetch_assoc()) {
@@ -244,13 +247,69 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'send_message') {
     respond_json(['ok' => (bool)$ok, 'message' => ['transaction_id' => $transaction_id, 'sender' => $rider_id, 'recipient' => $recipient, 'message' => $text, 'created_at' => date('Y-m-d H:i:s')]]);
 }
 
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'notifications') {
+    $alerts = [];
+    $stmt = $conn->prepare("SELECT id, transaction_id, title, message, created_at
+        FROM rider_notifications WHERE rider_id = ? AND is_read = 0 ORDER BY id ASC LIMIT 10");
+    $stmt->bind_param('s', $rider_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($alert = $result->fetch_assoc()) {
+        $alerts[] = $alert;
+    }
+    if (!empty($alerts)) {
+        $last_id = (int)end($alerts)['id'];
+        $mark = $conn->prepare("UPDATE rider_notifications SET is_read = 1 WHERE rider_id = ? AND is_read = 0 AND id <= ?");
+        $mark->bind_param('si', $rider_id, $last_id);
+        $mark->execute();
+    }
+    respond_json(['ok' => true, 'notifications' => $alerts]);
+}
+
 /* ---------- POST actions: start / complete / status change ---------- */
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = sanitize($_POST['action']);
     $transaction_id = sanitize($_POST['transaction_id'] ?? '');
 
-    if (in_array($action, ['start_delivery', 'complete', 'update_status'], true) && $transaction_id !== '') {
+    if ($action === 'report_delay' && $transaction_id !== '') {
+        $delay_reasons = [
+            'traffic' => 'Heavy traffic',
+            'weather' => 'Bad weather',
+            'vehicle' => 'Vehicle problem',
+            'refilling' => 'Delay at the water refilling station',
+            'location' => 'Difficulty locating the delivery address',
+            'other' => 'Unexpected delay',
+        ];
+        $reason_key = sanitize($_POST['delay_reason'] ?? 'other');
+        $reason = $delay_reasons[$reason_key] ?? $delay_reasons['other'];
+        $delay_note = trim((string)($_POST['delay_note'] ?? ''));
+        $delay_note = mb_substr(strip_tags($delay_note), 0, 180);
+
+        if ($transactions_has_assigned_rider) {
+            $delayStmt = $conn->prepare("SELECT user_id FROM transactions WHERE transaction_id = ? AND status = 'approved' AND delivery_status IN ('on_way','on_the_way') AND (rider_id = ? OR assigned_rider = ?) LIMIT 1");
+            $delayStmt->bind_param('sss', $transaction_id, $rider_id, $rider_id);
+        } else {
+            $delayStmt = $conn->prepare("SELECT user_id FROM transactions WHERE transaction_id = ? AND status = 'approved' AND delivery_status IN ('on_way','on_the_way') AND rider_id = ? LIMIT 1");
+            $delayStmt->bind_param('ss', $transaction_id, $rider_id);
+        }
+        $delayStmt->execute();
+        $delayOrder = $delayStmt->get_result()->fetch_assoc();
+        if ($delayOrder) {
+            $delay_message = "Delivery update: Your order is delayed due to {$reason}.";
+            if ($delay_note !== '') $delay_message .= " Rider note: {$delay_note}";
+            $delay_message .= ' Your rider is still on the way. Thank you for your patience.';
+            add_user_notification($conn, (string)$delayOrder['user_id'], $transaction_id, 'Delivery delayed', $delay_message, 'delivery');
+            $messageStmt = $conn->prepare("INSERT INTO rider_messages (transaction_id, sender, recipient, message) VALUES (?, ?, ?, ?)");
+            $messageStmt->bind_param('ssss', $transaction_id, $rider_id, $delayOrder['user_id'], $delay_message);
+            $messageStmt->execute();
+            $_SESSION['rider_flash'] = 'Delay update sent to the customer.';
+        } else {
+            $_SESSION['rider_flash'] = 'Delay update was not sent. This delivery is no longer on the way.';
+        }
+    }
+
+    if (in_array($action, ['start_delivery', 'complete'], true) && $transaction_id !== '') {
         $new_status = null;
         $flash = '';
 
@@ -260,31 +319,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         } elseif ($action === 'complete') {
             $new_status = 'delivered';
             $flash = "Delivery completed: {$transaction_id}.";
-        } elseif ($action === 'update_status') {
-            $candidate = sanitize($_POST['new_status'] ?? '');
-            $allowed = ['assigned', 'pending', 'on_way', 'delivered'];
-            if (in_array($candidate, $allowed, true)) {
-                $new_status = $candidate;
-                $label = $new_status === 'on_way' ? 'On the Way' : ucfirst($new_status);
-                $flash = "Status updated: {$transaction_id} -> {$label}.";
-            } else {
-                $_SESSION['rider_flash'] = 'Invalid delivery status selected.';
-            }
         }
 
         if ($new_status !== null) {
+            $expected_status_sql = $action === 'start_delivery'
+                ? "COALESCE(NULLIF(delivery_status, ''), 'assigned') IN ('assigned', 'pending')"
+                : "delivery_status = 'on_way'";
             if ($transactions_has_assigned_rider) {
                 $stmt = $conn->prepare("UPDATE transactions SET delivery_status = ?
-                    WHERE transaction_id = ? AND status = 'approved' AND (rider_id = ? OR assigned_rider = ?)");
+                    WHERE transaction_id = ? AND status = 'approved' AND (rider_id = ? OR assigned_rider = ?)
+                    AND {$expected_status_sql}");
                 $stmt->bind_param('ssss', $new_status, $transaction_id, $rider_id, $rider_id);
             } else {
                 $stmt = $conn->prepare("UPDATE transactions SET delivery_status = ?
-                    WHERE transaction_id = ? AND status = 'approved' AND rider_id = ?");
+                    WHERE transaction_id = ? AND status = 'approved' AND rider_id = ?
+                    AND {$expected_status_sql}");
                 $stmt->bind_param('sss', $new_status, $transaction_id, $rider_id);
             }
             if ($stmt->execute()) {
-                $_SESSION['rider_flash'] = $flash;
+                if ($stmt->affected_rows > 0) {
+                    $_SESSION['rider_flash'] = $flash;
+                } else {
+                    $_SESSION['rider_flash'] = 'This delivery has already moved to another stage. The page has been refreshed.';
+                }
                 if ($action === 'start_delivery' && $stmt->affected_rows > 0) {
+                    $customerResult = $conn->query("SELECT user_id FROM transactions WHERE transaction_id='" . $conn->real_escape_string($transaction_id) . "' LIMIT 1");
+                    $customerOrder = $customerResult ? $customerResult->fetch_assoc() : null;
+                    if ($customerOrder) {
+                        add_user_notification(
+                            $conn,
+                            (string)$customerOrder['user_id'],
+                            $transaction_id,
+                            'Your delivery is on the way',
+                            'Your rider has started the delivery. You can open Track Order to follow its progress.',
+                            'delivery'
+                        );
+                    }
                     // A new run must not show coordinates left over from an older run.
                     $clearLocation = $conn->prepare("DELETE FROM rider_locations WHERE transaction_id = ? AND rider_id = ?");
                     $clearLocation->bind_param('ss', $transaction_id, $rider_id);
@@ -341,6 +411,7 @@ $sql = "SELECT
         t.notes,
         t.user_id,
         t.created_at,
+        t.updated_at,
         COALESCE(u.full_name, 'Unknown Customer') AS full_name,
         COALESCE(u.contact_number, '-') AS contact_number,
         COALESCE(u.email, '-') AS email,
@@ -387,6 +458,7 @@ while ($row = $res->fetch_assoc()) {
         'amount' => (float)$row['amount'],
         'status' => $status,
         'created_at' => $row['created_at'],
+        'updated_at' => $row['updated_at'],
         'description' => $row['description'],
         'water_type' => $row['water_type'],
         'quantity' => $quantity,
@@ -401,6 +473,7 @@ while ($row = $res->fetch_assoc()) {
 
 $active_deliveries = array_values(array_filter($deliveries, fn($d) => $d['status'] !== 'delivered'));
 $completed_deliveries = array_values(array_filter($deliveries, fn($d) => $d['status'] === 'delivered'));
+$completed_today = array_values(array_filter($completed_deliveries, fn($d) => date('Y-m-d', strtotime($d['updated_at'])) === date('Y-m-d')));
 
 /* ---------- earnings: today + total (per rider preference, kept simple) ---------- */
 
@@ -413,18 +486,6 @@ $stmt->execute();
 $today_row = $stmt->get_result()->fetch_assoc();
 $earnings_today = (float)($today_row['total'] ?? 0);
 $trips_today = (int)($today_row['trips'] ?? 0);
-
-$stmt = $conn->prepare("SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS trips
-    FROM transactions WHERE {$rider_col} = ? AND delivery_status = 'delivered'");
-$stmt->bind_param('s', $rider_id);
-$stmt->execute();
-$total_row = $stmt->get_result()->fetch_assoc();
-$earnings_total = (float)($total_row['total'] ?? 0);
-$trips_total = (int)($total_row['trips'] ?? 0);
-
-$commission_per_trip = 150;
-$commission_today = $trips_today * $commission_per_trip;
-$commission_total = $trips_total * $commission_per_trip;
 
 $display_name = $_SESSION['rider_auth_full_name'] ?? ($_SESSION['full_name'] ?? 'Rider');
 ?>
@@ -452,6 +513,7 @@ $display_name = $_SESSION['rider_auth_full_name'] ?? ($_SESSION['full_name'] ?? 
   --radius:14px;
 }
 *{box-sizing:border-box;}
+html{scroll-behavior:smooth;scroll-padding-top:82px}
 body{
   margin:0;
   background:var(--paper);
@@ -466,33 +528,32 @@ body{
 .topbar{
   background:var(--ink);
   color:#fff;
-  padding:14px 18px;
+  padding:12px 18px;
   display:flex;
   align-items:center;
   justify-content:space-between;
+  gap:18px;
   position:sticky; top:0; z-index:40;
 }
 .topbar .brand{display:flex; align-items:center; gap:10px;}
-.topbar .brand i{color:var(--amber); font-size:20px;}
+.topbar .brand-logo{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));border:1px solid rgba(125,211,252,.18);box-shadow:0 8px 22px rgba(0,0,0,.2)}
+.topbar .brand-logo img{display:block;width:37px;height:37px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,.28))}
 .topbar .brand-text{display:flex; flex-direction:column; line-height:1.15;}
-.topbar .brand-text b{font-family:'Barlow Condensed',sans-serif; font-size:18px; letter-spacing:.02em;}
-.topbar .brand-text span{font-size:11px; color:#9fb0c2;}
-.topbar .rider-chip{display:flex; align-items:center; gap:10px;}
-.topbar .rider-name{font-size:13px; color:#dbe6f0; text-align:right;}
-.topbar .rider-name b{display:block; color:#fff; font-size:14px;}
-.topbar .logout{color:#f2c9c9; text-decoration:none; font-size:12px; margin-left:6px;}
-.online-pill{
-  display:inline-flex; align-items:center; gap:6px;
-  background:rgba(16,185,129,.15); border:1px solid rgba(16,185,129,.4);
-  color:#6ee7b7; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600;
-  cursor:pointer; user-select:none;
-}
-.online-pill.offline{background:rgba(148,163,184,.15); border-color:rgba(148,163,184,.4); color:#cbd5e1;}
-.online-pill .dot{width:7px; height:7px; border-radius:50%; background:#34d399;}
-.online-pill.offline .dot{background:#94a3b8;}
+.topbar .brand-text b{font-family:'Barlow Condensed',sans-serif; font-size:20px; letter-spacing:.02em;}
+.topbar .brand-text span{font-size:11px; color:#7dd3fc;}
+.topbar .rider-chip{display:flex;align-items:center;justify-content:flex-end;gap:9px;min-width:0}
+.topbar .rider-identity{min-width:0;text-align:right}
+.topbar .rider-name{display:block;color:#fff;font-size:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .rider-id-row{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:3px}
+.topbar .rider-id{color:#b8c7d5;font-family:'JetBrains Mono',monospace;font-size:10px;white-space:nowrap}
+.copy-rider-id{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:6px;background:transparent;color:#7dd3fc;cursor:pointer}
+.copy-rider-id:hover,.copy-rider-id:focus-visible{background:rgba(125,211,252,.12);color:#fff;outline:none}
+.topbar .logout{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 11px;border:1px solid rgba(248,113,113,.3);border-radius:9px;background:rgba(239,68,68,.08);color:#fecaca;text-decoration:none;font-size:11px;font-weight:700;white-space:nowrap}
+.topbar .logout:hover,.topbar .logout:focus-visible{background:rgba(239,68,68,.18);color:#fff;outline:none}
+.notification-toggle{position:relative;display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid rgba(148,163,184,.25);border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;cursor:pointer}.notification-toggle:hover{background:rgba(255,255,255,.12);color:#fff}.notification-toggle.enabled{border-color:rgba(52,211,153,.4);color:#6ee7b7}.notification-toggle .notify-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border:2px solid var(--ink);border-radius:50%;background:#f59e0b}
 
 /* ---- shell ---- */
-.shell{max-width:720px; margin:0 auto; padding:16px 14px 90px;}
+.shell{max-width:720px; margin:0 auto; padding:16px 14px 40px;}
 
 /* ---- notification banner ---- */
 .notif{
@@ -505,6 +566,7 @@ body{
 .notif .notif-item{background:rgba(255,255,255,.75); border-radius:8px; padding:8px 10px; margin-top:8px;}
 .notif .notif-item b{font-size:13px;}
 .notif .notif-item div{font-size:12px; color:#7c5b23; margin-top:2px;}
+.assignment-toast{position:fixed;z-index:100;top:82px;right:14px;width:min(360px,calc(100% - 28px));padding:14px 16px;border:1px solid #a7f3d0;border-radius:14px;background:#fff;color:var(--ink);box-shadow:0 18px 45px rgba(15,23,42,.2);animation:toastIn .25s ease}.assignment-toast b{display:block;margin-bottom:3px;color:var(--teal);font-size:13px}.assignment-toast p{margin:0;color:var(--steel);font-size:12px;line-height:1.45}@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 
 /* ---- earnings strip ---- */
 .earnings-strip{
@@ -517,6 +579,15 @@ body{
 .earnings-strip .cell .amt{font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:24px; color:var(--green);}
 .earnings-strip .cell .lbl{font-size:11px; color:var(--steel); text-transform:uppercase; letter-spacing:.06em; margin-top:2px;}
 .earnings-strip .cell .sub{font-size:11px; color:var(--steel); margin-top:2px;}
+
+/* Road-ready rider dashboard */
+.shift-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.metric-card{min-width:0;padding:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 18px rgba(16,32,43,.05)}
+.metric-icon{display:grid;place-items:center;width:30px;height:30px;margin-bottom:10px;border-radius:9px;background:#ecfdf5;color:var(--teal)}
+.metric-value{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;line-height:1;color:var(--ink)}
+.metric-label{margin-top:5px;color:var(--steel);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.metric-card.primary{background:linear-gradient(145deg,#0f766e,#0a5f59);border-color:transparent;color:#fff}
+.metric-card.primary .metric-icon{background:rgba(255,255,255,.14);color:#fff}.metric-card.primary .metric-value,.metric-card.primary .metric-label{color:#fff}
 
 /* ---- section heading ---- */
 .section-head{
@@ -562,6 +633,11 @@ body{
 }
 .route-line .node.done{background:var(--teal); box-shadow:0 0 0 1px var(--teal);}
 .route-line .node.current{background:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.25);}
+.delivery-flow{display:grid;grid-template-columns:auto 1fr auto 1fr auto;align-items:start;margin:16px 0 14px}
+.flow-step{position:relative;display:flex;min-width:58px;flex-direction:column;align-items:center;gap:6px;color:#94a3b8;font-size:9px;font-weight:700;text-align:center}
+.flow-step .flow-node{display:grid;place-items:center;width:28px;height:28px;border:2px solid #e2e8f0;border-radius:50%;background:#f8fafc;color:#94a3b8;font-size:10px;transition:.2s ease}
+.flow-step.done,.flow-step.current{color:var(--ink)}.flow-step.done .flow-node{border-color:var(--teal);background:var(--teal);color:#fff}.flow-step.current .flow-node{border-color:var(--amber);background:#fff7ed;color:var(--amber-dark);box-shadow:0 0 0 4px rgba(245,158,11,.13)}
+.flow-connector{height:3px;margin-top:13px;border-radius:4px;background:#e2e8f0}.flow-connector.done{background:var(--teal)}
 
 .card-address{font-size:13px; color:var(--steel); display:flex; gap:6px; align-items:flex-start; margin-bottom:10px;}
 .card-address i{margin-top:2px; color:var(--teal);}
@@ -577,12 +653,17 @@ body{
 .btn-secondary{background:var(--ink); color:#fff;}
 .btn-ghost{background:#f1f0ea; color:var(--ink);}
 .btn-track{background:var(--teal); color:#fff;}
+.delay-report{width:100%}.delay-report summary{list-style:none}.delay-report summary::-webkit-details-marker{display:none}.btn-delay{width:100%;justify-content:center;background:#fff7ed;color:#b45309;border:1px solid #fed7aa}.delay-form{display:grid;gap:8px;margin-top:8px;padding:12px;border:1px solid #fed7aa;border-radius:10px;background:#fffbeb}.delay-form label{font-size:11px;font-weight:700;color:#7c4a03}.delay-form select,.delay-form input{width:100%;min-width:0;padding:10px;border:1px solid #e5d3ad;border-radius:8px;background:#fff;color:var(--ink);font:12px 'Inter',sans-serif}.delay-form .btn{justify-content:center;background:#f59e0b;color:#fff}
 
 .empty-state{
   text-align:center; padding:38px 20px; color:var(--steel);
   background:var(--card); border:1px dashed var(--line); border-radius:var(--radius);
 }
 .empty-state i{font-size:26px; color:#cbd1d9; margin-bottom:8px; display:block;}
+.empty-state h3{margin:4px 0 5px;color:var(--ink);font-size:15px}.empty-state p{max-width:430px;margin:0 auto;font-size:12.5px;line-height:1.5}
+.waiting-status{display:inline-flex;align-items:center;gap:7px;margin-top:14px;padding:7px 10px;border-radius:20px;background:#ecfdf5;color:#087d69;font-size:11px;font-weight:700}
+.waiting-status::before{content:'';width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 0 4px rgba(16,185,129,.12);animation:waitingPulse 1.8s infinite}
+@keyframes waitingPulse{50%{opacity:.45}}
 
 /* ---- completed list (compact) ---- */
 .completed-row{
@@ -595,6 +676,11 @@ body{
 .completed-row .c-right{text-align:right;}
 .completed-row .c-right b{color:var(--green); font-family:'JetBrains Mono',monospace;}
 .completed-row .c-right span{display:block; font-size:11px; color:var(--steel);}
+.completed-row{transition:transform .15s ease,box-shadow .15s ease}.completed-row:hover{transform:translateY(-1px);box-shadow:0 7px 18px rgba(16,32,43,.06)}
+.completed-row .destination{display:block;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#486477;font-size:11px}
+
+#home,#earnings,#deliveries,#completed{scroll-margin-top:82px}
+.history-panel,.deliveries-panel,.earnings-panel{display:block}.history-panel .section-head,.deliveries-panel .section-head,.earnings-panel .section-head{margin-top:22px}.history-intro{margin:-3px 0 14px;color:var(--steel);font-size:12px}
 
 /* ---- tracking drawer ---- */
 .drawer-overlay{
@@ -614,6 +700,14 @@ body{
 .drawer-close{background:none; border:none; font-size:18px; color:var(--steel); cursor:pointer; padding:4px;}
 
 #trackMap{height:230px; width:100%; background:#e2e8f0;}
+.map-toggle-wrap{padding:0 18px 10px;}
+.map-toggle{width:100%; display:flex; align-items:center; justify-content:space-between; border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:var(--card); color:var(--ink); font-size:13px; font-weight:700; cursor:pointer;}
+.map-toggle i{color:var(--teal);}
+.map-toggle .toggle-chevron{transition:transform .2s ease;}
+.map-toggle[aria-expanded="true"] .toggle-chevron{transform:rotate(180deg);}
+.map-body{position:relative;}
+.map-body[hidden]{display:none;}
+.map-gps-control{position:absolute; top:10px; right:10px; z-index:1001; box-shadow:0 3px 10px rgba(16,32,43,.2);}
 
 .delivery-details{
   display:grid; grid-template-columns:1fr 1fr; gap:12px 18px; margin-bottom:18px;
@@ -631,6 +725,12 @@ body{
 .message-head, .feedback-head{
   font-size:13px; font-weight:700; margin-bottom:10px; color:var(--ink);
 }
+.message-head{margin-bottom:0;}
+.message-toggle{width:100%; display:flex; align-items:center; justify-content:space-between; background:none; border:0; padding:0; color:var(--ink); cursor:pointer; text-align:left;}
+.message-toggle i{color:var(--teal); transition:transform .2s ease;}
+.message-toggle[aria-expanded="true"] i{transform:rotate(180deg);}
+.message-body{margin-top:10px;}
+.message-body[hidden]{display:none;}
 .message-list{max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-right:4px;}
 .message-item{display:flex; gap:10px;}
 .message-item.rider{justify-content:flex-end;}
@@ -651,40 +751,44 @@ body{
 .route-line.expanded .step .lbl{font-size:11px; margin-top:6px; color:var(--steel); text-align:center; font-weight:600;}
 .route-line.expanded .step.done .lbl, .route-line.expanded .step.current .lbl{color:var(--ink);}
 .route-line.expanded .node{width:16px; height:16px;}
+.route-line.expanded .seg.done{background:var(--teal)!important}
 
 .drawer-body{padding:16px 18px 26px;}
-.gps-live{
-  display:flex; align-items:center; justify-content:space-between;
-  background:var(--card); border:1px solid var(--line); border-radius:12px;
-  padding:12px 14px; margin-bottom:14px;
-}
-.gps-live .g-info{font-size:12.5px; color:var(--steel);}
-.gps-live .g-info b{display:block; color:var(--ink); font-size:13.5px;}
-
 @media (max-width:480px){
+  .topbar{padding:9px 10px;gap:8px}.topbar .brand{gap:7px}.topbar .brand-logo{width:38px;height:38px;flex-basis:38px;border-radius:10px}.topbar .brand-logo img{width:34px;height:34px}.topbar .brand-text b{font-size:18px}.topbar .brand-text span{font-size:10px}.topbar .rider-chip{gap:6px}.topbar .rider-identity{max-width:128px}.topbar .rider-name{font-size:12px}.topbar .rider-id{font-size:8px}.notification-toggle{width:34px;height:34px}.topbar .logout{width:36px;padding:0;justify-content:center}.topbar .logout span{display:none}.shift-summary{gap:7px}.metric-card{padding:11px}.metric-value{font-size:21px}.metric-icon{width:27px;height:27px;margin-bottom:8px}
   .card-top{flex-direction:column;}
   .card-amount{font-size:15px;}
+  .card-top>div:last-child{text-align:left!important;display:flex;align-items:center;gap:8px}.card-actions{display:grid;grid-template-columns:1fr 1fr}.card-actions form{display:block!important}.card-actions .btn{width:100%;justify-content:center;min-height:44px}.completed-row .destination{max-width:210px}
 }
 </style>
+<script src="../js/ui-protection.js" defer></script>
 </head>
-<body>
+<body id="home">
 
 <div class="topbar">
   <div class="brand">
-    <i class="fas fa-motorcycle"></i>
+    <span class="brand-logo"><img src="../imagess/hydromis-logo-v2.png?v=20260802" alt="HydroMIS logo"></span>
     <div class="brand-text">
       <b>HydroMIS</b>
       <span>Rider Portal</span>
     </div>
   </div>
   <div class="rider-chip">
-    <span class="online-pill" id="onlinePill" onclick="toggleOnline()"><span class="dot"></span><span id="onlineLabel">Online</span></span>
-    <div class="rider-name"><b><?php echo htmlspecialchars($display_name); ?></b><?php echo htmlspecialchars($rider_id); ?></div>
-    <a href="../logout.php" class="logout"><i class="fas fa-sign-out-alt"></i></a>
+    <button class="notification-toggle" id="notificationToggle" type="button" onclick="enablePushNotifications()" aria-label="Enable assignment notifications" title="Enable assignment notifications"><i class="fas fa-bell"></i><span class="notify-dot" id="notifyDot"></span></button>
+    <div class="rider-identity">
+      <strong class="rider-name"><?php echo htmlspecialchars($display_name); ?></strong>
+      <div class="rider-id-row">
+        <span class="rider-id" id="riderIdValue"><?php echo htmlspecialchars($rider_id); ?></span>
+        <button class="copy-rider-id" type="button" onclick="copyRiderId(this)" aria-label="Copy rider ID" title="Copy rider ID"><i class="far fa-copy"></i></button>
+      </div>
+    </div>
+    <a href="../logout.php" class="logout" aria-label="Log out of HydroMIS"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
   </div>
 </div>
 
 <div class="shell">
+
+  <div class="dashboard-primary">
 
   <?php if (!empty($notifications)): ?>
   <div class="notif">
@@ -698,28 +802,41 @@ body{
   </div>
   <?php endif; ?>
 
-  <div class="earnings-strip">
-    <div class="cell">
-      <div class="amt">₱<?php echo number_format($earnings_today, 0); ?></div>
-      <div class="lbl">Today</div>
-      <div class="sub"><?php echo $trips_today; ?> trip<?php echo $trips_today === 1 ? '' : 's'; ?> · ₱<?php echo number_format($commission_today, 0); ?> commission</div>
+  <section class="earnings-panel" id="earnings" aria-labelledby="earningsTitle">
+  <div class="section-head">
+    <h2 id="earningsTitle"><i class="fas fa-wallet" style="color:var(--teal); font-size:17px;"></i>My Earnings</h2>
+  </div>
+  <div class="shift-summary" aria-label="Today's rider earnings summary">
+    <div class="metric-card primary">
+      <div class="metric-icon"><i class="fas fa-wallet"></i></div>
+      <div class="metric-value">₱<?php echo number_format($earnings_today, 2); ?></div>
+      <div class="metric-label">Delivered amount today</div>
     </div>
-    <div class="cell">
-      <div class="amt">₱<?php echo number_format($earnings_total, 0); ?></div>
-      <div class="lbl">Total</div>
-      <div class="sub"><?php echo $trips_total; ?> trip<?php echo $trips_total === 1 ? '' : 's'; ?> · ₱<?php echo number_format($commission_total, 0); ?> commission</div>
+    <div class="metric-card">
+      <div class="metric-icon"><i class="fas fa-check"></i></div>
+      <div class="metric-value"><?php echo $trips_today; ?></div>
+      <div class="metric-label">Completed</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon"><i class="fas fa-motorcycle"></i></div>
+      <div class="metric-value"><?php echo count($active_deliveries); ?></div>
+      <div class="metric-label">Active now</div>
     </div>
   </div>
+  </section>
 
+  <section class="deliveries-panel" id="deliveries" aria-labelledby="deliveriesTitle">
   <div class="section-head">
-    <h2><i class="fas fa-route" style="color:var(--teal); font-size:17px;"></i>My Deliveries</h2>
+    <h2 id="deliveriesTitle"><i class="fas fa-route" style="color:var(--teal); font-size:17px;"></i>New Deliveries</h2>
     <span class="count-badge"><?php echo count($active_deliveries); ?> active</span>
   </div>
 
   <?php if (empty($active_deliveries)): ?>
     <div class="empty-state">
       <i class="fas fa-box-open"></i>
-      <p>No deliveries assigned right now. New assignments from staff will show up here automatically.</p>
+      <h3>You're all caught up</h3>
+      <p>New assignments from staff will appear automatically while you remain online.</p>
+      <span class="waiting-status">Waiting for assignments</span>
     </div>
   <?php else: foreach ($active_deliveries as $d):
     $status = $d['status'];
@@ -734,30 +851,35 @@ body{
         </div>
         <div style="text-align:right;">
           <div class="card-amount">₱<?php echo number_format($d['amount'], 2); ?></div>
-          <span class="status-badge status-<?php echo $status; ?>"><?php echo $status_label; ?></span>
         </div>
       </div>
 
-      <div class="route-line">
-        <div class="node <?php echo $step_index >= 0 ? 'done' : ''; ?> <?php echo $step_index === 0 ? 'current' : ''; ?>"></div>
-        <div class="seg <?php echo $step_index >= 1 ? 'done' : ''; ?>"></div>
-        <div class="node <?php echo $step_index >= 1 ? 'done' : ''; ?> <?php echo $step_index === 1 ? 'current' : ''; ?>"></div>
-        <div class="seg <?php echo $step_index >= 2 ? 'done' : ''; ?>"></div>
-        <div class="node <?php echo $step_index >= 2 ? 'done' : ''; ?>"></div>
+      <div class="delivery-flow" role="list" aria-label="Delivery progress: <?php echo htmlspecialchars($status_label); ?>">
+        <div class="flow-step <?php echo $step_index === 0 ? 'current' : 'done'; ?>" role="listitem">
+          <span class="flow-node"><i class="fas fa-clipboard-check"></i></span><span>Assigned</span>
+        </div>
+        <div class="flow-connector <?php echo $step_index >= 1 ? 'done' : ''; ?>"></div>
+        <div class="flow-step <?php echo $step_index === 1 ? 'current' : ($step_index > 1 ? 'done' : ''); ?>" role="listitem">
+          <span class="flow-node"><i class="fas fa-motorcycle"></i></span><span>On the Way</span>
+        </div>
+        <div class="flow-connector <?php echo $step_index >= 2 ? 'done' : ''; ?>"></div>
+        <div class="flow-step <?php echo $step_index === 2 ? 'done' : ''; ?>" role="listitem">
+          <span class="flow-node"><i class="fas fa-check"></i></span><span>Delivered</span>
+        </div>
       </div>
 
       <div class="card-address"><i class="fas fa-map-marker-alt"></i><span><?php echo htmlspecialchars($d['address']); ?></span></div>
 
       <div class="card-actions">
         <button class="btn btn-track" onclick='openTracking(<?php echo json_encode($d); ?>)'>
-          <i class="fas fa-location-arrow"></i> Track
+          <i class="fas fa-location-arrow"></i> Details
         </button>
 
         <?php if ($status === 'assigned'): ?>
           <form method="POST" style="display:inline;">
             <input type="hidden" name="action" value="start_delivery">
             <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($d['id']); ?>">
-            <button class="btn btn-primary" type="submit"><i class="fas fa-play"></i> Start</button>
+            <button class="btn btn-secondary" type="submit"><i class="fas fa-play"></i> Start Delivery</button>
           </form>
         <?php elseif ($status === 'on_way'): ?>
           <form method="POST" style="display:inline;">
@@ -765,27 +887,54 @@ body{
             <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($d['id']); ?>">
             <button class="btn btn-secondary" type="submit"><i class="fas fa-check"></i> Mark Delivered</button>
           </form>
+          <details class="delay-report">
+            <summary class="btn btn-delay"><i class="fas fa-clock"></i> Report delivery delay</summary>
+            <form method="POST" class="delay-form">
+              <input type="hidden" name="action" value="report_delay">
+              <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($d['id']); ?>">
+              <label>Reason for delay
+                <select name="delay_reason" required>
+                  <option value="traffic">Heavy traffic</option>
+                  <option value="weather">Bad weather</option>
+                  <option value="vehicle">Vehicle problem</option>
+                  <option value="refilling">Delay at the water refilling station</option>
+                  <option value="location">Difficulty locating the address</option>
+                  <option value="other">Other unexpected delay</option>
+                </select>
+              </label>
+              <label>Additional update (optional)
+                <input type="text" name="delay_note" maxlength="180" placeholder="Example: Expected arrival in 15 minutes">
+              </label>
+              <button class="btn" type="submit"><i class="fas fa-paper-plane"></i> Notify customer</button>
+            </form>
+          </details>
         <?php endif; ?>
 
         <a class="btn btn-ghost" href="tel:<?php echo htmlspecialchars($d['phone']); ?>"><i class="fas fa-phone"></i> Call</a>
       </div>
     </div>
   <?php endforeach; endif; ?>
+  </section>
 
-  <div class="section-head">
-    <h2><i class="fas fa-check-circle" style="color:var(--green); font-size:17px;"></i>Completed Today</h2>
   </div>
 
-  <?php if (empty($completed_deliveries)): ?>
+  <section class="history-panel" id="completed" aria-labelledby="historyTitle">
+  <div class="section-head">
+    <h2 id="historyTitle"><i class="fas fa-check-circle" style="color:var(--green); font-size:17px;"></i>Completed Today</h2>
+  </div>
+  <p class="history-intro">Your completed deliveries and their order amounts for today.</p>
+
+  <?php if (empty($completed_today)): ?>
     <div class="empty-state">
       <i class="fas fa-inbox"></i>
       <p>Nothing delivered yet today. Completed drop-offs will appear here.</p>
     </div>
-  <?php else: foreach (array_slice($completed_deliveries, 0, 10) as $d): ?>
+  <?php else: foreach (array_slice($completed_today, 0, 10) as $d): ?>
     <div class="completed-row">
       <div class="c-left">
         <b><?php echo htmlspecialchars($d['customer']); ?></b>
-        <span>#<?php echo htmlspecialchars($d['id']); ?></span>
+        <span class="destination"><i class="fas fa-location-dot"></i> <?php echo htmlspecialchars($d['address']); ?></span>
+        <span>#<?php echo htmlspecialchars($d['id']); ?> · <?php echo date('h:i A', strtotime($d['created_at'])); ?></span>
       </div>
       <div class="c-right">
         <b>₱<?php echo number_format($d['amount'], 2); ?></b>
@@ -793,6 +942,7 @@ body{
       </div>
     </div>
   <?php endforeach; endif; ?>
+  </section>
 
 </div>
 
@@ -808,7 +958,16 @@ body{
       <button class="drawer-close" onclick="closeTracking()"><i class="fas fa-times"></i></button>
     </div>
 
-    <div id="trackMap"></div>
+    <div class="map-toggle-wrap">
+      <button class="map-toggle" id="mapToggleBtn" type="button" aria-expanded="false" aria-controls="mapBody" onclick="toggleMap()">
+        <span><i class="fas fa-map-marked-alt" aria-hidden="true" style="margin-right:7px;"></i>Map</span>
+        <i class="fas fa-chevron-down toggle-chevron" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="map-body" id="mapBody" hidden>
+      <div id="trackMap"></div>
+      <button class="btn btn-track map-gps-control" id="gpsToggleBtn" type="button" onclick="toggleGPS()"><i class="fas fa-satellite-dish"></i> Share GPS</button>
+    </div>
 
     <div class="route-line expanded" id="drawerRoute">
       <div class="step" data-step="0"><div class="node"></div><div class="lbl">Assigned</div></div>
@@ -850,20 +1009,18 @@ body{
         </div>
       </div>
 
-      <div class="gps-live">
-        <div class="g-info">
-          <b id="gpsStatusLabel">Live location off</b>
-          <span id="gpsStatusSub">Turn on to share your position with dispatch</span>
-        </div>
-        <button class="btn btn-track" id="gpsToggleBtn" onclick="toggleGPS()"><i class="fas fa-satellite-dish"></i> Share GPS</button>
-      </div>
-
       <div class="message-panel">
-        <div class="message-head">Messages</div>
-        <div class="message-list" id="messageList">No messages yet.</div>
-        <div class="message-input-row">
-          <input type="text" id="messageInput" placeholder="Type a message to the customer" />
-          <button class="btn btn-primary" id="sendMessageBtn">Send</button>
+        <div class="message-head">
+          <button class="message-toggle" id="messageToggleBtn" type="button" aria-expanded="false" aria-controls="messageBody" onclick="toggleMessages()">
+            <span>Messages</span><i class="fas fa-chevron-down" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="message-body" id="messageBody" hidden>
+          <div class="message-list" id="messageList">No messages yet.</div>
+          <div class="message-input-row">
+            <input type="text" id="messageInput" placeholder="Type a message to the customer" />
+            <button class="btn btn-primary" id="sendMessageBtn">Send</button>
+          </div>
         </div>
       </div>
 
@@ -879,13 +1036,92 @@ body{
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
-/* ---------- online/offline toggle (visual — wire to your presence endpoint if you have one) ---------- */
-function toggleOnline(){
-  const pill = document.getElementById('onlinePill');
-  const label = document.getElementById('onlineLabel');
-  const isOnline = !pill.classList.contains('offline');
-  pill.classList.toggle('offline', isOnline);
-  label.textContent = isOnline ? 'Offline' : 'Online';
+/* ---------- rider assignment notifications ---------- */
+const initialAssignmentNotifications = <?php echo json_encode($notifications, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const notificationToggle = document.getElementById('notificationToggle');
+const notifyDot = document.getElementById('notifyDot');
+
+function syncNotificationButton(){
+  const supported = 'Notification' in window;
+  const granted = supported && Notification.permission === 'granted';
+  notificationToggle.classList.toggle('enabled', granted);
+  notificationToggle.setAttribute('aria-label', granted ? 'Assignment notifications enabled' : 'Enable assignment notifications');
+  notificationToggle.title = supported ? (granted ? 'Assignment notifications enabled' : 'Enable assignment notifications') : 'Browser notifications are not supported';
+  notifyDot.style.display = granted ? 'none' : 'block';
+  notificationToggle.disabled = !supported;
+}
+
+function showAssignmentToast(alert){
+  const existing = document.querySelector('.assignment-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'assignment-toast';
+  toast.setAttribute('role', 'status');
+  toast.innerHTML = `<b><i class="fas fa-motorcycle"></i> ${escapeHtml(alert.title || 'New delivery assigned')}</b><p>${escapeHtml(alert.message || 'Open the dashboard to review your new assignment.')}</p>`;
+  toast.title = 'Open new delivery';
+  toast.addEventListener('click', () => window.location.reload());
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 8000);
+}
+
+function showAssignmentNotification(alert){
+  showAssignmentToast(alert);
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const browserAlert = new Notification(alert.title || 'New HydroMIS delivery', {
+    body: alert.message || 'A staff member assigned a delivery to you.',
+    icon: '../imagess/hydromis-logo-v2.png',
+    tag: `rider-assignment-${alert.transaction_id || alert.id}`,
+    renotify: true
+  });
+  browserAlert.onclick = () => {
+    window.focus();
+    browserAlert.close();
+    window.location.reload();
+  };
+}
+
+async function enablePushNotifications(){
+  if (!('Notification' in window)) return;
+  try {
+    const permission = await Notification.requestPermission();
+    syncNotificationButton();
+    if (permission === 'granted') {
+      showAssignmentToast({title:'Notifications enabled', message:'You will be alerted when staff assigns a delivery.'});
+    }
+  } catch (error) {
+    console.warn('Unable to enable assignment notifications.', error);
+  }
+}
+
+async function pollAssignmentNotifications(){
+  try {
+    const response = await fetch('?ajax=notifications', {headers:{'Accept':'application/json'}, cache:'no-store'});
+    if (!response.ok) return;
+    const data = await response.json();
+    (data.notifications || []).forEach(showAssignmentNotification);
+  } catch (error) {
+    console.warn('Assignment notification check failed.', error);
+  }
+}
+
+syncNotificationButton();
+if ('Notification' in window && Notification.permission === 'granted') initialAssignmentNotifications.forEach(showAssignmentNotification);
+setInterval(pollAssignmentNotifications, 10000);
+
+async function copyRiderId(button){
+  const value = document.getElementById('riderIdValue')?.textContent.trim();
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    button.innerHTML = '<i class="fas fa-check"></i>';
+    button.setAttribute('aria-label', 'Rider ID copied');
+    setTimeout(() => {
+      button.innerHTML = '<i class="far fa-copy"></i>';
+      button.setAttribute('aria-label', 'Copy rider ID');
+    }, 1600);
+  } catch (error) {
+    window.prompt('Copy your rider ID:', value);
+  }
 }
 
 /* ---------- tracking drawer ---------- */
@@ -898,6 +1134,8 @@ const STEP_INDEX = { assigned: 0, on_way: 1, delivered: 2 };
 
 function openTracking(delivery){
   currentDelivery = delivery;
+  setMessagesVisible(false);
+  setMapVisible(false);
   document.getElementById('drawerOverlay').classList.add('open');
   updateDrawerRoute(delivery.status);
   updateDrawerActions(delivery);
@@ -914,6 +1152,33 @@ function openTracking(delivery){
   }
 }
 
+function setMessagesVisible(visible){
+  const body = document.getElementById('messageBody');
+  const button = document.getElementById('messageToggleBtn');
+  if (!body || !button) return;
+  body.hidden = !visible;
+  button.setAttribute('aria-expanded', visible ? 'true' : 'false');
+}
+
+function toggleMessages(){
+  const button = document.getElementById('messageToggleBtn');
+  setMessagesVisible(button?.getAttribute('aria-expanded') !== 'true');
+}
+
+function setMapVisible(visible){
+  const body = document.getElementById('mapBody');
+  const button = document.getElementById('mapToggleBtn');
+  if (!body || !button) return;
+  body.hidden = !visible;
+  button.setAttribute('aria-expanded', visible ? 'true' : 'false');
+  if (visible && map) setTimeout(() => map.invalidateSize(), 50);
+}
+
+function toggleMap(){
+  const button = document.getElementById('mapToggleBtn');
+  setMapVisible(button?.getAttribute('aria-expanded') !== 'true');
+}
+
 function closeTracking(){
   document.getElementById('drawerOverlay').classList.remove('open');
   if (pollTimer) clearInterval(pollTimer);
@@ -923,11 +1188,18 @@ function updateDrawerRoute(status){
   const idx = STEP_INDEX[status] ?? 0;
   document.querySelectorAll('#drawerRoute .step').forEach(step => {
     const stepIdx = parseInt(step.dataset.step, 10);
-    step.classList.toggle('done', stepIdx < idx || (stepIdx === idx && status === 'delivered'));
-    step.classList.toggle('current', stepIdx === idx && status !== 'delivered');
+    const isDone = stepIdx < idx || (stepIdx === idx && status === 'delivered');
+    const isCurrent = stepIdx === idx && status !== 'delivered';
+    step.classList.toggle('done', isDone);
+    step.classList.toggle('current', isCurrent);
     const node = step.querySelector('.node');
-    node.style.background = stepIdx <= idx ? 'var(--teal)' : 'var(--line)';
+    node.classList.toggle('done', isDone);
+    node.classList.toggle('current', isCurrent);
   });
+  document.querySelectorAll('#drawerRoute .seg').forEach((segment, segmentIdx) => {
+    segment.classList.toggle('done', segmentIdx < idx);
+  });
+  document.getElementById('drawerRoute').setAttribute('aria-label', `Delivery progress: ${STATUS_LABEL[status] || 'Assigned'}`);
 }
 
 function updateDrawerActions(delivery){
@@ -997,6 +1269,7 @@ function formatDate(value){
 
 function initMap(delivery){
   const el = document.getElementById('trackMap');
+  if (map) map.remove();
   el.innerHTML = '';
   map = L.map(el, { zoomControl: false }).setView([10.3157, 123.8854], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1064,15 +1337,11 @@ function loadDeliveryInfo(transactionId){
 
 function toggleGPS(){
   const btn = document.getElementById('gpsToggleBtn');
-  const label = document.getElementById('gpsStatusLabel');
-  const sub = document.getElementById('gpsStatusSub');
 
   if (watchId !== null){
     navigator.geolocation.clearWatch(watchId);
     watchId = null;
     btn.innerHTML = '<i class="fas fa-satellite-dish"></i> Share GPS';
-    label.textContent = 'Live location off';
-    sub.textContent = 'Turn on to share your position with dispatch';
     return;
   }
 
@@ -1100,8 +1369,6 @@ function toggleGPS(){
   }, () => { alert('Could not get your location. Check location permissions.'); }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 });
 
   btn.innerHTML = '<i class="fas fa-stop"></i> Stop Sharing';
-  label.textContent = 'Live location on';
-  sub.textContent = 'Dispatch and the customer can see your position';
 }
 
 function sendMessage(){

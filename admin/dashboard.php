@@ -5,6 +5,20 @@ require_once '../config/system_settings.php';
 
 $systemLogo = system_logo_path($conn);
 $pointsPerGallon = system_int_setting($conn, 'points_per_gallon', 1, 0, 100);
+$staffLoginEnabled = system_int_setting($conn, 'staff_login_enabled', 1, 0, 1) === 1;
+$riderLoginEnabled = system_int_setting($conn, 'rider_login_enabled', 1, 0, 1) === 1;
+$rewardRedemptionOptions = [
+    'free_1_gallon' => 'Free 1 Gallon Regular Water',
+    'voucher_20' => 'Discount Voucher',
+    'delivery_discount' => 'Delivery Fee Discount',
+    'bundle_fast_lane' => 'Free 1 Gallons Bundle',
+    'free_delivery' => 'Free Delivery',
+    'bundle_2_gallons' => 'Free 2 Gallons Bundle',
+];
+$rewardRedemptionStates = [];
+foreach ($rewardRedemptionOptions as $rewardCode => $rewardLabel) {
+    $rewardRedemptionStates[$rewardCode] = system_int_setting($conn, 'reward_enabled_' . $rewardCode, 1, 0, 1) === 1;
+}
 if (empty($_SESSION['system_logo_csrf'])) $_SESSION['system_logo_csrf'] = bin2hex(random_bytes(32));
 
 function format_currency($amount) {
@@ -164,7 +178,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     $pointsPerGallon = max(0, min(100, (int)($settings['pointsPerGallon'] ?? 1)));
     $pointsSaved = set_system_setting($conn, 'points_per_gallon', (string)$pointsPerGallon, (string)($_SESSION['admin_id'] ?? 'admin'));
-    if ($pointsSaved && $conn->query($sql)) {
+    $staffLoginSaved = set_system_setting($conn, 'staff_login_enabled', !empty($settings['staffLoginEnabled']) ? '1' : '0', (string)($_SESSION['admin_id'] ?? 'admin'));
+    $riderLoginSaved = set_system_setting($conn, 'rider_login_enabled', !empty($settings['riderLoginEnabled']) ? '1' : '0', (string)($_SESSION['admin_id'] ?? 'admin'));
+    $rewardRedemptionsSaved = true;
+    $postedRewardStates = is_array($settings['rewardRedemptions'] ?? null) ? $settings['rewardRedemptions'] : [];
+    foreach ($rewardRedemptionOptions as $rewardCode => $rewardLabel) {
+        $saved = set_system_setting($conn, 'reward_enabled_' . $rewardCode, !empty($postedRewardStates[$rewardCode]) ? '1' : '0', (string)($_SESSION['admin_id'] ?? 'admin'));
+        $rewardRedemptionsSaved = $rewardRedemptionsSaved && $saved;
+    }
+    if ($pointsSaved && $staffLoginSaved && $riderLoginSaved && $rewardRedemptionsSaved && $conn->query($sql)) {
         echo json_encode(['success' => true, 'message' => 'Settings saved.' . $passwordMessage]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Error saving settings']);
@@ -316,6 +338,7 @@ $revenue_year = monthly_revenue_series($conn);
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+body[data-color-mode="light"]{color-scheme:light;--bg:#f4f7fb;--bg2:#fff;--bg3:#edf2f8;--bg4:#e3eaf3;--border:rgba(31,52,76,.11);--border2:rgba(31,52,76,.2);--text:#18263a;--muted:#60738c;--muted2:#7a8ca2;--aqua-dim:rgba(13,148,136,.11);--blue-dim:rgba(37,99,235,.1);--amber-dim:rgba(217,119,6,.11);--red-dim:rgba(225,29,72,.1);--green-dim:rgba(22,163,74,.1);--purple-dim:rgba(124,58,237,.1)}body[data-color-mode="light"] .topbar{background:rgba(255,255,255,.9)}body[data-color-mode="light"] .brand-name{color:#152238}body[data-color-mode="light"] .sidebar{box-shadow:5px 0 24px rgba(30,64,100,.05)}body[data-color-mode="light"] .card,body[data-color-mode="light"] .stat-card,body[data-color-mode="light"] .chart-card,body[data-color-mode="light"] .settings-drawer{box-shadow:0 10px 30px rgba(30,64,100,.07)}body[data-color-mode="light"] input,body[data-color-mode="light"] select,body[data-color-mode="light"] textarea{color:#18263a;background:#f8fafc;border-color:#ccd7e4}body[data-color-mode="light"] .theme-swatch.selected{border-color:#26364b}
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
@@ -325,7 +348,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 /* ── Sidebar ── */
 .sidebar { background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 28px 16px 24px; gap: 32px; }
 .brand-logo { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
-.brand-icon { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #1e9e8f, #0e6d7a); display: flex; align-items: center; justify-content: center; font-size: 17px; color: #fff; box-shadow: 0 4px 14px rgba(45,212,191,0.3); flex-shrink: 0; }
+.brand-icon { width: 38px; height: 38px; border: 0; border-radius: 50%; background: transparent; display: flex; align-items: center; justify-content: center; font-size: 17px; color: #fff; box-shadow: none; flex-shrink: 0; overflow: visible; }
 .brand-name { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
 .brand-sub  { font-size: 10px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; margin-top: 2px; }
 .nav-section-label { font-size: 10px; font-weight: 700; color: var(--muted2); letter-spacing: 1.4px; text-transform: uppercase; padding: 0 12px; margin-bottom: 6px; }
@@ -820,6 +843,9 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
 .qr-save-status.error { color: var(--red); }
 .qr-updated-at { font-size: 10px; color: var(--muted2); margin-top: 4px; }
 </style>
+<script src="../js/ui-protection.js" defer></script>
+    <link rel="stylesheet" href="../css/admin-theme.css">
+    <script src="../js/admin-theme.js"></script>
 </head>
 <body>
 
@@ -853,6 +879,24 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
 
         <!-- ── General Tab ── -->
         <div class="tab-panel active" id="tab-general">
+            <div class="settings-section">
+                <div class="settings-section-title">Portal Access</div>
+                <div class="settings-row">
+                    <div class="settings-row-info">
+                        <div class="settings-row-label">Allow staff login</div>
+                        <div class="settings-row-desc">Permit staff accounts to sign in to the staff portal</div>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="tog-staff-login" <?php echo $staffLoginEnabled ? 'checked' : ''; ?>><span class="toggle-track"></span></label>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-info">
+                        <div class="settings-row-label">Allow rider login</div>
+                        <div class="settings-row-desc">Permit rider accounts to sign in to the rider portal</div>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="tog-rider-login" <?php echo $riderLoginEnabled ? 'checked' : ''; ?>><span class="toggle-track"></span></label>
+                </div>
+            </div>
+
             <div class="settings-section">
                 <div class="settings-section-title">Dashboard Behavior</div>
                 <div class="settings-row">
@@ -891,6 +935,15 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                     </div>
                     <input class="settings-select" id="pointsPerGallon" type="number" min="0" max="100" step="1" value="<?php echo (int)$pointsPerGallon; ?>" style="width:92px;">
                 </div>
+                <?php foreach ($rewardRedemptionOptions as $rewardCode => $rewardLabel): ?>
+                <div class="settings-row">
+                    <div class="settings-row-info">
+                        <div class="settings-row-label"><?php echo htmlspecialchars($rewardLabel); ?></div>
+                        <div class="settings-row-desc">Allow customers to redeem this reward.</div>
+                    </div>
+                    <label class="toggle"><input type="checkbox" class="reward-redemption-toggle" data-reward-code="<?php echo htmlspecialchars($rewardCode); ?>" <?php echo $rewardRedemptionStates[$rewardCode] ? 'checked' : ''; ?>><span class="toggle-track"></span></label>
+                </div>
+                <?php endforeach; ?>
             </div>
 
             <div class="settings-section">
@@ -947,6 +1000,19 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
 
         <!-- ── Appearance Tab ── -->
         <div class="tab-panel" id="tab-appearance">
+            <div class="settings-section">
+                <div class="settings-section-title">Color Mode</div>
+                <div class="settings-row">
+                    <div class="settings-row-info">
+                        <div class="settings-row-label">Dashboard appearance</div>
+                        <div class="settings-row-desc">Switch the admin interface between dark and light mode</div>
+                    </div>
+                    <select class="settings-select" id="sel-color-mode">
+                        <option value="dark">Dark mode</option>
+                        <option value="light">Light mode</option>
+                    </select>
+                </div>
+            </div>
             <div class="settings-section">
                 <div class="settings-section-title">System Branding</div>
                 <div class="qr-upload-card" style="margin-bottom:0;">
@@ -1234,7 +1300,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                     </div>
                     <div class="profile-avatar-info">
                         <h4><?= htmlspecialchars($_SESSION['full_name'] ?? 'Admin') ?></h4>
-                        <p>Super Administrator</p>
+                        <p>Administrator</p>
                         <button class="btn-avatar-change" type="button" onclick="triggerAvatarUpload()"><i class="fas fa-camera"></i> Change photo</button>
                         <input type="file" id="avatarFileInput" accept="image/*" style="display:none;" onchange="uploadAvatarFile(this)">
                     </div>
@@ -1364,6 +1430,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
             <div>
                 <div class="nav-section-label">System</div>
                 <div class="nav-group">
+                    <a href="activity_logs.php" class="nav-item"><i class="fas fa-clock-rotate-left"></i> Activity Log</a>
                     <a href="#" class="nav-item" onclick="openSettings();return false;"><i class="fas fa-cog"></i> Settings</a>
                     
                 </div>
@@ -1380,7 +1447,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                 </div>
                 <div>
                     <div class="admin-name"><?=htmlspecialchars($_SESSION['full_name']??'Admin')?></div>
-                    <div class="admin-role">Super Admin</div>
+                    <div class="admin-role">Administrator</div>
                 </div>
                 <a href="../logout.php" class="logout-link" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
             </div>
@@ -1597,6 +1664,14 @@ function setCheckboxValue(id, value) {
 function applyDashboardPreferences() {
     document.body.classList.toggle('compact-tables', document.getElementById('tog-compact')?.checked || false);
     document.body.classList.toggle('reduce-motion', document.getElementById('tog-reduce-motion')?.checked || false);
+    const colorMode = document.getElementById('sel-color-mode')?.value || 'dark';
+    if (typeof window.applyAdminColorMode === 'function') {
+        window.applyAdminColorMode(colorMode);
+    } else {
+        document.documentElement.setAttribute('data-admin-color-mode', colorMode);
+        document.body.setAttribute('data-color-mode', colorMode);
+        localStorage.setItem('hydromis-admin-color-mode', colorMode);
+    }
     document.body.setAttribute('data-layout-spacing', (document.getElementById('sel-layout-spacing')?.value || 'Comfortable').toLowerCase());
     document.body.setAttribute('data-border-radius', (document.getElementById('sel-border-radius')?.value || 'Rounded').toLowerCase());
     document.querySelectorAll('.sparkline-wrap').forEach(el => {
@@ -1625,6 +1700,7 @@ function loadSettings() {
     setSelectValue('sel-currency', userSettings.currency);
     setSelectValue('sel-date-format', userSettings.dateFormat);
     setSelectValue('sel-time-format', userSettings.timeFormat);
+    setSelectValue('sel-color-mode', (userSettings.colorMode || localStorage.getItem('hydromis-admin-color-mode') || 'dark').toLowerCase());
     
     // Theme Color
     if (userSettings.themeColor) {
@@ -1705,6 +1781,7 @@ function saveSettings() {
         compact: document.getElementById('tog-compact').checked,
         sparklines: document.getElementById('tog-sparklines').checked,
         themeColor: document.querySelector('.theme-swatch.selected')?.dataset.color || 'aqua',
+        colorMode: document.getElementById('sel-color-mode')?.value || 'dark',
         revenuePeriod: document.getElementById('sel-revenue-period')?.value || 'Last 30 days',
         currency: document.getElementById('sel-currency')?.value || 'PHP - Philippine Peso',
         dateFormat: document.getElementById('sel-date-format')?.value || 'MMM DD, YYYY',
@@ -1731,7 +1808,10 @@ function saveSettings() {
         confirmPassword: passwordInputs[2]?.value || '',
         twoFactor: document.getElementById('tog-two-factor')?.checked ?? false,
         sessionTimeout: document.getElementById('sel-session-timeout')?.value || '1 hour',
-        pointsPerGallon: Math.max(0, Math.min(100, parseInt(document.getElementById('pointsPerGallon')?.value || '1', 10)))
+        pointsPerGallon: Math.max(0, Math.min(100, parseInt(document.getElementById('pointsPerGallon')?.value || '1', 10))),
+        staffLoginEnabled: document.getElementById('tog-staff-login')?.checked ?? true,
+        riderLoginEnabled: document.getElementById('tog-rider-login')?.checked ?? true,
+        rewardRedemptions: Object.fromEntries(Array.from(document.querySelectorAll('.reward-redemption-toggle')).map(toggle => [toggle.dataset.rewardCode, toggle.checked]))
     };
     
     const btn = document.querySelector('.btn-save');
@@ -1923,7 +2003,7 @@ document.querySelectorAll('.theme-swatch').forEach(sw=>{
     });
 });
 
-['tog-compact','tog-sparklines','tog-pending-badges','tog-reduce-motion','sel-layout-spacing','sel-border-radius'].forEach(id => {
+['tog-compact','tog-sparklines','tog-pending-badges','tog-reduce-motion','sel-color-mode','sel-layout-spacing','sel-border-radius'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', applyDashboardPreferences);
 });
 

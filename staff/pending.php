@@ -707,22 +707,12 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
         <main class="main">
             <div class="topbar">
                 <div>
-                    <div class="topbar-title">Pending Approvals</div>
-                    <div class="topbar-subtitle">Review and approve pending customer transactions</div>
+                    <div class="topbar-title">Order Approvals</div>
+                    <div class="topbar-subtitle">Review pending orders before they enter the delivery or pickup queue</div>
                 </div>
             </div>
 
             <section class="page">
-                <!-- Welcome Section -->
-                <div class="welcome-section">
-                    <div class="welcome-header">
-                        <div class="welcome-content">
-                            <h1>Pending Approvals 👀</h1>
-                            <p>Review and approve customer transactions to update delivery queue</p>
-                        </div>
-                    </div>
-                </div>
-
                 <?php $pending_count = $pending_trans ? $pending_trans->num_rows : 0; ?>
                 <?php if (!empty($_SESSION['staff_flash'])): ?>
                 <div class="alert-pending" style="background: linear-gradient(135deg, rgba(16,185,129,.15) 0%, rgba(16,185,129,.08) 100%); border-color: rgba(16,185,129,.3);">
@@ -733,50 +723,14 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                 </div>
                 <?php endif; ?>
 
-                <!-- Alert Banner -->
-                <?php if ($pending_count > 0): ?>
-                <div class="alert-pending">
-                    <div class="alert-pending-content">
-                        <div class="alert-pending-icon"><i class="fas fa-exclamation-circle"></i></div>
-                        <strong><?php echo $pending_count; ?> transaction(s) awaiting your review — approve or deny to update delivery queue</strong>
-                    </div>
-                    <button class="alert-pending-btn">→ Review Now</button>
-                </div>
-                <?php endif; ?>
-
-                <!-- Quick Action Cards -->
-                <div class="quick-actions">
-                    <div class="quick-card amber">
-                        <div class="quick-icon"><i class="fas fa-hourglass-half"></i></div>
-                        <div class="quick-copy">
-                            <h3>Pending Approvals</h3>
-                            <p>Review and approve or deny customer transactions</p>
-                        </div>
-                    </div>
-                    <div class="quick-card green">
-                        <div class="quick-icon"><i class="fas fa-check-circle"></i></div>
-                        <div class="quick-copy">
-                            <h3>Transaction History</h3>
-                            <p>Browse all transaction records and order history</p>
-                        </div>
-                    </div>
-                    <div class="quick-card">
-                        <div class="quick-icon"><i class="fas fa-money-bill-wave"></i></div>
-                        <div class="quick-copy">
-                            <h3>Payments</h3>
-                            <p>View payment records and collection details</p>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Stats -->
                 <div class="stats-row">
                     <div class="stat-card amber">
                         <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
                         <div class="stat-content">
-                            <h4>Pending</h4>
+                            <h4>Pending Orders</h4>
                             <div class="stat-value"><?php echo $pending_count; ?></div>
-                            <div class="stat-label">awaiting approval</div>
+                            <div class="stat-label">require staff review</div>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -792,8 +746,8 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                 <!-- Approval Queue Table -->
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title"><i class="fas fa-list"></i> Approval Queue</span>
-                        <span class="card-meta"><?php echo $pending_count; ?> transactions waiting</span>
+                        <span class="card-title"><i class="fas fa-list-check"></i> Orders Awaiting Review</span>
+                        <span class="card-meta"><?php echo $pending_count; ?> order<?php echo $pending_count === 1 ? '' : 's'; ?> waiting</span>
                     </div>
                     <div class="table-wrap">
                         <table>
@@ -836,6 +790,12 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                                 <i class="fas fa-box"></i> <?php echo ($row['container_status'] ?? '') === 'new' ? 'New container' : 'Customer container'; ?>
                                                 &nbsp;·&nbsp; <i class="fas <?php echo ($row['fulfillment_method'] ?? '') === 'pickup' ? 'fa-store' : 'fa-truck'; ?>"></i>
                                                 <?php echo ($row['fulfillment_method'] ?? '') === 'pickup' ? 'Self pickup' : 'Delivery'; ?>
+                                            </div>
+                                            <?php endif; ?>
+                                            <?php if (trim((string)($row['notes'] ?? '')) !== ''): ?>
+                                            <div style="margin-top:8px;padding:8px 10px;border-left:3px solid var(--accent);border-radius:7px;background:rgba(59,130,246,.10);color:var(--text);font-size:11px;line-height:1.45;white-space:normal;">
+                                                <strong style="display:block;margin-bottom:3px;color:#7db5ff;"><i class="fas fa-message"></i> Customer instructions</strong>
+                                                <?php echo nl2br(htmlspecialchars($row['notes'])); ?>
                                             </div>
                                             <?php endif; ?>
                                         </td>

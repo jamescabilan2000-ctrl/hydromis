@@ -326,3 +326,114 @@ input[type="range"]:hover {
         transition-duration: 0.2s;
     }
 }
+/* HydroMIS system logo: subtle optical depth and water-like movement. */
+.logo-icon,
+.brand-icon,
+.brand-logo .brand-icon,
+.navbar-brand img[src*="hydromis-logo"],
+.navbar-brand img[src*="logosystem"] {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
+
+.brand-icon:has(> img[src*="hydromis-logo"]),
+.brand-icon:has(> img[src*="logosystem"]),
+.logo-icon:has(> img[src*="hydromis-logo"]),
+.logo-icon:has(> img[src*="logosystem"]),
+.staff-sidebar-brand > b:has(> img[src*="hydromis-logo"]),
+.staff-sidebar-brand > b:has(> img[src*="logosystem"]) {
+    position: relative;
+    isolation: isolate;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    transition: transform .45s cubic-bezier(.2,.8,.2,1), filter .45s ease !important;
+}
+
+.brand-icon:has(> img[src*="hydromis-logo"])::after,
+.brand-icon:has(> img[src*="logosystem"])::after,
+.logo-icon:has(> img[src*="hydromis-logo"])::after,
+.logo-icon:has(> img[src*="logosystem"])::after,
+.staff-sidebar-brand > b:has(> img[src*="hydromis-logo"])::after,
+.staff-sidebar-brand > b:has(> img[src*="logosystem"])::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    z-index: -1;
+    border-radius: 50%;
+    background: conic-gradient(from 15deg, transparent 0 15%, rgba(121,239,255,.9) 21%, transparent 30% 54%, rgba(71,145,255,.72) 62%, transparent 72% 100%);
+    -webkit-mask: radial-gradient(circle, transparent 61%, #000 64% 68%, transparent 71%);
+    mask: radial-gradient(circle, transparent 61%, #000 64% 68%, transparent 71%);
+    filter: drop-shadow(0 0 4px rgba(69,214,255,.55));
+    animation: hydromisLogoOrbit 7s linear infinite;
+    pointer-events: none;
+}
+
+.brand-icon:has(> img[src*="hydromis-logo"]):hover::after,
+.brand-icon:has(> img[src*="logosystem"]):hover::after,
+.logo-icon:has(> img[src*="hydromis-logo"]):hover::after,
+.logo-icon:has(> img[src*="logosystem"]):hover::after,
+.staff-sidebar-brand > b:has(> img[src*="hydromis-logo"]):hover::after,
+.staff-sidebar-brand > b:has(> img[src*="logosystem"]):hover::after {
+    animation-duration: 2.8s;
+    filter: drop-shadow(0 0 7px rgba(104,235,255,.9));
+}
+
+img[src*="hydromis-logo"],
+img[src*="logosystem"] {
+    transform-origin: 50% 52%;
+    will-change: transform, filter;
+    border: 0 !important;
+    border-radius: 50%;
+    background: transparent !important;
+    outline: 1px solid rgba(104, 225, 255, .28);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 0 rgba(53, 195, 255, 0);
+    animation: hydromisLogoBreathe 4.8s cubic-bezier(.4,0,.2,1) infinite;
+    transition: transform .45s cubic-bezier(.2,.8,.2,1), filter .45s ease, opacity .3s ease, outline-color .35s ease, box-shadow .45s ease;
+}
+
+/* Legacy pages may still reference logosystem.png. Display the current mark
+   through their existing wrapper so every module keeps one visual identity. */
+.brand-icon:has(> img[src*="logosystem"]),
+.logo-icon:has(> img[src*="logosystem"]),
+.staff-sidebar-brand > b:has(> img[src*="logosystem"]) {
+    background-image: url('../imagess/hydromis-logo-v2.png') !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-size: contain !important;
+}
+
+.brand-icon > img[src*="logosystem"],
+.logo-icon > img[src*="logosystem"],
+.staff-sidebar-brand > b > img[src*="logosystem"] {
+    opacity: 0 !important;
+}
+
+img[src*="hydromis-logo"]:hover,
+img[src*="logosystem"]:hover {
+    animation: none;
+    transform: translateY(-2px) rotate(-2deg) scale(1.07);
+    filter: drop-shadow(0 8px 10px rgba(0,92,190,.32)) brightness(1.08) saturate(1.12);
+    outline-color: rgba(122, 239, 255, .82);
+    box-shadow: 0 0 0 4px rgba(73, 206, 255, .09), 0 0 18px rgba(60, 211, 255, .42);
+}
+
+@keyframes hydromisLogoBreathe {
+    0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 3px 4px rgba(0,56,145,.18)) brightness(1); outline-color:rgba(104,225,255,.2); box-shadow:0 0 0 0 rgba(53,195,255,0); }
+    48% { transform: translateY(-2px) scale(1.025); filter: drop-shadow(0 7px 8px rgba(0,132,210,.3)) brightness(1.08); outline-color:rgba(115,235,255,.68); box-shadow:0 0 0 4px rgba(53,195,255,.08),0 0 14px rgba(53,195,255,.26); }
+    55% { transform: translateY(-2px) scale(1.02); filter: drop-shadow(0 7px 9px rgba(20,205,218,.26)) brightness(1.04); outline-color:rgba(99,175,255,.52); box-shadow:0 0 0 3px rgba(71,152,255,.06),0 0 11px rgba(71,152,255,.2); }
+}
+
+@keyframes hydromisLogoOrbit { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    img[src*="hydromis-logo"], img[src*="logosystem"] { animation: none !important; transition: none !important; }
+    .brand-icon:has(> img)::after, .logo-icon:has(> img)::after, .staff-sidebar-brand > b:has(> img)::after { animation: none !important; }
+}

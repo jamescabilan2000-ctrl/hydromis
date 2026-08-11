@@ -28,15 +28,13 @@
 
         body {
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: block;
             font-family: 'DM Sans', sans-serif;
             background:
                 radial-gradient(ellipse at 10% 10%, rgba(56, 191, 248, 0.18) 0%, transparent 55%),
                 radial-gradient(ellipse at 90% 85%, rgba(79, 115, 214, 0.22) 0%, transparent 55%),
                 linear-gradient(160deg, #d0eeff 0%, #e8f4ff 45%, #ddeeff 100%);
-            padding: 20px;
+            padding: 0;
             overflow: auto;
         }
 
@@ -72,14 +70,12 @@
         /* ── Card ── */
         .card {
             width: 100%;
-            max-width: 430px;
+            max-width: none;
+            min-height: 100vh;
             background: var(--surface);
-            border-radius: 28px;
+            border-radius: 0;
             overflow: hidden;
-            box-shadow:
-                0 4px 6px rgba(18, 48, 160, 0.06),
-                0 20px 60px rgba(18, 48, 160, 0.16),
-                0 0 0 1px rgba(29, 62, 168, 0.08);
+            box-shadow: none;
             position: relative;
             z-index: 1;
             animation: cardEnter 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -93,11 +89,24 @@
         /* ── Hero area ── */
         .hero {
             position: relative;
-            min-height: 340px;
-            background: linear-gradient(148deg, var(--blue-700) 0%, var(--blue-950) 100%);
+            min-height: clamp(360px, 48vh, 560px);
+            background-color: #09284a;
+            background-image: url('imagess/onboarding-refill-line-v2.png');
+            background-repeat: no-repeat;
+            background-position: 50% 50%;
+            background-size: cover;
             padding: 22px 22px 60px;
             overflow: hidden;
+            isolation: isolate;
+            animation: facilityPan 17s ease-in-out infinite alternate;
+            transition: filter .8s ease;
         }
+        .hero::before { content:''; position:absolute; inset:0; z-index:0; background:linear-gradient(180deg,rgba(3,20,40,.42),rgba(3,32,56,.16) 58%,rgba(3,24,47,.48)); transition:background .8s ease; }
+        .hero::after { content:''; position:absolute; inset:-35%; z-index:1; pointer-events:none; background:linear-gradient(112deg,transparent 38%,rgba(170,242,255,.15) 49%,transparent 60%); transform:translateX(-46%) rotate(3deg); animation:facilityLightSweep 8.5s ease-in-out infinite; }
+        .hero:hover { filter:saturate(1.05) brightness(1.02); }
+        .hero:hover::before { background:linear-gradient(180deg,rgba(3,20,40,.34),rgba(3,32,56,.1) 58%,rgba(3,24,47,.4)); }
+        @keyframes facilityPan { 0%{background-position:44% 49%} 50%{background-position:50% 52%} 100%{background-position:57% 47%} }
+        @keyframes facilityLightSweep { 0%,18%{opacity:0;transform:translateX(-46%) rotate(3deg)} 48%{opacity:1} 78%,100%{opacity:0;transform:translateX(46%) rotate(3deg)} }
 
         /* Animated shimmer rings */
         .ring {
@@ -165,7 +174,7 @@
         .bottles {
             position: relative;
             z-index: 2;
-            display: flex;
+            display: none;
             align-items: flex-end;
             justify-content: center;
             gap: 8px;
@@ -243,7 +252,7 @@
         .pager {
             position: relative;
             z-index: 3;
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
             gap: 7px;
@@ -256,11 +265,17 @@
             transition: all 0.4s ease;
         }
         .dot.active { width: 22px; background: #fff; }
+        .facility-status { position:absolute; left:22px; bottom:74px; z-index:3; display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid rgba(190,242,255,.28); border-radius:999px; color:#ecfbff; background:rgba(3,31,55,.58); backdrop-filter:blur(12px); font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; box-shadow:0 9px 24px rgba(1,15,31,.22); animation:statusFloat 4s ease-in-out infinite; }
+        .facility-status i { color:#53e5d1; font-size:7px; filter:drop-shadow(0 0 5px #53e5d1); animation:statusPulse 1.5s ease-in-out infinite; }
+        @keyframes statusFloat { 0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)} }
+        @keyframes statusPulse { 0%,100%{opacity:.45;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)} }
         .dot:not(.active) { width: 6px; }
 
         /* ── Content area ── */
         .content {
-            padding: 40px 34px 36px;
+            width: min(100%, 760px);
+            margin: 0 auto;
+            padding: 48px 34px 42px;
         }
 
         .eyebrow {
@@ -366,28 +381,90 @@
         /* CTA Button */
         .actions {
             margin-top: 24px;
+            display: flex;
+            justify-content: center;
             opacity: 0;
             animation: fadeUp 0.6s 1.1s both;
+        }
+
+        .hero .actions {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            margin: 0;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .hero .actions .btn-primary {
+            width: min(224px, calc(100% - 48px));
+            min-width: 0;
+            min-height: 54px;
+            pointer-events: auto;
+            border: 1px solid rgba(181,245,255,.55);
+            background: linear-gradient(120deg, rgba(8,75,179,.96) 0%, rgba(20,71,184,.97) 48%, rgba(5,163,190,.96) 100%);
+            box-shadow: 0 15px 34px rgba(2,31,85,.4), 0 0 0 5px rgba(185,242,255,.1), inset 0 1px 0 rgba(255,255,255,.28);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            font-size: 15px;
+            font-weight: 750;
+            letter-spacing: .15px;
+        }
+
+        .hero .actions .btn-primary::after {
+            content: '';
+            position: absolute;
+            top: -70%;
+            left: -35%;
+            width: 32%;
+            height: 240%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.32), transparent);
+            transform: rotate(18deg);
+            animation: ctaShine 3.8s 1.8s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .hero .actions .btn-primary:hover {
+            transform: translateY(-3px) scale(1.015);
+            border-color: rgba(218,251,255,.85);
+            box-shadow: 0 18px 40px rgba(2,39,102,.48), 0 0 0 6px rgba(123,231,245,.14), inset 0 1px 0 rgba(255,255,255,.35);
+        }
+
+        .hero .actions .arrow-icon {
+            width: 28px;
+            height: 28px;
+            margin-left: 2px;
+            background: rgba(255,255,255,.2);
+            border: 1px solid rgba(255,255,255,.2);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
+        }
+
+        @keyframes ctaShine {
+            0%, 58% { left: -35%; opacity: 0; }
+            68% { opacity: 1; }
+            86%, 100% { left: 118%; opacity: 0; }
         }
 
         .btn-primary {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            width: 100%;
-            min-height: 56px;
+            gap: 9px;
+            width: auto;
+            min-width: 210px;
+            min-height: 48px;
+            padding: 10px 22px;
             border-radius: 999px;
             text-decoration: none;
             font-family: 'Sora', sans-serif;
-            font-size: 16px;
-            font-weight: 700;
-            letter-spacing: 0.4px;
+            font-size: 14px;
+            font-weight: 650;
+            letter-spacing: 0.2px;
             color: #fff;
             background: linear-gradient(135deg, var(--blue-700) 0%, var(--blue-950) 100%);
             box-shadow:
                 0 0 0 0 rgba(40, 83, 200, 0.5),
-                0 8px 24px rgba(29, 62, 168, 0.3);
+                0 7px 18px rgba(29, 62, 168, 0.24);
             position: relative;
             overflow: hidden;
             transition: transform 0.2s, box-shadow 0.2s;
@@ -403,7 +480,7 @@
             transition: opacity 0.3s;
         }
 
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(29, 62, 168, 0.38); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 11px 25px rgba(29, 62, 168, 0.3); }
         .btn-primary:hover::before { opacity: 1; }
         .btn-primary:active { transform: scale(0.98); }
 
@@ -421,16 +498,16 @@
         }
 
         @keyframes glow {
-            0%,100% { box-shadow: 0 8px 24px rgba(29,62,168,0.3), 0 0 0 0 rgba(40,83,200,0.0); }
-            50%      { box-shadow: 0 8px 24px rgba(29,62,168,0.3), 0 0 0 8px rgba(40,83,200,0.12); }
+            0%,100% { box-shadow: 0 7px 18px rgba(29,62,168,.24), 0 0 0 0 rgba(40,83,200,0); }
+            50%      { box-shadow: 0 8px 21px rgba(29,62,168,.28), 0 0 0 4px rgba(40,83,200,.09); }
         }
 
         .arrow-icon {
-            width: 28px; height: 28px;
+            width: 24px; height: 24px;
             background: rgba(255,255,255,0.18);
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 13px;
+            font-size: 11px;
             transition: transform 0.25s;
         }
         .btn-primary:hover .arrow-icon { transform: translateX(3px); }
@@ -454,12 +531,49 @@
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        @media (max-width: 420px) {
-            .headline { font-size: 28px; }
-            .hero { min-height: 290px; }
-            .bottles { height: 200px; }
+        @media (max-width: 600px) {
+            html, body { height: 100%; height: 100dvh; overflow: hidden; }
+            .card { height: 100%; height: 100dvh; min-height: 0; display: flex; flex-direction: column; }
+            .hero {
+                flex: 0 0 290px;
+                min-height: 290px;
+                padding: 22px 22px 60px;
+                background-position: 50% 50%;
+            }
+            .hero .actions .btn-primary {
+                width: min(216px, calc(100% - 56px));
+                min-height: 50px;
+                font-size: 14px;
+            }
+            .content {
+                flex: 1 1 auto;
+                min-height: 0;
+                padding: clamp(16px, 2.8vh, 24px) 28px 14px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+            .eyebrow { font-size: 10px; letter-spacing: 1.35px; }
+            .headline { margin-top: 6px; font-size: clamp(25px, 7vw, 30px); line-height: 1.06; }
+            .sub { margin-top: 10px; font-size: 13.5px; line-height: 1.42; }
+            .chips { margin-top: 12px; gap: 6px; }
+            .chip { padding: 5px 9px; font-size: 10.5px; gap: 5px; }
+            .stats { margin-top: 13px; gap: 7px; }
+            .stat { padding: 9px 6px; border-radius: 12px; }
+            .stat-num { font-size: 18px; }
+            .stat-label { margin-top: 3px; font-size: 8.5px; }
+            .bottles { height: 180px; }
+        }
+
+        @media (max-width: 600px) and (max-height: 650px) {
+            .content { padding-top: 12px; padding-bottom: 10px; }
+            .headline { font-size: 24px; }
+            .sub { font-size: 12.5px; line-height: 1.34; }
+            .chips { margin-top: 9px; }
+            .stats { margin-top: 10px; }
         }
     </style>
+    <script src="js/ui-protection.js" defer></script>
 </head>
 <body>
 
@@ -490,7 +604,7 @@
             <div class="drop"></div>
         </div>
 
-        <div class="brand"><img src="imagess/logosystem.png" alt="HydroMIS Logo" style="width: 20px; height: 20px; object-fit: contain; margin-right: 6px;">HydroMIS Water Station</div>
+        <div class="brand"><img src="imagess/hydromis-logo-v2.png" alt="HydroMIS Logo" style="width: 20px; height: 20px; object-fit: contain; margin-right: 6px;">HydroMIS Water Station</div>
 
         <!-- Inline SVG bottles -->
         <div class="bottles" aria-label="Water gallons">
@@ -577,6 +691,13 @@
             <span class="dot"></span>
         </div>
 
+        <div class="actions">
+            <a href="home.php" class="btn-primary" id="ctaBtn">
+                <span>Get Started</span>
+                <span class="arrow-icon"><i class="fas fa-arrow-right"></i></span>
+            </a>
+        </div>
+
         <!-- Wave -->
         <div class="wave-wrap">
             <svg viewBox="0 0 500 70" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -615,14 +736,6 @@
             </div>
         </div>
 
-        <div class="actions">
-            <a href="home.php" class="btn-primary" id="ctaBtn">
-                <span>Get Started</span>
-                <span class="arrow-icon"><i class="fas fa-arrow-right"></i></span>
-            </a>
-        </div>
-
-        <p class="note">Continue to <a href="home.php">customer services</a> &amp; order tracking</p>
     </section>
 </main>
 

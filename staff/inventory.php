@@ -42,6 +42,7 @@ foreach ($defaults as $default) {
 if (empty($_SESSION['inventory_csrf'])) $_SESSION['inventory_csrf'] = bin2hex(random_bytes(32));
 $success = '';
 $error = '';
+$showMovements = (($_GET['view'] ?? '') === 'movements');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = (string)($_POST['csrf_token'] ?? '');
@@ -50,11 +51,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['stock_action'] ?? '');
     $amount = (int)($_POST['quantity'] ?? 0);
     $reason = trim((string)($_POST['reason'] ?? ''));
+    if ($reason === '') {
+        $reason = match ($action) {
+            'stock_in' => 'Manual stock in',
+            'stock_out' => 'Manual stock out',
+            'set' => 'Exact stock correction',
+            default => ''
+        };
+    }
 
     if (!hash_equals($_SESSION['inventory_csrf'], $token)) {
         $error = 'Your session expired. Refresh and try again.';
     } elseif ($formAction === 'add_item') {
-        $itemCode = strtoupper(trim((string)($_POST['item_code'] ?? '')));
+        $categoryForCode = trim((string)($_POST['category'] ?? 'Container'));
+        $codePrefix = match (strtolower($categoryForCode)) {
+            'container' => 'CNT', 'water' => 'WTR', 'accessory' => 'ACC', default => 'ITM'
+        };
+        do {
+            $itemCode = $codePrefix . '-' . strtoupper(bin2hex(random_bytes(4)));
+            $codeCheck = $conn->prepare('SELECT id FROM inventory_items WHERE item_code = ? LIMIT 1');
+            $codeCheck->bind_param('s', $itemCode);
+            $codeCheck->execute();
+            $codeExists = $codeCheck->get_result()->num_rows > 0;
+        } while ($codeExists);
         $itemName = trim((string)($_POST['item_name'] ?? ''));
         $category = trim((string)($_POST['category'] ?? 'Container'));
         $initialQuantity = filter_var($_POST['initial_quantity'] ?? null, FILTER_VALIDATE_INT);
@@ -102,8 +121,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Select a valid inventory item and action.';
     } elseif ($amount < 0 || ($action !== 'set' && $amount < 1)) {
         $error = 'Enter a valid quantity.';
-    } elseif ($reason === '') {
-        $error = 'Please provide a reason for the adjustment.';
     } else {
         $itemQuery = $conn->prepare("SELECT quantity FROM inventory_items WHERE id = ? LIMIT 1");
         $itemQuery->bind_param('i', $itemId);
@@ -225,7 +242,7 @@ html,body,.layout,.main,.page{box-sizing:border-box;max-width:100%;min-width:0;o
 }
 .hero-actions{display:flex;align-items:center;gap:12px}.add-item-btn{display:inline-flex;align-items:center;gap:9px;padding:12px 17px;border:1px solid rgba(96,165,250,.28);border-radius:12px;background:linear-gradient(135deg,#2563eb,#3b82f6);box-shadow:0 10px 25px rgba(37,99,235,.25);color:#fff;font:800 13px inherit;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease}.add-item-btn:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(37,99,235,.34)}.inventory-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(3,8,20,.72);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease}.inventory-modal.open{opacity:1;visibility:visible}.modal-panel{width:min(100%,620px);max-height:calc(100vh - 40px);overflow:auto;padding:26px;border:1px solid rgba(255,255,255,.12);border-radius:20px;background:#131d30;box-shadow:0 30px 80px rgba(0,0,0,.45);transform:translateY(18px) scale(.98);transition:transform .28s cubic-bezier(.22,1,.36,1)}.inventory-modal.open .modal-panel{transform:none}.modal-head{display:flex;justify-content:space-between;gap:18px;margin-bottom:22px}.modal-head h2{margin:0 0 5px;font-size:21px}.modal-head p{margin:0;color:var(--muted);font-size:12px}.modal-close{display:grid;place-items:center;flex:0 0 38px;height:38px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--muted);cursor:pointer}.add-item-form{display:grid;grid-template-columns:1fr 1fr;gap:16px}.add-field{display:flex;flex-direction:column;gap:7px;min-width:0}.add-field.full{grid-column:1/-1}.add-field label{color:#a9bee0;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.add-field input,.add-field select{box-sizing:border-box;width:100%;min-width:0;height:45px;padding:0 13px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text);font:inherit;outline:none;transition:border-color .2s ease,box-shadow .2s ease}.add-field input:focus,.add-field select:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(59,130,246,.14)}.modal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:4px}.modal-actions button{min-height:43px;padding:10px 16px;border-radius:10px;font-weight:800;cursor:pointer}.cancel-item{border:1px solid var(--border);background:transparent;color:var(--muted)}.save-item{border:0;background:var(--blue);color:#fff}.modal-open{overflow:hidden}@media(max-width:700px){.hero{align-items:flex-start;gap:18px}.hero-actions{width:100%}.add-item-btn{width:100%;justify-content:center}.add-item-form{grid-template-columns:1fr}.add-field.full,.modal-actions{grid-column:1}.modal-actions{flex-direction:column-reverse}.modal-actions button{width:100%}}
 </style></head><body><div class="layout"><?php include 'sidebar.php'; ?><main class="main"><header class="topbar"><div><div class="topbar-title">Inventory</div><div class="topbar-subtitle">Container stock and adjustment history</div></div></header><section class="page">
-<div class="hero"><div><h1>Stock Management</h1><p>Monitor available containers and record every stock movement.</p></div><div class="hero-actions"><button type="button" class="add-item-btn" id="openAddItem"><i class="fas fa-plus"></i> Add Inventory Item</button><div class="hero-icon"><i class="fas fa-boxes-stacked"></i></div></div></div>
+<div class="hero"><div><h1>Stock Management</h1><p>Gallon products supply every order; a generic <strong>New Container</strong> item supplies the Buy new container add-on.</p></div><div class="hero-actions"><button type="button" class="add-item-btn" id="openAddItem"><i class="fas fa-plus"></i> Add Inventory Item</button><div class="hero-icon"><i class="fas fa-boxes-stacked"></i></div></div></div>
 <?php if($success):?><div class="flash ok"><i class="fas fa-circle-check"></i> <?php echo htmlspecialchars($success);?></div><?php endif;?><?php if($error):?><div class="flash err"><i class="fas fa-circle-exclamation"></i> <?php echo htmlspecialchars($error);?></div><?php endif;?>
 <div class="stats"><div class="card stat"><i class="fas fa-box"></i><strong><?php echo (int)($summary['total_items']??0);?></strong><span>Inventory Items</span></div><div class="card stat"><i class="fas fa-layer-group"></i><strong><?php echo number_format((int)($summary['total_units']??0));?></strong><span>Total Units</span></div><div class="card stat"><i class="fas fa-triangle-exclamation" style="color:var(--amber)"></i><strong><?php echo (int)($summary['low_stock']??0);?></strong><span>Low Stock</span></div><div class="card stat"><i class="fas fa-circle-xmark" style="color:var(--red)"></i><strong><?php echo (int)($summary['out_of_stock']??0);?></strong><span>Out of Stock</span></div></div>
 <div class="inventory-grid"><?php if($items): while($item=$items->fetch_assoc()): $qty=(int)$item['quantity'];$min=(int)$item['minimum_stock'];$state=$qty===0?'out':($qty<=$min?'low':'good');$label=$qty===0?'Out of stock':($qty<=$min?'Low stock':'In stock');?><article class="card item"><div class="item-top"><div><div class="item-code"><?php echo htmlspecialchars($item['item_code']);?></div><h3><?php echo htmlspecialchars($item['item_name']);?></h3></div><span class="status <?php echo $state;?>"><?php echo $label;?></span></div><div class="stock"><?php echo number_format($qty);?> <small>units available · minimum <?php echo $min;?></small></div><form method="post" class="adjust"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['inventory_csrf']);?>"><input type="hidden" name="item_id" value="<?php echo (int)$item['id'];?>"><select name="stock_action" aria-label="Action"><option value="stock_in">Stock in (+)</option><option value="stock_out">Stock out (-)</option><option value="set">Set exact stock</option></select><input type="number" name="quantity" min="0" required placeholder="Qty" aria-label="Quantity"><input class="reason" name="reason" maxlength="255" required placeholder="Reason (delivery, damaged, correction...)"><button type="submit"><i class="fas fa-floppy-disk"></i> Save adjustment</button></form></article><?php endwhile; endif;?></div>
@@ -237,7 +254,6 @@ html,body,.layout,.main,.page{box-sizing:border-box;max-width:100%;min-width:0;o
     <form method="post" class="add-item-form">
       <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['inventory_csrf']); ?>">
       <input type="hidden" name="form_action" value="add_item">
-      <div class="add-field"><label for="item_code">Item code</label><input id="item_code" name="item_code" maxlength="50" pattern="[A-Za-z0-9][A-Za-z0-9-]{1,49}" placeholder="e.g. CNT-10-BLUE" required value="<?php echo htmlspecialchars($_POST['item_code'] ?? ''); ?>"></div>
       <div class="add-field"><label for="category">Category</label><select id="category" name="category" required><option value="Container">Container</option><option value="Water">Water</option><option value="Accessory">Accessory</option><option value="Other">Other</option></select></div>
       <div class="add-field full"><label for="item_name">Item name</label><input id="item_name" name="item_name" maxlength="150" placeholder="e.g. 10 Gallon Blue Container" required value="<?php echo htmlspecialchars($_POST['item_name'] ?? ''); ?>"></div>
       <div class="add-field"><label for="initial_quantity">Starting quantity</label><input type="number" id="initial_quantity" name="initial_quantity" min="0" value="<?php echo htmlspecialchars($_POST['initial_quantity'] ?? '0'); ?>" required></div>
@@ -248,8 +264,41 @@ html,body,.layout,.main,.page{box-sizing:border-box;max-width:100%;min-width:0;o
   </div>
 </div>
 <script>
+const inventoryRevisionStyles=document.createElement('style');inventoryRevisionStyles.textContent=`
+.adjust{grid-template-columns:minmax(0,1fr) 108px;gap:11px}.adjust-field{display:flex;flex-direction:column;gap:6px;min-width:0}.adjust-field.reason-field{grid-column:1/-1}.adjust-field label{color:#8fa7ca;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.adjust select,.adjust input{height:45px;padding:0 12px;border-color:rgba(255,255,255,.12);outline:none;transition:border-color .2s ease,box-shadow .2s ease}.adjust select:focus,.adjust input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(59,130,246,.14)}.adjust .adjust-preview{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;padding:7px 10px;border:1px dashed rgba(96,165,250,.25);border-radius:9px;background:rgba(59,130,246,.07);color:#8fa7ca;font-size:10px}.adjust .adjust-preview strong{color:#bfdbfe}.adjust button{min-height:46px;border-radius:10px;font-size:12px}.adjust button:disabled{cursor:not-allowed;filter:none;opacity:.55;transform:none}@media(max-width:480px){.adjust{grid-template-columns:1fr}.adjust-field,.adjust-field.reason-field{grid-column:1}}
+`;document.head.appendChild(inventoryRevisionStyles);
+
+document.querySelectorAll('.adjust').forEach(form=>{
+  form.autocomplete='off';
+  const itemCard=form.closest('.item'),stockNote=itemCard?.querySelector('.stock small'),itemName=itemCard?.querySelector('h3')?.textContent.trim().toLowerCase();
+  if(stockNote&&itemName==='new container')stockNote.textContent=stockNote.textContent.replace('units available','new containers available');
+  const action=form.querySelector('[name="stock_action"]'),quantity=form.querySelector('[name="quantity"]'),reason=form.querySelector('[name="reason"]'),button=form.querySelector('button[type="submit"]');
+  const wrap=(control,label,className='')=>{const field=document.createElement('div');field.className='adjust-field '+className;const caption=document.createElement('label');caption.textContent=label;field.append(caption);control.before(field);field.append(control);return field};
+  wrap(action,'Adjustment type');wrap(quantity,'Quantity');reason.required=false;reason.remove();
+  quantity.inputMode='numeric';
+  const preview=document.createElement('div');preview.className='adjust-preview';form.insertBefore(preview,button);
+  const current=parseInt(form.closest('.item').querySelector('.stock').textContent.replace(/,/g,''),10)||0;
+  function refreshAdjustment(){
+    const amount=Number.parseInt(quantity.value,10);let next=current;let wording='Enter a quantity to preview the new stock';
+    quantity.placeholder=action.value==='set'?'New total':'Units';
+    if(Number.isInteger(amount)&&amount>=0){next=action.value==='stock_in'?current+amount:action.value==='stock_out'?current-amount:amount;wording=next<0?'Not enough stock for this adjustment':'Stock after saving';}
+    preview.innerHTML='<span>'+wording+'</span><strong>'+current+' &rarr; '+Math.max(0,next)+'</strong>';
+    const quantityValid=Number.isInteger(amount)&&amount>=0&&(action.value==='set'||amount>0)&&next>=0;
+    button.disabled=!quantityValid;
+  }
+  action.addEventListener('change',refreshAdjustment);quantity.addEventListener('input',refreshAdjustment);refreshAdjustment();
+});
+
+const recentMovements=document.querySelector('.table-card');
+if(recentMovements){
+  recentMovements.id='recent-stock-movements';
+  const showMovements=<?php echo $showMovements ? 'true' : 'false'; ?>;
+  recentMovements.hidden=!showMovements;
+  if(showMovements)setTimeout(()=>recentMovements.scrollIntoView({behavior:'smooth',block:'start'}),100);
+}
+
 const addModal=document.getElementById('addItemModal'),openAdd=document.getElementById('openAddItem'),closeAdd=document.getElementById('closeAddItem'),cancelAdd=document.getElementById('cancelAddItem');
-function setAddModal(show){addModal.classList.toggle('open',show);addModal.setAttribute('aria-hidden',show?'false':'true');document.body.classList.toggle('modal-open',show);if(show)setTimeout(()=>document.getElementById('item_code').focus(),120)}
+function setAddModal(show){addModal.classList.toggle('open',show);addModal.setAttribute('aria-hidden',show?'false':'true');document.body.classList.toggle('modal-open',show);if(show)setTimeout(()=>document.getElementById('item_name').focus(),120)}
 openAdd.addEventListener('click',()=>setAddModal(true));closeAdd.addEventListener('click',()=>setAddModal(false));cancelAdd.addEventListener('click',()=>setAddModal(false));addModal.addEventListener('click',e=>{if(e.target===addModal)setAddModal(false)});document.addEventListener('keydown',e=>{if(e.key==='Escape')setAddModal(false)});if(addModal.classList.contains('open')){document.body.classList.add('modal-open');addModal.setAttribute('aria-hidden','false')}
 </script>
 </body></html>

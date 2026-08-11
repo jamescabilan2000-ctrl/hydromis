@@ -5,3 +5,5 @@
     .staff-sidebar-nav{flex-wrap:wrap;overflow:visible}
     .staff-sidebar-nav a{flex:1 1 145px;justify-content:center;white-space:normal;text-align:center}
 }
+/* Keep the animated HydroMIS mark free of any square/tile container. */
+.staff-sidebar-brand>b{border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;overflow:visible!important}

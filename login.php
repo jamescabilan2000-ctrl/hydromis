@@ -1,12 +1,12 @@
 <?php
 session_start();
 require_once 'config/database.php';
+require_once 'config/system_settings.php';
+
+$staffLoginEnabled = system_int_setting($conn, 'staff_login_enabled', 1, 0, 1) === 1;
+$riderLoginEnabled = system_int_setting($conn, 'rider_login_enabled', 1, 0, 1) === 1;
 
 $error = '';
-$initial_role = sanitize($_GET['role'] ?? 'admin');
-if (!in_array($initial_role, ['admin', 'staff', 'rider'], true)) {
-	$initial_role = 'admin';
-}
 
 // Ensure rider accounts table exists and has at least one usable default rider.
 $conn->query("CREATE TABLE IF NOT EXISTS rider_users (
@@ -32,44 +32,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 	$username = sanitize($_POST['username']);
 	$usernameLookup = sensitive_lookup(htmlspecialchars_decode($username));
 	$password = $_POST['password'];
-	$role = sanitize($_POST['role']);
 
-	if ($role === 'rider') {
-		$sql = "SELECT rider_id, username, password, full_name FROM rider_users WHERE username_lookup = '$usernameLookup' AND status = 'active' LIMIT 1";
-		$result = $conn->query($sql);
-
-		if ($result && $result->num_rows > 0) {
-			$rider = $result->fetch_assoc();
-			if (password_verify($password, $rider['password']) || $password === 'rider123') {
-				session_regenerate_id(true);
-				$_SESSION['rider_id'] = $rider['rider_id'];
-				$_SESSION['username'] = $rider['username'];
-				$_SESSION['role'] = 'rider';
-				$_SESSION['full_name'] = $rider['full_name'];
-				$_SESSION['rider_email'] = $rider['username'];
-				$_SESSION['rider_auth_id'] = $rider['rider_id'];
-				$_SESSION['rider_auth_username'] = $rider['username'];
-				$_SESSION['rider_auth_full_name'] = $rider['full_name'];
-				header('Location: rider/dashboard.php');
-				exit();
-			}
-			$error = 'Invalid password.';
-		} else {
-			$error = 'Rider not found.';
-		}
-	} else {
-		$sql = "SELECT * FROM admin_users WHERE username_lookup = '$usernameLookup' AND role = '$role'";
-		$result = $conn->query($sql);
+	// Detect the account role from the username; users do not choose a role.
+	$result = $conn->query("SELECT * FROM admin_users WHERE username_lookup = '$usernameLookup' AND login_enabled = 1 LIMIT 1");
 
 		if ($result && $result->num_rows > 0) {
 			$user = $result->fetch_assoc();
+			$role = (string)$user['role'];
 
-			if (password_verify($password, $user['password'])) {
+			if ($role === 'staff' && !$staffLoginEnabled) {
+				$error = 'Staff login is currently disabled by the administrator.';
+			} elseif (password_verify($password, $user['password'])) {
 				session_regenerate_id(true);
 				$_SESSION['admin_id'] = $user['admin_id'];
 				$_SESSION['username'] = $user['username'];
 				$_SESSION['role'] = $user['role'];
 				$_SESSION['full_name'] = $user['full_name'];
+				log_system_activity($conn, 'login_success', ucfirst($role) . ' signed in successfully.');
 
 				if ($role === 'admin') {
 					// Role-specific identity allows Admin and Staff portals to remain
@@ -101,10 +80,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 
 			$error = 'Invalid password.';
 		} else {
-			$error = 'User not found.';
+			$riderResult = $conn->query("SELECT rider_id, username, password, full_name FROM rider_users WHERE username_lookup = '$usernameLookup' AND status = 'active' AND login_enabled = 1 LIMIT 1");
+			if ($riderResult && $riderResult->num_rows > 0) {
+				$rider = $riderResult->fetch_assoc();
+				if (!$riderLoginEnabled) {
+					$error = 'Rider login is currently disabled by the administrator.';
+				} elseif (password_verify($password, $rider['password']) || $password === 'rider123') {
+					session_regenerate_id(true);
+					$_SESSION['rider_id'] = $rider['rider_id'];
+					$_SESSION['username'] = $rider['username'];
+					$_SESSION['role'] = 'rider';
+					$_SESSION['full_name'] = $rider['full_name'];
+					$_SESSION['rider_email'] = $rider['username'];
+					$_SESSION['rider_auth_id'] = $rider['rider_id'];
+					$_SESSION['rider_auth_username'] = $rider['username'];
+					$_SESSION['rider_auth_full_name'] = $rider['full_name'];
+					log_system_activity($conn, 'login_success', 'Rider signed in successfully.');
+					header('Location: rider/dashboard.php');
+					exit();
+				} else {
+					$error = 'Invalid password.';
+				}
+			} else {
+				$error = 'Account not found.';
+			}
 		}
 	}
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -127,41 +128,123 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 			justify-content: center;
 			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 			background:
-				radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 40%),
-				radial-gradient(circle at 82% 88%, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0) 42%),
-				linear-gradient(145deg, #284ec5 0%, #2243aa 52%, #203e9f 100%);
+				linear-gradient(180deg,rgba(1,12,29,.52),rgba(2,20,41,.72)),
+				url('imagess/role-login-water-station-v2.png') center 50% / cover no-repeat fixed;
 			color: #ffffff;
 			padding: 20px;
-			animation: fadeIn 0.8s ease;
+			position:relative;
+			isolation:isolate;
+			animation: loginSceneDrift 18s ease-in-out infinite alternate;
 		}
+
+		body::before{content:'';position:fixed;inset:-30%;z-index:-1;pointer-events:none;background:linear-gradient(112deg,transparent 38%,rgba(119,225,255,.1) 49%,transparent 60%);transform:translateX(-45%) rotate(3deg);animation:loginLightSweep 9s ease-in-out infinite}
+		body::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(circle at 50% 42%,rgba(16,100,165,.12),rgba(0,11,27,.35) 72%)}
+		@keyframes loginSceneDrift{0%{background-position:center,44% 48%}50%{background-position:center,50% 52%}100%{background-position:center,57% 47%}}
+		@keyframes loginLightSweep{0%,18%{opacity:0;transform:translateX(-46%) rotate(3deg)}48%{opacity:1}78%,100%{opacity:0;transform:translateX(46%) rotate(3deg)}}
 
 		.auth-box {
 			width: 100%;
 			max-width: 420px;
 			text-align: center;
+			padding:28px 30px 30px;
+			border:1px solid rgba(151,225,255,.2);
+			border-radius:26px;
+			background:linear-gradient(145deg,rgba(7,31,58,.74),rgba(8,47,79,.52));
+			box-shadow:inset 0 1px rgba(255,255,255,.08),0 28px 70px rgba(0,8,22,.48);
+			backdrop-filter:blur(18px) saturate(1.15);
+			-webkit-backdrop-filter:blur(18px) saturate(1.15);
 			animation: slideDown 0.6s ease;
+			transition:border-color .45s ease,box-shadow .45s ease,background .45s ease;
 		}
+		body[data-role="admin"] .auth-box{border-color:rgba(91,169,255,.35);box-shadow:inset 0 1px rgba(255,255,255,.08),0 28px 70px rgba(0,8,22,.48),0 0 38px rgba(42,104,235,.12)}
+		body[data-role="staff"] .auth-box{border-color:rgba(65,218,201,.35);box-shadow:inset 0 1px rgba(255,255,255,.08),0 28px 70px rgba(0,8,22,.48),0 0 38px rgba(30,192,175,.12)}
+		body[data-role="rider"] .auth-box{border-color:rgba(93,204,255,.38);box-shadow:inset 0 1px rgba(255,255,255,.08),0 28px 70px rgba(0,8,22,.48),0 0 38px rgba(44,179,235,.13)}
+		.login-atmosphere{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}.login-atmosphere span{position:absolute;bottom:-20px;width:9px;height:9px;border:1px solid rgba(192,244,255,.68);border-radius:50%;background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.8),rgba(91,216,245,.1) 42%,transparent 68%);box-shadow:0 0 7px rgba(72,211,255,.28);opacity:0;animation:loginBubble 9s ease-in infinite}.login-atmosphere span:nth-child(1){left:10%;animation-delay:.7s}.login-atmosphere span:nth-child(2){left:28%;width:14px;height:14px;animation-delay:4s;animation-duration:11s}.login-atmosphere span:nth-child(3){left:72%;width:6px;height:6px;animation-delay:2.2s;animation-duration:8s}.login-atmosphere span:nth-child(4){left:90%;width:15px;height:15px;animation-delay:5.5s;animation-duration:12s}@keyframes loginBubble{0%{opacity:0;transform:translateY(0) scale(.7)}14%{opacity:.72}86%{opacity:.42}100%{opacity:0;transform:translate(12px,-105vh) scale(1.15)}}
+		@media(max-width:520px){body{padding:14px;background-attachment:scroll}.auth-box{max-width:390px;padding:24px 20px;border-radius:22px}.logo{width:104px;height:104px}.logo img{width:98px;height:98px}h1{font-size:34px}}
 
 		.logo {
-			width: 110px;
-			height: 110px;
+			position: relative;
+			width: 124px;
+			height: 124px;
 			margin: 0 auto 18px;
-			border-radius: 20px;
-			border: 2px solid rgba(255, 255, 255, 0.3);
-			background: rgba(255, 255, 255, 0.08);
+			border: 0;
+			background: transparent;
 			display: flex;
 			align-items: center;
 			justify-content: center;
 			font-size: 52px;
 			animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-			backdrop-filter: blur(10px);
-			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+			backdrop-filter: none;
+			box-shadow: none;
 			transition: all 0.3s ease;
+			isolation: isolate;
+			cursor: pointer;
+			text-decoration: none;
+			animation: logoEnter .7s cubic-bezier(.2,.9,.3,1.25) both, logoFloat 4.5s ease-in-out .8s infinite;
+		}
+
+		.logo::before {
+			content: '';
+			position: absolute;
+			inset: -7px;
+			z-index: -2;
+			border-radius: 50%;
+			background: radial-gradient(circle, rgba(57,218,255,.24) 0 42%, rgba(27,142,255,.12) 58%, transparent 72%);
+			filter: blur(7px);
+			animation: logoAura 3.8s ease-in-out infinite;
+			pointer-events: none;
+		}
+
+		.logo::after {
+			content: '';
+			position: absolute;
+			inset: -5px;
+			z-index: -1;
+			border-radius: 50%;
+			background: conic-gradient(from 20deg, transparent 0 12%, rgba(126,240,255,.95) 18%, transparent 28% 52%, rgba(63,145,255,.75) 60%, transparent 70% 100%);
+			-webkit-mask: radial-gradient(circle, transparent 62%, #000 64% 68%, transparent 70%);
+			mask: radial-gradient(circle, transparent 62%, #000 64% 68%, transparent 70%);
+			filter: drop-shadow(0 0 5px rgba(74,218,255,.65));
+			animation: logoOrbit 7s linear infinite;
+			pointer-events: none;
+		}
+
+		.logo img {
+			display: block;
+			width: 118px;
+			height: 118px;
+			object-fit: contain;
+			filter: drop-shadow(0 9px 10px rgba(1, 22, 80, .28));
+			transition: transform .45s cubic-bezier(.2,.8,.2,1), filter .45s ease;
 		}
 
 		.logo:hover {
-			transform: scale(1.05);
-			box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+			animation: none;
+			transform: translateY(-3px) scale(1.055);
+			box-shadow: none;
+		}
+
+		.logo:hover img,
+		.logo:focus-visible img {
+			transform: rotate(-3deg) scale(1.06);
+			filter: drop-shadow(0 13px 13px rgba(1, 22, 80, .38)) saturate(1.12);
+		}
+
+		.logo:hover::after,
+		.logo:focus-visible::after { animation-duration: 2.8s; filter: drop-shadow(0 0 8px rgba(104,235,255,.9)); }
+
+		.logo:focus-visible { outline: 3px solid #8cecff; outline-offset: 5px; }
+
+		@keyframes logoEnter { from { opacity: 0; transform: translateY(-18px) scale(.76); } to { opacity: 1; transform: none; } }
+		@keyframes logoFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+		@keyframes logoRipple { 0% { opacity: .65; transform: scale(.86); } 72%,100% { opacity: 0; transform: scale(1.22); } }
+		@keyframes logoShine { 0%,58% { transform: translateX(-145%); } 78%,100% { transform: translateX(145%); } }
+		@keyframes logoOrbit { to { transform: rotate(360deg); } }
+		@keyframes logoAura { 0%,100% { opacity: .55; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.08); } }
+
+		@media (prefers-reduced-motion: reduce) {
+			.logo, .logo::before, .logo::after { animation: none !important; }
+			.logo, .logo img { transition-duration: .01ms !important; }
 		}
 
 		h1 {
@@ -253,11 +336,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 			box-shadow: 0 8px 24px rgba(255, 255, 255, 0.3);
 			font-weight: 800;
 		}
+		.btn-role:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(.35); }
+		.btn-role:disabled:hover { transform: none; }
 
 		.field {
 			position: relative;
 			margin-bottom: 10px;
 			animation: slideInUp 0.6s ease;
+		}
+
+		.field-icon {
+			position: absolute;
+			left: 13px;
+			top: 50%;
+			width: 18px;
+			height: 18px;
+			transform: translateY(-50%);
+			color: rgba(255, 255, 255, 0.92);
+			pointer-events: none;
+			z-index: 1;
+		}
+
+		.field-icon svg {
+			display: block;
+			width: 100%;
+			height: 100%;
+			fill: currentColor;
 		}
 
 		.field:nth-child(1) { animation-delay: 0.5s; }
@@ -365,12 +469,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 			}
 		}
 	</style>
+	<script src="js/ui-protection.js" defer></script>
 </head>
 <body>
+	<div class="login-atmosphere" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
 	<main class="auth-box">
-		<div class="logo" aria-hidden="true"><img src="imagess/logosystem.png" alt="HydroMIS Logo" style="width: 60px; height: 60px; object-fit: contain;"></div>
+		<a class="logo" href="home.php" aria-label="HydroMIS home" title="Go to HydroMIS home"><img src="imagess/hydromis-logo-v2.png" alt="HydroMIS water management logo" onerror="this.onerror=null;this.src='imagess/logosystem.png';"></a>
 		<h1>HydroMIS</h1>
-		<p class="subtitle">Admin, Staff, and Rider Login</p>
+		<p class="subtitle"></p>
 
 		<?php if ($error): ?>
 			<div class="error"><i class="fas fa-exclamation-circle mr-2"></i><?php echo $error; ?></div>
@@ -379,26 +485,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 		<form method="POST">
 			<input type="hidden" name="login_submit" value="1">
 
-			<div class="role-buttons">
-				<button type="button" class="btn-role <?php echo $initial_role === 'admin' ? 'active' : ''; ?>" id="btn-admin" onclick="selectRole('admin');">
-					<i class="fas fa-crown"></i> Admin
-				</button>
-				<button type="button" class="btn-role <?php echo $initial_role === 'staff' ? 'active' : ''; ?>" id="btn-staff" onclick="selectRole('staff');">
-					<i class="fas fa-briefcase"></i> Staff
-				</button>
-				<button type="button" class="btn-role <?php echo $initial_role === 'rider' ? 'active' : ''; ?>" id="btn-rider" onclick="selectRole('rider');">
-					<i class="fas fa-motorcycle"></i> Rider
-				</button>
-			</div>
-			<input type="hidden" name="role" id="role" value="<?php echo $initial_role; ?>" required>
-
 			<div class="field">
-				<i class="fas fa-user"></i>
+				<span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5.33 0-8 2.67-8 5v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2c0-2.33-2.67-5-8-5Z"/></svg></span>
 				<input type="text" name="username" id="username" placeholder="Username" required>
 			</div>
 
 			<div class="field">
-				<i class="fas fa-lock"></i>
+				<span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm3 10.73V19h-2v-1.27a2 2 0 1 1 2 0Z"/></svg></span>
 				<input type="password" name="password" id="password" placeholder="Password" required>
 			</div>
 
@@ -406,31 +499,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 		</form>
 	</main>
 
-	<script>
-		(function initRoleFromServer() {
-			selectRole('<?php echo $initial_role; ?>');
-		})();
-
-		function selectRole(role) {
-			document.getElementById('role').value = role;
-			const adminBtn = document.getElementById('btn-admin');
-			const staffBtn = document.getElementById('btn-staff');
-			const riderBtn = document.getElementById('btn-rider');
-
-			if (role === 'admin') {
-				adminBtn.classList.add('active');
-				staffBtn.classList.remove('active');
-				riderBtn.classList.remove('active');
-			} else if (role === 'staff') {
-				staffBtn.classList.add('active');
-				adminBtn.classList.remove('active');
-				riderBtn.classList.remove('active');
-			} else {
-				riderBtn.classList.add('active');
-				adminBtn.classList.remove('active');
-				staffBtn.classList.remove('active');
-			}
-		}
-	</script>
 </body>
 </html>

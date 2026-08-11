@@ -100,12 +100,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_order'])) {
         $order = $stmt->get_result()->fetch_assoc();
         $order_status = strtolower((string)($order['status'] ?? ''));
         $delivery_status = strtolower((string)($order['delivery_status'] ?? 'pending'));
-        $can_cancel = $order && in_array($order_status, ['pending', 'approved'], true)
+        $can_cancel = $order && $order_status === 'pending'
             && in_array($delivery_status, ['', 'pending', 'assigned'], true);
 
         if (!$can_cancel) {
             $conn->rollback();
-            $error = 'This order can no longer be cancelled because delivery has already started or finished.';
+            $error = 'This order can no longer be cancelled because it has already been approved, started, or completed.';
         } elseif (!release_order_inventory($conn, $order, $cancel_user_id, "Customer cancelled order $transaction_id")) {
             $conn->rollback();
             $error = 'The order could not be cancelled. Please try again.';
@@ -177,10 +177,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'messages') {
     $list = $conn->prepare('SELECT id, transaction_id, sender, recipient, message, created_at FROM (
         SELECT id, transaction_id, sender, recipient, message, created_at
         FROM rider_messages
-        WHERE (sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)
+        WHERE transaction_id = ?
+          AND ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?))
         ORDER BY id DESC LIMIT 100
     ) recent_messages ORDER BY id ASC');
-    $list->bind_param('ssss', $user_id, $order['rider_id'], $order['rider_id'], $user_id);
+    $list->bind_param('sssss', $transaction_id, $user_id, $order['rider_id'], $order['rider_id'], $user_id);
     $list->execute();
     $result = $list->get_result();
     while ($row = $result->fetch_assoc()) $messages[] = $row;
@@ -318,6 +319,15 @@ if ($tracking_info) {
 }
 
 $view = $tracking_info ? 'results' : 'search';
+$has_active_order = false;
+foreach ($tracking_info as $tracked_order) {
+    $tracked_status = strtolower((string)($tracked_order['status'] ?? ''));
+    $tracked_delivery_status = strtolower(trim((string)($tracked_order['delivery_status'] ?? 'pending')));
+    if ($tracked_status === 'pending' || ($tracked_status === 'approved' && !in_array($tracked_delivery_status, ['delivered'], true))) {
+        $has_active_order = true;
+        break;
+    }
+}
 
 function stepState($ds, $step) {
     $ds = strtolower($ds ?? 'pending');
@@ -332,12 +342,18 @@ function stepState($ds, $step) {
 }
 
 function trackingDeliveryStatus($txn) {
-    $status = strtolower($txn['delivery_status'] ?? 'pending');
+    $status = strtolower(trim((string)($txn['delivery_status'] ?? 'pending')));
+    if ($status === '') $status = 'pending';
     $has_rider = !empty($txn['effective_rider_id']) || !empty($txn['rider_id']) || !empty($txn['assigned_rider']) || !empty($txn['rider_name']) || !empty($txn['rider_contact_number']);
     if ($status === 'pending' && $has_rider) {
         return 'assigned';
     }
     return $status;
+}
+
+function compactTransactionId(string $id): string {
+    if (str_starts_with($id, 'TXN-') && strlen($id) > 12) return 'TXN-' . substr($id, 4, 8);
+    return strlen($id) > 14 ? substr($id, 0, 14) : $id;
 }
 ?>
 <!DOCTYPE html>
@@ -379,7 +395,8 @@ function trackingDeliveryStatus($txn) {
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html{scroll-behavior:smooth}
-    body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--surf2);color:var(--t1);min-height:100vh;-webkit-font-smoothing:antialiased}
+    body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--surf2);color:var(--t1);min-height:100vh;padding-top:72px;-webkit-font-smoothing:antialiased}
+    body.search-view{height:100vh;height:100dvh;overflow:hidden}
     a{text-decoration:none}
     button{font-family:inherit;cursor:pointer}
 
@@ -395,17 +412,22 @@ function trackingDeliveryStatus($txn) {
     @keyframes blob{from{transform:translate(0,0) scale(1)}to{transform:translate(30px,20px) scale(1.05)}}
 
     /* NAVBAR */
-    .navbar{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.82);
+    .navbar{position:fixed;top:0;left:0;right:0;width:100%;z-index:200;background:rgba(255,255,255,.82);
         backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);
         border-bottom:1px solid rgba(210,225,241,.78);padding:0 24px;height:72px;
         display:flex;align-items:center;justify-content:space-between;
         box-shadow:0 8px 30px rgba(25,63,103,.07)}
     .nav-brand{display:flex;align-items:center;gap:11px;font-family:'Plus Jakarta Sans',sans-serif;color:var(--navy);line-height:1}
-    .nav-brand-ico{position:relative;width:38px;height:38px;border-radius:12px;
-        background:linear-gradient(145deg,#3b92ff 0%,#1769d7 72%,#0d54b8 100%);
-        display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;
-        box-shadow:0 9px 22px rgba(29,111,216,.28),inset 0 1px 0 rgba(255,255,255,.32)}
-    .nav-brand-ico::after{content:'';position:absolute;inset:1px;border-radius:11px;border:1px solid rgba(255,255,255,.16);pointer-events:none}
+    .nav-brand-ico{position:relative;isolation:isolate;width:46px;height:46px;border:0;border-radius:50%;
+        background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:none;
+        animation:trackLogoFloat 4.4s ease-in-out infinite;transition:transform .35s cubic-bezier(.22,1,.36,1),filter .35s ease}
+    .nav-brand-ico::before{content:'';position:absolute;inset:4px;z-index:-2;border-radius:50%;background:radial-gradient(circle,rgba(59,205,255,.27),rgba(29,111,216,.1) 52%,transparent 72%);filter:blur(5px);animation:trackLogoGlow 3.1s ease-in-out infinite;pointer-events:none}
+    .nav-brand-ico::after{content:'';position:absolute;inset:0;z-index:-1;border-radius:50%;padding:1.5px;background:conic-gradient(from 20deg,transparent 0 25%,#31d8e8 36%,#2789ed 49%,transparent 60% 82%,#42e4cd 92%,transparent);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;filter:drop-shadow(0 0 4px rgba(34,171,224,.55));animation:trackLogoOrbit 5.6s linear infinite;pointer-events:none}
+    .nav-brand-ico img{display:block;width:40px;height:40px;object-fit:contain;border:0;background:transparent;box-shadow:none;animation:none!important;filter:drop-shadow(0 5px 7px rgba(17,78,142,.22));transition:transform .4s cubic-bezier(.22,1,.36,1),filter .3s ease}
+    .nav-brand:hover .nav-brand-ico{transform:translateY(-2px) scale(1.06)}.nav-brand:hover .nav-brand-ico img{transform:rotate(4deg) scale(1.05);filter:drop-shadow(0 8px 10px rgba(17,78,142,.3))}
+    @keyframes trackLogoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+    @keyframes trackLogoGlow{0%,100%{opacity:.5;transform:scale(.92)}50%{opacity:1;transform:scale(1.1)}}
+    @keyframes trackLogoOrbit{to{transform:rotate(360deg)}}
     .nav-brand-copy{display:flex;flex-direction:column;gap:5px}
     .nav-brand-copy strong{font-size:18px;font-weight:850;letter-spacing:-.5px;line-height:1}
     .nav-brand-copy small{font-size:9px;font-weight:750;letter-spacing:1.35px;text-transform:uppercase;color:#7891ad;line-height:1}
@@ -459,6 +481,12 @@ function trackingDeliveryStatus($txn) {
     .mob-orders-list .txn-id{font-size:10px !important}
     .mob-orders-list .txn-dt{font-size:9px !important}
     .mob-orders-list .btn-map{padding:9px 12px;font-size:11px}
+    .mob-order-summary{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:13px 14px 9px;border:0;background:transparent;color:var(--t1);font-family:inherit;text-align:left;cursor:pointer}
+    .mob-order-summary-date{font-size:10px;color:var(--t3);font-weight:600}
+    .mob-order-summary-product{font-size:13px;font-weight:800;line-height:1.35}
+    .mob-order-summary-chevron{align-self:center;margin-top:3px;color:var(--blue);transition:transform .2s ease}
+    .mob-order-summary[aria-expanded="true"] .mob-order-summary-chevron{transform:rotate(180deg)}
+    .mob-order-details[hidden]{display:none}
     .mob-div{height:1px;background:var(--border);margin:8px 0}
     .mob-sub{display:block;padding:10px 12px;color:var(--t2);font-weight:600;
         font-size:14px;border-radius:var(--r-sm);transition:background .15s}
@@ -497,7 +525,7 @@ function trackingDeliveryStatus($txn) {
         display:flex;align-items:center;gap:6px}
     .f-label i{color:var(--blue);font-size:12px}
     .f-wrap{position:relative}
-    .f-inp{width:100%;padding:14px 16px 14px 46px;border:1.5px solid var(--border);
+    .f-inp{width:100%;padding:14px 16px;border:1.5px solid var(--border);
         border-radius:var(--r-md);font-family:inherit;font-size:15px;font-weight:500;
         color:var(--t1);background:var(--surf2);
         transition:border-color .2s,box-shadow .2s,background .2s;outline:none}
@@ -505,13 +533,15 @@ function trackingDeliveryStatus($txn) {
     .f-ico{position:absolute;left:16px;top:50%;transform:translateY(-50%);
         color:var(--t3);font-size:14px;pointer-events:none;transition:color .2s}
     .f-wrap:focus-within .f-ico{color:var(--blue)}
-    .btn-primary{width:100%;padding:15px;
+    .btn-primary{width:100%;min-height:52px;padding:14px 20px;
         background:linear-gradient(135deg,#1557c0,var(--blue-br));
         color:#fff;border:none;border-radius:var(--r-md);
-        font-family:'Syne',sans-serif;font-size:15px;font-weight:800;letter-spacing:.2px;
+        font-family:'Plus Jakarta Sans','DM Sans',sans-serif;font-size:15px;font-weight:700;line-height:1.2;letter-spacing:0;
         display:flex;align-items:center;justify-content:center;gap:8px;
         margin-top:16px;box-shadow:var(--sh-bl);
+        text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;
         transition:transform .18s,box-shadow .18s,filter .18s;position:relative;overflow:hidden}
+    .btn-primary>i,.btn-primary>span{position:relative;z-index:1}.btn-primary>i{flex:0 0 auto;font-size:14px}.btn-primary>span{display:inline-block;white-space:nowrap}
     .btn-primary::before{content:'';position:absolute;inset:0;
         background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);
         opacity:0;transition:opacity .2s}
@@ -529,7 +559,7 @@ function trackingDeliveryStatus($txn) {
 
     /* ── RESULTS PAGE ── */
     .r-wrap{max-width:820px;margin:0 auto;padding:20px 16px 56px}
-    .r-top{display:flex;align-items:center;justify-content:space-between;
+    .r-top{display:none!important;align-items:center;justify-content:space-between;
         margin-bottom:22px;flex-wrap:wrap;gap:12px;
         animation:fadeDown .4s ease both}
     .r-top>div:first-child{min-width:0}
@@ -579,7 +609,14 @@ function trackingDeliveryStatus($txn) {
     @keyframes riderPulse{0%{transform:scale(.72);opacity:.9}75%,100%{transform:scale(1.45);opacity:0}}
     @keyframes riderBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
     @media(prefers-reduced-motion:reduce){.rider-live-pulse,.rider-live-core{animation:none}}
+    .r-title{font-family:'Manrope','Segoe UI',sans-serif!important;line-height:1.45!important;padding-top:4px!important;padding-bottom:2px!important;overflow:visible!important;letter-spacing:-.2px!important}
+    .r-sub{display:none!important}
+    .txn-id{font-family:'Manrope','Segoe UI',sans-serif!important;letter-spacing:0!important;line-height:1.4!important}
+    #live-location-info{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px!important;background:#f7fbfa!important;border-top:1px solid var(--border);font-size:12px!important}#live-location-info>div:first-child{margin:0!important;color:var(--green)!important}#live-location-info>div:first-child i{animation:none!important}#live-location-details{font-size:10px!important;line-height:1.3!important;text-align:right}#live-location-details>div:nth-child(1),#live-location-details>div:nth-child(2){display:none}#live-location-details strong{font-weight:700;color:var(--t3)}
+    @media(max-width:520px){#tracking-map{height:230px}.map-hd{padding:11px 13px}.map-hd-title{font-size:13px}.status-pill{padding:5px 10px;font-size:10px}.rider-bar{padding:11px 14px}.rider-av{width:36px;height:36px}.rider-nm{font-size:13px}.rider-rl{font-size:10px}.steps-bar{padding:13px 8px}.step-ico{width:32px;height:32px}.step-lb{font-size:8px}.map-note{padding:9px 12px;font-size:9px}#live-location-info{padding:11px 13px!important}.customer-chat{padding:14px;margin-top:12px}.customer-message-list{max-height:180px}.tracking-legend{font-size:8px;padding:5px 7px}}
     .customer-chat{margin-top:16px;padding:18px;border:1px solid var(--border);border-radius:18px;background:#fff;box-shadow:var(--sh-sm)}.customer-chat-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.customer-chat-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800}.customer-chat-title i{color:var(--blue)}.customer-chat-status{font-size:9px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.06em}.customer-message-list{display:flex;flex-direction:column;gap:9px;min-height:68px;max-height:240px;padding:2px 2px 12px;overflow-y:auto}.customer-message{display:flex;flex-direction:column;align-items:flex-start}.customer-message.mine{align-items:flex-end}.customer-message-bubble{max-width:82%;padding:10px 12px;border-radius:14px 14px 14px 4px;background:#f0f5f8;color:var(--t1);font-size:12px;line-height:1.45}.customer-message.mine .customer-message-bubble{border-radius:14px 14px 4px 14px;background:linear-gradient(135deg,#1769d2,#168ec8);color:#fff}.customer-message-meta{margin-top:3px;color:var(--t3);font-size:9px}.customer-chat-empty{margin:auto;color:var(--t3);font-size:11px}.customer-chat-form{display:flex;gap:9px}.customer-chat-input{min-width:0;flex:1;height:44px;padding:0 13px;border:1px solid var(--border);border-radius:12px;background:#f9fbfd;color:var(--t1);font:inherit;font-size:12px;outline:none;transition:border-color .2s,box-shadow .2s}.customer-chat-input:focus{border-color:var(--blue-br);box-shadow:0 0 0 3px var(--blue-glow)}.customer-chat-send{width:46px;height:44px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--blue-br));color:#fff;box-shadow:var(--sh-bl);transition:transform .2s}.customer-chat-send:hover{transform:translateY(-2px)}.customer-chat-send:disabled{opacity:.55;cursor:not-allowed;transform:none}
+    .customer-chat-toggle{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid #d7e5ed;border-radius:10px;background:#f4f9fc;color:var(--blue);font:800 10px 'Manrope',sans-serif;cursor:pointer}.customer-chat.is-collapsed{padding:14px 16px}.customer-chat.is-collapsed .customer-chat-head{margin-bottom:0}.customer-chat.is-collapsed .customer-message-list,.customer-chat.is-collapsed .customer-chat-form{display:none}.customer-chat.is-collapsed .customer-chat-status{display:none}.page-orders.is-chat-hidden{display:none!important}
+    .customer-delay-alert{display:flex;gap:10px;margin:0 0 12px;padding:13px 14px;border:1px solid #fed7aa;border-radius:13px;background:#fff7ed;color:#7c2d12;font-size:11px;line-height:1.5}.customer-delay-alert[hidden]{display:none}.customer-delay-alert i{margin-top:2px;color:#f59e0b}.customer-delay-alert strong{display:block;margin-bottom:2px;font-size:12px}
 
     .rider-bar{display:flex;align-items:center;justify-content:space-between;
         padding:14px 18px;
@@ -750,8 +787,8 @@ function trackingDeliveryStatus($txn) {
     /* RESPONSIVE */
     @media(max-width:768px){
         .nav-links{display:none}.nav-ham{display:flex}
-        .s-wrap{padding:28px 14px 48px}
-        .s-hero{margin-bottom:26px}
+        .s-wrap{min-height:calc(100svh - 68px);justify-content:flex-start;padding:34px 14px 32px}
+        .s-hero{margin-bottom:22px}
         .s-ico{width:70px;height:70px;margin-bottom:18px;border-radius:20px;font-size:28px}
         .s-hero h1{font-size:25px !important}.s-card{padding:24px 20px}
         #tracking-map{height:240px}
@@ -769,16 +806,32 @@ function trackingDeliveryStatus($txn) {
         .txn-body{padding:10px 14px 0}
     }
     @media(max-width:420px){
+        body{padding-top:68px}
         .navbar{height:68px;padding:0 16px}.nav-brand{gap:9px}
-        .nav-brand-ico{width:36px;height:36px;font-size:14px}
+        .nav-brand-ico{width:40px;height:40px}.nav-brand-ico img{width:35px;height:35px}
         .nav-brand-copy strong{font-size:17px}.nav-brand-copy small{font-size:8px;letter-spacing:1.05px}
         .nav-ham{width:42px;height:42px;border-radius:13px}
-        .s-ico{width:60px;height:60px;font-size:24px}
+        .s-wrap{padding:28px 14px 24px}
+        .s-hero{margin-bottom:20px}
+        .s-ico{width:60px;height:60px;margin-bottom:16px;font-size:24px}
+        .s-kicker{margin-bottom:10px}
         .s-hero h1{font-size:23px !important;letter-spacing:-.75px}
         .s-hero p{font-size:12px}
+        .s-card{padding:20px;border-radius:20px}
         .r-title{font-size:15px !important}
         .txn-id{font-size:10px !important}
         .txn-dt{font-size:9px !important}
+    }
+    @media(max-width:420px) and (max-height:740px){
+        .s-wrap{padding-top:18px}
+        .s-hero{margin-bottom:16px}
+        .s-ico{width:56px;height:56px;margin-bottom:13px;border-radius:18px;font-size:22px}
+        .s-kicker{padding:5px 9px;margin-bottom:8px}
+        .s-hero h1{margin-bottom:7px}
+        .s-hero p{line-height:1.5}
+        .s-card{padding:18px 20px}
+        .s-card form>div{margin-bottom:14px!important}
+        .btn-primary{min-height:50px;margin-top:14px}
     }
     /* Live GPS Animation */
     @keyframes spin {
@@ -786,15 +839,16 @@ function trackingDeliveryStatus($txn) {
         to { transform: rotate(360deg); }
     }
     </style>
+<script src="../js/ui-protection.js" defer></script>
 </head>
-<body>
+<body class="<?php echo $view === 'search' ? 'search-view' : 'results-view'; ?>">
 
 <div class="bg-anim" id="bg-anim" style="<?php echo $view==='results'?'display:none':''; ?>"></div>
 
 <!-- NAVBAR -->
 <nav class="navbar">
     <div class="nav-brand">
-        <div class="nav-brand-ico"><i class="fas fa-droplet"></i></div>
+        <div class="nav-brand-ico"><img src="../imagess/hydromis-logo-v2.png?v=20260802" alt="HydroMIS logo"></div>
         <div class="nav-brand-copy"><strong>HydroMIS</strong><small>Water Delivery</small></div>
     </div>
     <div class="nav-links">
@@ -807,7 +861,7 @@ function trackingDeliveryStatus($txn) {
     <aside class="mob-pn" id="mob-pn">
         <div class="mob-hd">
             <div class="nav-brand" style="font-size:16px !important;">
-                <div class="nav-brand-ico" style="width:28px;height:28px;font-size:12px;border-radius:8px;"><i class="fas fa-droplet"></i></div>
+                <div class="nav-brand-ico" style="width:34px;height:34px;"><img src="../imagess/hydromis-logo-v2.png?v=20260802" alt="HydroMIS logo" style="width:30px;height:30px;"></div>
                 <div class="nav-brand-copy"><strong style="font-size:16px;">HydroMIS</strong><small>Water Delivery</small></div>
             </div>
             <button class="mob-cls" id="mob-close"><i class="fas fa-xmark"></i></button>
@@ -829,6 +883,19 @@ function trackingDeliveryStatus($txn) {
                 <i class="fas fa-magnifying-glass"></i>
                 Search Again
             </button>
+            <?php if($tracking_info && !empty($tracking_info[0]['user_id'])): ?>
+            <?php if($has_active_order): ?>
+            <button type="button" class="mob-itm mob-btn is-disabled" disabled title="Complete or cancel your current order first">
+                <i class="fas fa-rotate-right"></i>
+                Order Again
+            </button>
+            <?php else: ?>
+            <a class="mob-itm" href="purchase.php?user_id=<?php echo urlencode($tracking_info[0]['user_id']); ?>">
+                <i class="fas fa-rotate-right"></i>
+                Order Again
+            </a>
+            <?php endif; ?>
+            <?php endif; ?>
             <?php if($tracking_info): ?>
             <div class="mob-orders-panel" id="mob-orders-panel">
                 <div class="mob-orders-head">
@@ -843,20 +910,30 @@ function trackingDeliveryStatus($txn) {
                         $mcrn = $txn['rider_name'] ?: 'Assigned Rider';
                         $mcrc = $txn['rider_contact_number'] ?? '';
                         $mcad = $txn['address'] ?: 'Tubigon, Bohol';
-                        $msub = $txn['quantity'] * $txn['price_per_unit'];
                         $mcpc = $mcs==='delivered'?'pill-delivered':(in_array($mcs,['on_the_way','on_way'])?'pill-on_the_way':'pill-preparing');
                         $mobile_feedback = $feedback_by_transaction[$txn['transaction_id']] ?? null;
+                        $mis_pickup = ($txn['fulfillment_method'] ?? 'delivery') === 'pickup';
+                        $mobile_product_summary = ($txn['water_type'] === 'nowater' ? 'No-Water' : 'Regular Water')
+                            . ' · ' . (int)$txn['quantity'] . ' ' . ((int)$txn['quantity'] === 1 ? 'gallon' : 'gallons');
                     ?>
                     <div class="txn" data-card-id="<?php echo htmlspecialchars($txn['transaction_id']); ?>">
+                        <button type="button" class="mob-order-summary" aria-expanded="false">
+                            <span class="mob-order-summary-date"><?php echo date('M d, Y', strtotime($txn['created_at'])); ?></span>
+                            <span class="mob-order-summary-product"><?php echo htmlspecialchars($mobile_product_summary); ?></span>
+                            <i class="fas fa-chevron-down mob-order-summary-chevron" aria-hidden="true"></i>
+                        </button>
+                        <div class="mob-order-details" hidden>
                         <div class="txn-hd">
                             <div>
-                                <div class="txn-id" title="<?php echo htmlspecialchars($txn['transaction_id']); ?>"><i class="fas fa-box"></i><span><?php echo htmlspecialchars($txn['transaction_id']); ?></span></div>
+                                <div class="txn-id" title="<?php echo htmlspecialchars($txn['transaction_id']); ?>"><i class="fas fa-box"></i><span><?php echo htmlspecialchars(compactTransactionId($txn['transaction_id'])); ?></span></div>
                                 <div class="txn-dt"><?php echo date('M d, Y · h:i A', strtotime($txn['created_at'])); ?></div>
                             </div>
                             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px;">
                                 <span class="txn-bdg bdg-<?php echo $mcs === 'delivered' ? 'approved' : $txn['status']; ?>"><?php echo $mcs === 'delivered' ? 'Done' : ucfirst($txn['status']); ?></span>
-                                <?php if($txn['status'] === 'approved' && in_array($mcs, ['on_the_way', 'on_way'], true)): ?>
-                                <button class="btn-map"
+                                <?php if($mis_pickup): ?>
+                                <span class="map-locked"><i class="fas fa-store"></i> Self pickup · No rider required</span>
+                                <?php elseif($txn['status'] === 'approved' && in_array($mcs, ['on_the_way', 'on_way'], true)): ?>
+                                <a class="btn-map btn-map-link" href="delivery_map.php?transaction_id=<?php echo urlencode($txn['transaction_id']); ?>&amp;user_id=<?php echo urlencode($txn['user_id']); ?>"
                                     data-transaction-id="<?php echo htmlspecialchars($txn['transaction_id']); ?>"
                                     data-address="<?php echo htmlspecialchars($mcad); ?>"
                                     data-status="<?php echo htmlspecialchars($mcs); ?>"
@@ -865,7 +942,7 @@ function trackingDeliveryStatus($txn) {
                                     data-status-text="<?php echo htmlspecialchars($mcst); ?>"
                                     data-pill-class="<?php echo $mcpc; ?>">
                                     <i class="fas fa-map-location-dot"></i> View on Map
-                                </button>
+                                </a>
                                 <?php else: ?>
                                 <span class="map-locked"><i class="fas fa-<?php echo $mcs === 'delivered' ? 'circle-check' : 'lock'; ?>"></i> <?php echo $mcs === 'delivered' ? 'Tracking completed' : 'Map available when rider starts delivery'; ?></span>
                                 <?php endif; ?>
@@ -885,10 +962,6 @@ function trackingDeliveryStatus($txn) {
                             <div class="txn-row">
                                 <span class="txn-lbl">Price / Unit</span>
                                 <span class="txn-val">₱<?php echo number_format($txn['price_per_unit'],2); ?></span>
-                            </div>
-                            <div class="txn-row">
-                                <span class="txn-lbl">Subtotal</span>
-                                <span class="txn-val">₱<?php echo number_format($msub,2); ?></span>
                             </div>
                             <?php if($txn['discount']>0): ?>
                             <div class="txn-row">
@@ -946,7 +1019,7 @@ function trackingDeliveryStatus($txn) {
                                 <?php endif; ?>
                             </div>
                             <?php endif; ?>
-                            <?php if(in_array($txn['status'], ['pending', 'approved'], true) && in_array($mcs, ['pending', 'assigned'], true)): ?>
+                            <?php if($txn['status'] === 'pending' && in_array($mcs, ['pending', 'assigned'], true)): ?>
                             <form method="POST" class="cancel-order-form" style="padding:12px 0 0;" onsubmit="return confirm('Cancel this order? This action cannot be undone.');">
                                 <input type="hidden" name="cancel_order" value="1">
                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['customer_order_csrf']); ?>">
@@ -956,6 +1029,7 @@ function trackingDeliveryStatus($txn) {
                                 <button type="submit" class="cancel-order-btn"><i class="fas fa-ban"></i> Cancel Order</button>
                             </form>
                             <?php endif; ?>
+                        </div>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -994,11 +1068,10 @@ function trackingDeliveryStatus($txn) {
                             placeholder=""
                             value="<?php echo htmlspecialchars($search_value); ?>"
                             autocomplete="off">
-                        <i class="fas fa-phone f-ico"></i>
                     </div>
                 </div>
                 <button type="submit" name="search_submit" value="1" class="btn-primary">
-                    <i class="fas fa-magnifying-glass"></i> Search Orders
+                    <i class="fas fa-magnifying-glass" aria-hidden="true"></i><span>Search Orders</span>
                 </button>
             </form>
         </div>
@@ -1011,7 +1084,6 @@ function trackingDeliveryStatus($txn) {
 
     <div class="r-top">
         <div>
-            <div class="r-title"><i class="fas fa-box" aria-hidden="true"></i><span>Your Orders</span></div>
             <?php if($tracking_info): ?>
             <div class="r-sub"><span>Latest order</span> · Track its current delivery progress below.</div>
             <?php endif; ?>
@@ -1060,7 +1132,7 @@ function trackingDeliveryStatus($txn) {
             data-rider-name="<?php echo htmlspecialchars($idr); ?>"
             data-rider-contact="<?php echo htmlspecialchars($irc); ?>"
             data-transaction-id="<?php echo htmlspecialchars($init['transaction_id']); ?>"></div>
-            <div class="tracking-legend"><span class="station-key"><i class="fas fa-circle"></i> HydroMIS station</span><span class="rider-key"><i class="fas fa-circle"></i> Live rider</span></div>
+            <div class="tracking-legend"><span class="station-key"><i class="fas fa-circle"></i> HydroMIS · Guiwanon</span><span class="rider-key"><i class="fas fa-circle"></i> Live rider</span></div>
         </div>
 
         <div class="rider-bar">
@@ -1116,10 +1188,12 @@ function trackingDeliveryStatus($txn) {
         </div>
     </div>
 
-    <section class="customer-chat" aria-labelledby="customer-chat-title">
+    <?php if(($init['fulfillment_method'] ?? 'delivery') !== 'pickup'): ?>
+    <section class="customer-chat is-collapsed" id="customer-chat" aria-labelledby="customer-chat-title">
         <div class="customer-chat-head">
             <div class="customer-chat-title" id="customer-chat-title"><i class="fas fa-message"></i> Message your rider</div>
             <span class="customer-chat-status">Auto refresh</span>
+            <button type="button" class="customer-chat-toggle" id="customer-chat-toggle" aria-expanded="false"><i class="fas fa-comments"></i><span>Show messages</span></button>
         </div>
         <div class="customer-message-list" id="customer-message-list"><div class="customer-chat-empty">Loading conversation…</div></div>
         <form class="customer-chat-form" id="customer-chat-form">
@@ -1127,9 +1201,11 @@ function trackingDeliveryStatus($txn) {
             <button class="customer-chat-send" id="customer-chat-send" type="submit" aria-label="Send message"><i class="fas fa-paper-plane"></i></button>
         </form>
     </section>
+    <?php endif; ?>
 
     <!-- TXN CARDS -->
     <div class="page-orders <?php echo in_array($init['status'], ['pending', 'approved'], true) && $ids !== 'delivered' ? 'is-active-delivery' : ''; ?>" id="active-order-panel">
+    <div class="customer-delay-alert" id="customer-delay-alert" hidden><i class="fas fa-triangle-exclamation"></i><div><strong>Delivery delayed</strong><span id="customer-delay-message"></span></div></div>
     <?php foreach(array_slice($tracking_info, 0, 1) as $ci => $txn): ?>
     <?php
         $cs  = trackingDeliveryStatus($txn);
@@ -1137,21 +1213,23 @@ function trackingDeliveryStatus($txn) {
         $crn = $txn['rider_name'] ?: 'Assigned Rider';
         $crc = $txn['rider_contact_number'] ?? '';
         $cad = $txn['address'] ?: 'Tubigon, Bohol';
-        $sub = $txn['quantity'] * $txn['price_per_unit'];
         $cpc = $cs==='delivered'?'pill-delivered':(in_array($cs,['on_the_way','on_way'])?'pill-on_the_way':'pill-preparing');
         $txn_feedback = $feedback_by_transaction[$txn['transaction_id']] ?? null;
+        $is_pickup = ($txn['fulfillment_method'] ?? 'delivery') === 'pickup';
     ?>
     <div class="txn <?php echo $ci===0?'sel':''; ?>" data-card-id="<?php echo htmlspecialchars($txn['transaction_id']); ?>">
 
         <div class="txn-hd">
             <div>
-                <div class="txn-id" title="<?php echo htmlspecialchars($txn['transaction_id']); ?>"><i class="fas fa-box"></i><span><?php echo htmlspecialchars($txn['transaction_id']); ?></span></div>
+                <div class="txn-id" title="<?php echo htmlspecialchars($txn['transaction_id']); ?>"><i class="fas fa-box"></i><span><?php echo htmlspecialchars(compactTransactionId($txn['transaction_id'])); ?></span></div>
                 <div class="txn-dt"><?php echo date('M d, Y · h:i A', strtotime($txn['created_at'])); ?></div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px;">
                 <span class="txn-bdg bdg-<?php echo $cs === 'delivered' ? 'approved' : $txn['status']; ?>"><?php echo $cs === 'delivered' ? 'Done' : ucfirst($txn['status']); ?></span>
-                <?php if($txn['status'] === 'approved' && in_array($cs, ['on_the_way', 'on_way'], true)): ?>
-                <button class="btn-map"
+                <?php if($is_pickup): ?>
+                <span class="map-locked"><i class="fas fa-store"></i> Self pickup · No rider required</span>
+                <?php elseif($txn['status'] === 'approved' && in_array($cs, ['on_the_way', 'on_way'], true)): ?>
+                <a class="btn-map btn-map-link" href="delivery_map.php?transaction_id=<?php echo urlencode($txn['transaction_id']); ?>&amp;user_id=<?php echo urlencode($txn['user_id']); ?>"
                     data-transaction-id="<?php echo htmlspecialchars($txn['transaction_id']); ?>"
                     data-address="<?php echo htmlspecialchars($cad); ?>"
                     data-status="<?php echo htmlspecialchars($cs); ?>"
@@ -1160,7 +1238,7 @@ function trackingDeliveryStatus($txn) {
                     data-status-text="<?php echo htmlspecialchars($cst); ?>"
                     data-pill-class="<?php echo $cpc; ?>">
                     <i class="fas fa-map-location-dot"></i> View on Map
-                </button>
+                </a>
                 <?php else: ?>
                 <span class="map-locked"><i class="fas fa-<?php echo $cs === 'delivered' ? 'circle-check' : 'lock'; ?>"></i> <?php echo $cs === 'delivered' ? 'Tracking completed' : 'Map available when rider starts delivery'; ?></span>
                 <?php endif; ?>
@@ -1182,10 +1260,6 @@ function trackingDeliveryStatus($txn) {
                 <span class="txn-lbl">Price / Unit</span>
                 <span class="txn-val">₱<?php echo number_format($txn['price_per_unit'],2); ?></span>
             </div>
-            <div class="txn-row">
-                <span class="txn-lbl">Subtotal</span>
-                <span class="txn-val">₱<?php echo number_format($sub,2); ?></span>
-            </div>
             <?php if($txn['discount']>0): ?>
             <div class="txn-row">
                 <span class="txn-lbl"><i class="fas fa-tag" style="color:var(--green);margin-right:4px;font-size:11px;"></i>Discount</span>
@@ -1204,7 +1278,7 @@ function trackingDeliveryStatus($txn) {
             <?php endif; ?>
         </div>
 
-        <?php if(in_array($txn['status'], ['pending', 'approved'], true) && in_array($cs, ['pending', 'assigned'], true)): ?>
+        <?php if($txn['status'] === 'pending' && in_array($cs, ['pending', 'assigned'], true)): ?>
         <form method="POST" class="cancel-order-form" onsubmit="return confirm('Cancel this order? This action cannot be undone.');">
             <input type="hidden" name="cancel_order" value="1">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['customer_order_csrf']); ?>">
@@ -1220,14 +1294,16 @@ function trackingDeliveryStatus($txn) {
             <div class="dlv-hd">
                 <div class="dlv-ico">
                     <?php
-                    if($cs==='assigned') echo '<i class="fas fa-user-check"></i>';
+                    if($is_pickup) echo '<i class="fas fa-store"></i>';
+                    elseif($cs==='assigned') echo '<i class="fas fa-user-check"></i>';
                     elseif($cs==='pending') echo '<i class="fas fa-clock"></i>';
                     elseif(in_array($cs,['on_the_way','on_way'])) echo '<i class="fas fa-truck-fast"></i>';
                     else echo '<i class="fas fa-circle-check"></i>';
                     ?>
                 </div>
                 <?php
-                if($cs==='assigned') echo 'Rider Assigned';
+                if($is_pickup) echo 'Self Pickup';
+                elseif($cs==='assigned') echo 'Rider Assigned';
                 elseif($cs==='pending') echo 'Order Preparation';
                 elseif(in_array($cs,['on_the_way','on_way'])) echo 'On the Way!';
                 else echo 'Delivered ✓';
@@ -1235,12 +1311,12 @@ function trackingDeliveryStatus($txn) {
             </div>
             <div class="dlv-bd">
                 <?php
-                if($cs==='assigned') echo 'A rider has been assigned to your order and will start delivery soon.';
+                if($is_pickup) echo $cs === 'delivered' ? 'Your pickup order has been collected.' : 'Your order is approved and being prepared for pickup at the station.';
+                elseif($cs==='assigned') echo 'A rider has been assigned to your order and will start delivery soon.';
                 elseif($cs==='pending') echo 'Your order is being prepared for delivery.';
-                elseif(in_array($cs,['on_the_way','on_way'])) echo 'Your order is currently on the way to you.';
-                else echo 'Your order has been delivered successfully.';
+                elseif(!in_array($cs,['on_the_way','on_way'])) echo 'Your order has been delivered successfully.';
                 ?>
-                <?php if(!empty($txn['rider_name'])||!empty($txn['rider_contact_number'])): ?>
+                <?php if(!$is_pickup && (!empty($txn['rider_name'])||!empty($txn['rider_contact_number']))): ?>
                 <div>
                     <span class="rider-chip">
                         <i class="fas fa-motorcycle" style="color:var(--orange);"></i>
@@ -1262,6 +1338,13 @@ function trackingDeliveryStatus($txn) {
                 ['s'=>stepState($cs,'on_the_way'),     'ico'=>'fa-truck',             'title'=>'On the Way',      'sub'=>in_array($cs,['pending','assigned'])?'Waiting for dispatch':'Rider heading to your address'],
                 ['s'=>stepState($cs,'delivered'),      'ico'=>'fa-house-circle-check','title'=>'Delivered',       'sub'=>$cs==='delivered'?'Order delivered successfully':'Awaiting delivery'],
             ];
+            if ($is_pickup) {
+                $tlSteps = [
+                    ['s'=>'done', 'ico'=>'fa-check', 'title'=>'Order Confirmed', 'sub'=>date('M d, Y h:i A',strtotime($txn['created_at']))],
+                    ['s'=>$cs==='delivered'?'done':'active', 'ico'=>'fa-box-open', 'title'=>'Preparing for Pickup', 'sub'=>$cs==='delivered'?'Preparation completed':'Station staff is preparing your order'],
+                    ['s'=>$cs==='delivered'?'done':'pending', 'ico'=>'fa-store', 'title'=>'Collected', 'sub'=>$cs==='delivered'?'Order collected successfully':'Awaiting customer pickup'],
+                ];
+            }
             foreach($tlSteps as $tl):
             ?>
             <div class="tl-it">
@@ -1371,6 +1454,15 @@ function toggleMobOrders(forceState = null) {
     mobOrdersPanel.classList.toggle('on', nextState);
     mobOrdersToggle.classList.toggle('is-active', nextState);
 }
+document.querySelectorAll('.mob-order-summary').forEach(summary => {
+    summary.addEventListener('click', () => {
+        const details = summary.nextElementSibling;
+        if (!details?.classList.contains('mob-order-details')) return;
+        const expanded = summary.getAttribute('aria-expanded') === 'true';
+        summary.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        details.hidden = expanded;
+    });
+});
 mobTog?.addEventListener('click', () => document.body.classList.contains('mob-open')?closeMob():openMob());
 mobCls?.addEventListener('click', closeMob);
 mobOv?.addEventListener('click',  e => { if(!mobPn.contains(e.target)) closeMob(); });
@@ -1392,7 +1484,7 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') closeMob(); });
 let map=null, markers=[], poly=null, liveRiderMarker=null, riderMoveFrame=null, hasFittedLiveRoute=false;
 const tubigon={lat:9.9509,lng:123.9622};
 // HydroMIS water refilling station — Barangay Guiwanon, Tubigon, Bohol.
-const station={lat:9.9417,lng:123.9536};
+const station={lat:9.9403,lng:123.9517};
 
 function pillCls(s) {
     s=(s||'').toLowerCase();
@@ -1496,7 +1588,7 @@ function initOrderMap() {
         panel?.scrollIntoView({behavior:'smooth',block:'start'});
         startLiveGPSTracking(o.transactionId);
     };
-    document.querySelectorAll('.btn-map').forEach(btn=>{
+    document.querySelectorAll('button.btn-map').forEach(btn=>{
         btn.addEventListener('click',function(){
             const o={
                 transactionId:this.dataset.transactionId,
@@ -1568,6 +1660,13 @@ function formatMessageTime(value) {
 function renderCustomerMessages(messages) {
     const list=document.getElementById('customer-message-list');
     if(!list) return;
+    const delayAlert=document.getElementById('customer-delay-alert');
+    const delayText=document.getElementById('customer-delay-message');
+    const latestDelay=[...messages].reverse().find(message=>message.sender!==TRACKING_USER_ID && String(message.message||'').startsWith('Delivery update:'));
+    if(delayAlert && delayText){
+        delayAlert.hidden=!latestDelay;
+        delayText.textContent=latestDelay ? latestDelay.message : '';
+    }
     list.replaceChildren();
     if(!messages.length){
         const empty=document.createElement('div');
@@ -1622,6 +1721,29 @@ document.getElementById('customer-chat-form')?.addEventListener('submit', event=
         input.value='';
         renderCustomerMessages(data.messages||[]);
     }).catch(error=>alert(error.message)).finally(()=>{button.disabled=false;input?.focus();});
+});
+
+const customerChatPanel=document.getElementById('customer-chat');
+const customerOrderPanel=document.getElementById('active-order-panel');
+if(customerChatPanel && customerOrderPanel) {
+    customerOrderPanel.insertAdjacentElement('afterend', customerChatPanel);
+}
+
+document.getElementById('customer-chat-toggle')?.addEventListener('click', event=>{
+    const chat=document.getElementById('customer-chat');
+    const orderPanel=document.getElementById('active-order-panel');
+    const toggle=event.currentTarget;
+    if(!chat || !toggle) return;
+    const isCollapsed=chat.classList.toggle('is-collapsed');
+    orderPanel?.classList.toggle('is-chat-hidden', !isCollapsed);
+    if(orderPanel) orderPanel.hidden=!isCollapsed;
+    orderPanel?.setAttribute('aria-hidden', isCollapsed ? 'false' : 'true');
+    toggle.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    const label=toggle.querySelector('span');
+    const icon=toggle.querySelector('i');
+    if(label) label.textContent=isCollapsed ? 'Show messages' : 'Hide messages';
+    if(icon) icon.className=isCollapsed ? 'fas fa-comments' : 'fas fa-chevron-up';
+    if(!isCollapsed && activeMessageTransaction) loadCustomerMessages(activeMessageTransaction);
 });
 
 if(document.readyState === 'loading') {

@@ -7,13 +7,14 @@
     <link href="../css/payment.css" rel="stylesheet">
     <link href="../css/professional-theme.css" rel="stylesheet">
     <link href="../css/animations.css" rel="stylesheet">
+    <script src="../js/ui-protection.js" defer></script>
 </head>
 <body>
     <div class="payment-container">
         <div class="payment-card">
             <!-- Header -->
             <div class="payment-header">
-                <h2><img src="../imagess/logosystem.png" alt="HydroMIS Logo" style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;"> HydroMIS Payment</h2>
+                <h2><img src="../imagess/hydromis-logo-v2.png" alt="HydroMIS Logo" style="width: 24px; height: 24px; object-fit: contain; margin-right: 8px;"> HydroMIS Payment</h2>
                 <p>Secure Online Payment Portal</p>
             </div>
 
@@ -27,7 +28,7 @@
                     <p>Your payment is being processed.</p>
                     <div class="transaction-info">
                         <p><strong>Transaction ID:</strong> <?php echo htmlspecialchars($payment_transaction_id); ?></p>
-                        <p><?php echo (($transaction['payment_method'] ?? '') === 'cash') ? 'Staff will mark cash as paid after collection.' : 'Staff will verify your reference number and uploaded proof.'; ?></p>
+                        <p><?php echo (($transaction['payment_method'] ?? '') === 'cash') ? 'Staff will mark cash as paid after collection.' : 'Staff will verify your uploaded proof of payment.'; ?></p>
                     </div>
                     <div class="success-actions">
                         <a href="track_order.php" class="btn btn-primary"><i class="fas fa-search"></i> Track Transaction</a>
@@ -136,7 +137,6 @@
                             <ol>
                                 <li>Send the exact amount to GCash number: <strong>0917-123-4567</strong></li>
                                 <li>Account Name: <strong>HydroMIS Water Services</strong></li>
-                                <li>Enter the reference number below</li>
                                 <li>Upload screenshot as proof of payment</li>
                             </ol>
                         </div>
@@ -144,11 +144,6 @@
                         <div class="form-group">
                             <label>Your GCash Number <span class="required">*</span></label>
                             <input type="text" class="form-control" name="gcash_number" placeholder="09XX-XXX-XXXX">
-                        </div>
-
-                        <div class="form-group">
-                            <label>GCash Reference Number <span class="required">*</span></label>
-                            <input type="text" class="form-control" name="gcash_reference" placeholder="Enter GCash reference number">
                         </div>
 
                         <div class="form-group">
@@ -165,7 +160,6 @@
                             <ol>
                                 <li>Send the exact amount to Maya number: <strong>0917-987-6543</strong></li>
                                 <li>Account Name: <strong>HydroMIS Water Services</strong></li>
-                                <li>Enter the reference number below</li>
                                 <li>Upload screenshot as proof of payment</li>
                             </ol>
                         </div>
@@ -173,11 +167,6 @@
                         <div class="form-group">
                             <label>Your Maya Number <span class="required">*</span></label>
                             <input type="text" class="form-control" name="maya_number" placeholder="09XX-XXX-XXXX">
-                        </div>
-
-                        <div class="form-group">
-                            <label>Maya Reference Number <span class="required">*</span></label>
-                            <input type="text" class="form-control" name="maya_reference" placeholder="Enter Maya reference number">
                         </div>
 
                         <div class="form-group">

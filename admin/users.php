@@ -5,17 +5,124 @@ require_once '../config/system_settings.php';
 require_once '../config/inventory_service.php';
 $systemLogo = system_logo_path($conn);
 ensure_inventory_schema($conn);
+$conn->query("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS source_user_id VARCHAR(50) NULL");
+$conn->query("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS login_enabled TINYINT(1) NOT NULL DEFAULT 1");
+$conn->query("ALTER TABLE rider_users ADD COLUMN IF NOT EXISTS source_user_id VARCHAR(50) NULL");
+$conn->query("ALTER TABLE rider_users ADD COLUMN IF NOT EXISTS login_enabled TINYINT(1) NOT NULL DEFAULT 1");
+if (empty($_SESSION['user_status_csrf'])) {
+    $_SESSION['user_status_csrf'] = bin2hex(random_bytes(32));
+}
 
-// Handle approve/deny user accounts
+// Handle both first-time decisions and later status corrections.
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
-    $user_id = sanitize($_POST['user_id']);
-    $action = sanitize($_POST['action']);
-    $status = ($action == 'approve') ? 'approved' : 'denied';
-    
-    $previousResult = $conn->query("SELECT status FROM users WHERE user_id = '$user_id' LIMIT 1");
-    $previousUser = $previousResult ? $previousResult->fetch_assoc() : null;
-    $sql = "UPDATE users SET status = '$status' WHERE user_id = '$user_id'";
-    if ($conn->query($sql) === TRUE) {
+    $user_id = trim((string)($_POST['user_id'] ?? ''));
+    $action = (string)($_POST['action'] ?? '');
+    $csrfToken = (string)($_POST['csrf_token'] ?? '');
+    if (!hash_equals($_SESSION['user_status_csrf'], $csrfToken)) {
+        $error = 'Your session token expired. Refresh the page and try again.';
+    } elseif ($action === 'toggle_existing_portal') {
+        $accountType = (string)($_POST['account_type'] ?? '');
+        $recordId = (int)($_POST['record_id'] ?? 0);
+        $loginEnabled = isset($_POST['login_enabled']) ? 1 : 0;
+        if (!in_array($accountType, ['admin', 'rider'], true) || $recordId < 1) {
+            $error = 'Invalid portal account.';
+        } else {
+            $table = $accountType === 'rider' ? 'rider_users' : 'admin_users';
+            $save = $conn->prepare("UPDATE {$table} SET login_enabled = ? WHERE id = ? AND source_user_id IS NULL");
+            $save->bind_param('ii', $loginEnabled, $recordId);
+            $saved = $save->execute();
+            $save->close();
+            if ($saved) {
+                $success = $loginEnabled ? 'Portal login enabled.' : 'Portal login disabled.';
+            } else {
+                $error = 'Portal login could not be updated.';
+            }
+        }
+    } elseif ($action === 'set_portal_access' && $user_id !== '') {
+        $portalRole = (string)($_POST['portal_role'] ?? 'none');
+        $loginEnabled = isset($_POST['login_enabled']) ? 1 : 0;
+        if (!in_array($portalRole, ['none', 'staff', 'rider', 'admin'], true)) {
+            $error = 'Invalid portal role.';
+        } else {
+            $userStmt = $conn->prepare('SELECT user_id, username, username_lookup, password, full_name, contact_number FROM users WHERE user_id = ? LIMIT 1');
+            $userStmt->bind_param('s', $user_id);
+            $userStmt->execute();
+            $customer = $userStmt->get_result()->fetch_assoc();
+            $userStmt->close();
+            if (!$customer) {
+                $error = 'Customer account not found.';
+            } else {
+                $sourceId = (string)$customer['user_id'];
+                $conn->query("UPDATE admin_users SET login_enabled = 0 WHERE source_user_id = '" . $conn->real_escape_string($sourceId) . "'");
+                $conn->query("UPDATE rider_users SET login_enabled = 0 WHERE source_user_id = '" . $conn->real_escape_string($sourceId) . "'");
+                $safeSourceId = $conn->real_escape_string($sourceId);
+                if ($portalRole === 'rider') {
+                    $conn->query("UPDATE admin_users SET source_user_id = NULL WHERE source_user_id = '$safeSourceId'");
+                } elseif ($portalRole === 'staff' || $portalRole === 'admin') {
+                    $conn->query("UPDATE rider_users SET source_user_id = NULL WHERE source_user_id = '$safeSourceId'");
+                } else {
+                    $conn->query("UPDATE admin_users SET source_user_id = NULL WHERE source_user_id = '$safeSourceId'");
+                    $conn->query("UPDATE rider_users SET source_user_id = NULL WHERE source_user_id = '$safeSourceId'");
+                }
+                if ($portalRole !== 'none') {
+                    $encryptedUsername = encrypt_sensitive((string)$customer['username']);
+                    $usernameLookup = (string)($customer['username_lookup'] ?: sensitive_lookup((string)$customer['username']));
+                    $passwordHash = (string)$customer['password'];
+                    $encryptedName = encrypt_sensitive((string)$customer['full_name']);
+                    if ($portalRole === 'rider') {
+                        $riderId = 'RID-' . strtoupper(substr(hash('sha256', $sourceId), 0, 12));
+                        $existing = $conn->prepare('SELECT id FROM rider_users WHERE source_user_id = ? OR username_lookup = ? LIMIT 1');
+                        $existing->bind_param('ss', $sourceId, $usernameLookup);
+                        $existing->execute();
+                        $existingRow = $existing->get_result()->fetch_assoc();
+                        $existing->close();
+                        if ($existingRow) {
+                            $save = $conn->prepare("UPDATE rider_users SET rider_id=?, username=?, username_lookup=?, password=?, full_name=?, source_user_id=?, status='active', login_enabled=? WHERE id=?");
+                            $save->bind_param('ssssssii', $riderId, $encryptedUsername, $usernameLookup, $passwordHash, $encryptedName, $sourceId, $loginEnabled, $existingRow['id']);
+                        } else {
+                            $save = $conn->prepare("INSERT INTO rider_users (rider_id,username,username_lookup,password,full_name,source_user_id,status,login_enabled) VALUES (?,?,?,?,?,?,'active',?)");
+                            $save->bind_param('ssssssi', $riderId, $encryptedUsername, $usernameLookup, $passwordHash, $encryptedName, $sourceId, $loginEnabled);
+                        }
+                    } else {
+                        $portalId = ($portalRole === 'admin' ? 'ADM-' : 'STF-') . strtoupper(substr(hash('sha256', $sourceId), 0, 12));
+                        $existing = $conn->prepare('SELECT id FROM admin_users WHERE source_user_id = ? OR username_lookup = ? LIMIT 1');
+                        $existing->bind_param('ss', $sourceId, $usernameLookup);
+                        $existing->execute();
+                        $existingRow = $existing->get_result()->fetch_assoc();
+                        $existing->close();
+                        if ($existingRow) {
+                            $save = $conn->prepare('UPDATE admin_users SET admin_id=?, username=?, username_lookup=?, password=?, full_name=?, role=?, source_user_id=?, login_enabled=? WHERE id=?');
+                            $save->bind_param('sssssssii', $portalId, $encryptedUsername, $usernameLookup, $passwordHash, $encryptedName, $portalRole, $sourceId, $loginEnabled, $existingRow['id']);
+                        } else {
+                            $save = $conn->prepare('INSERT INTO admin_users (admin_id,username,username_lookup,password,full_name,role,source_user_id,login_enabled) VALUES (?,?,?,?,?,?,?,?)');
+                            $save->bind_param('sssssssi', $portalId, $encryptedUsername, $usernameLookup, $passwordHash, $encryptedName, $portalRole, $sourceId, $loginEnabled);
+                        }
+                    }
+                    if (!$save->execute()) {
+                        $error = 'Portal access could not be saved: ' . $save->error;
+                    }
+                    $save->close();
+                }
+                if (empty($error)) {
+                    $success = $portalRole === 'none' ? 'Portal login removed.' : ucfirst($portalRole) . ' portal access updated.';
+                }
+            }
+        }
+    } elseif (!in_array($action, ['approve', 'deny'], true) || $user_id === '') {
+        $error = 'Invalid user status update.';
+    } else {
+        $status = $action === 'approve' ? 'approved' : 'denied';
+        $lookup = $conn->prepare('SELECT status FROM users WHERE user_id = ? LIMIT 1');
+        $lookup->bind_param('s', $user_id);
+        $lookup->execute();
+        $previousResult = $lookup->get_result();
+        $previousUser = $previousResult ? $previousResult->fetch_assoc() : null;
+        $lookup->close();
+        $update = $conn->prepare('UPDATE users SET status = ? WHERE user_id = ?');
+        $update->bind_param('ss', $status, $user_id);
+        $updated = $update->execute();
+        $update->close();
+        if ($updated && $previousUser) {
         if ($previousUser && ($previousUser['status'] ?? '') !== $status) {
             if ($status === 'approved') {
                 add_user_notification(
@@ -37,11 +144,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                 );
             }
         }
-        $success = 'User status updated successfully!';
+            $success = $status === 'approved' ? 'User account approved successfully!' : 'User account denied successfully!';
+        } else {
+            $error = 'The user account could not be updated.';
+        }
     }
 }
 
-// Get all users
+// Keep ordinary buyers separate from accounts that have portal roles.
+$standalonePortalUsers = $conn->query("SELECT id, admin_id AS account_id, full_name, role, login_enabled, 'admin' AS account_type, created_at
+    FROM admin_users WHERE source_user_id IS NULL
+    UNION ALL
+    SELECT id, rider_id AS account_id, full_name, 'rider' AS role, login_enabled, 'rider' AS account_type, created_at
+    FROM rider_users WHERE source_user_id IS NULL
+    ORDER BY created_at DESC");
 $users = $conn->query("SELECT * FROM users ORDER BY created_at DESC");
 $total_users = $conn->query("SELECT COUNT(*) as count FROM users")->fetch_assoc()['count'];
 $approved_users = $conn->query("SELECT COUNT(*) as count FROM users WHERE status='approved'")->fetch_assoc()['count'];
@@ -131,10 +247,10 @@ html, body {
 .brand-icon {
     width: 38px; height: 38px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #1e9e8f, #0e6d7a);
+    background: transparent;
     display: flex; align-items: center; justify-content: center;
     font-size: 17px; color: #fff;
-    box-shadow: 0 4px 14px rgba(45,212,191,0.3);
+    box-shadow: none;
     flex-shrink: 0;
 }
 .brand-name {
@@ -456,6 +572,7 @@ html, body {
     font-weight: 600;
     animation: slideInDown 0.4s ease;
 }
+.error-message { background:var(--red-dim);border:1px solid rgba(244,63,94,.22);color:var(--red);padding:12px 16px;border-radius:8px;margin-bottom:16px;font-weight:600;animation:slideInDown .4s ease; }
 
 @media (max-width: 1200px) {
     .stats-grid {
@@ -480,6 +597,9 @@ html, body {
     to { opacity: 1; transform: translateY(0); }
 }
     </style>
+    <script src="../js/ui-protection.js" defer></script>
+    <link rel="stylesheet" href="../css/admin-theme.css">
+    <script src="../js/admin-theme.js"></script>
 </head>
 <body>
 <div class="shell">
@@ -517,6 +637,7 @@ html, body {
             <div>
                 <div class="nav-section-label">System</div>
                 <div class="nav-group">
+                    <a href="activity_logs.php" class="nav-item"><i class="fas fa-clock-rotate-left"></i> Activity Log</a>
                     <a href="dashboard.php?open_settings=1" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
                 </div>
             </div>
@@ -527,7 +648,7 @@ html, body {
                 <div class="admin-avatar"><?= strtoupper(substr($_SESSION['full_name'] ?? 'A', 0, 1)) ?></div>
                 <div>
                     <div class="admin-name"><?= htmlspecialchars($_SESSION['full_name'] ?? 'Admin') ?></div>
-                    <div class="admin-role">Super Admin</div>
+                    <div class="admin-role">Administrator</div>
                 </div>
                 <a href="../logout.php" class="logout-link" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
             </div>
@@ -559,7 +680,7 @@ html, body {
             <!-- Heading -->
             <div class="page-heading">
                 <div>
-                    <div class="page-title">👥 User Management</div>
+                    <div class="page-title">User Management</div>
                     <div class="page-subtitle">Review and approve customer accounts</div>
                 </div>
 
@@ -569,6 +690,9 @@ html, body {
             <div class="success-message">
                 <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?>
             </div>
+            <?php endif; ?>
+            <?php if (isset($error)): ?>
+            <div class="error-message"><i class="fas fa-circle-exclamation"></i> <?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
 
             <!-- Stat Cards -->
@@ -610,10 +734,52 @@ html, body {
                 </div>
             </div>
 
-            <!-- Table -->
+            <!-- Portal users are managed separately from buyers. -->
+            <div class="table-panel" style="margin-bottom:20px;">
+                <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+                    <h3 style="margin:0;font-size:16px;font-weight:700;"><i class="fas fa-user-shield"></i> Portal Users</h3>
+                    <span style="font-size:11px;color:var(--muted);">Admin, Staff and Rider accounts</span>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead><tr><th>User ID</th><th>Full Name</th><th>Role &amp; Login</th><th>Status</th><th>Action</th></tr></thead>
+                        <tbody>
+                        <?php if ($standalonePortalUsers): ?>
+                            <?php while ($portal = $standalonePortalUsers->fetch_assoc()): ?>
+                            <tr>
+                                <td><strong><?php echo htmlspecialchars($portal['account_id']); ?></strong></td>
+                                <td><?php echo htmlspecialchars($portal['full_name']); ?></td>
+                                <td>
+                                    <span class="badge badge-approved"><?php echo ucfirst(htmlspecialchars($portal['role'])); ?></span>
+                                    <span style="margin-left:6px;color:<?php echo (int)$portal['login_enabled'] === 1 ? 'var(--green)' : 'var(--muted)'; ?>;font-size:11px;"><?php echo (int)$portal['login_enabled'] === 1 ? 'Login enabled' : 'Login disabled'; ?></span>
+                                </td>
+                                <td><span class="badge badge-approved">Portal account</span></td>
+                                <td>
+                                    <form method="POST" style="display:flex;align-items:center;gap:7px;" onsubmit="return confirm('Update login access for this portal account?');">
+                                        <input type="hidden" name="user_id" value="portal">
+                                        <input type="hidden" name="action" value="toggle_existing_portal">
+                                        <input type="hidden" name="account_type" value="<?php echo htmlspecialchars($portal['account_type']); ?>">
+                                        <input type="hidden" name="record_id" value="<?php echo (int)$portal['id']; ?>">
+                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['user_status_csrf']); ?>">
+                                        <label style="display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:11px;white-space:nowrap;"><input type="checkbox" name="login_enabled" value="1" <?php echo (int)$portal['login_enabled'] === 1 ? 'checked' : ''; ?>> Enable login</label>
+                                        <button type="submit" class="btn-action btn-enable"><i class="fas fa-floppy-disk"></i> Save</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <?php endwhile; ?>
+                        <?php endif; ?>
+                        <?php if (!$standalonePortalUsers || $standalonePortalUsers->num_rows === 0): ?>
+                            <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px;">No Admin, Staff or Rider accounts have been assigned from buyers.</td></tr>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Buyer accounts -->
             <div class="table-panel">
                 <div style="padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
-                    <h3 style="margin: 0; font-size: 16px; font-weight: 700;"><i class="fas fa-list"></i> User Accounts</h3>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 700;"><i class="fas fa-cart-shopping"></i> Buyer Accounts</h3>
                 </div>
                 <div style="overflow-x: auto;">
                     <table class="data-table">
@@ -637,19 +803,23 @@ html, body {
                                 <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
                                 <td>
                                     <div style="display: flex; gap: 6px;">
-                                        <?php if ($row['status'] == 'pending'): ?>
-                                            <form method="POST" style="display: inline;">
+                                        <?php if ($row['status'] !== 'approved'): ?>
+                                            <form method="POST" style="display: inline;" onsubmit="return confirm('Approve this customer account?');">
                                                 <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($row['user_id']); ?>">
                                                 <input type="hidden" name="action" value="approve">
-                                                <button type="submit" class="btn-action btn-enable" title="Approve">
-                                                    <i class="fas fa-check"></i> Approve
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['user_status_csrf']); ?>">
+                                                <button type="submit" class="btn-action btn-enable" title="Approve account">
+                                                    <i class="fas fa-check"></i> <?php echo $row['status'] === 'denied' ? 'Approve Instead' : 'Approve'; ?>
                                                 </button>
                                             </form>
-                                            <form method="POST" style="display: inline;">
+                                        <?php endif; ?>
+                                        <?php if ($row['status'] !== 'denied'): ?>
+                                            <form method="POST" style="display: inline;" onsubmit="return confirm('Deny this customer account?');">
                                                 <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($row['user_id']); ?>">
                                                 <input type="hidden" name="action" value="deny">
-                                                <button type="submit" class="btn-action btn-disable" title="Deny">
-                                                    <i class="fas fa-times"></i> Deny
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['user_status_csrf']); ?>">
+                                                <button type="submit" class="btn-action btn-disable" title="Deny account">
+                                                    <i class="fas fa-times"></i> <?php echo $row['status'] === 'approved' ? 'Deny Instead' : 'Deny'; ?>
                                                 </button>
                                             </form>
                                         <?php endif; ?>

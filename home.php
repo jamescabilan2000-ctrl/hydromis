@@ -85,7 +85,7 @@ if (!$check_table || $check_table->num_rows == 0) {
         .logo-icon {
             width: 36px;
             height: 36px;
-            background: linear-gradient(135deg, var(--blue-mid), var(--aqua));
+            background: transparent;
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -167,10 +167,19 @@ if (!$check_table || $check_table->num_rows == 0) {
             position: absolute;
             inset: 0;
             background:
-                radial-gradient(ellipse 80% 60% at 70% 40%, rgba(6,182,212,.18) 0%, transparent 70%),
-                radial-gradient(ellipse 60% 80% at 20% 80%, rgba(26,86,219,.22) 0%, transparent 60%),
-                linear-gradient(160deg, #0a2540 0%, #0c3057 50%, #0a2540 100%);
+                linear-gradient(90deg,rgba(2,18,38,.82) 0%,rgba(3,29,55,.7) 45%,rgba(2,26,50,.6) 100%),
+                linear-gradient(180deg,rgba(1,15,34,.15),rgba(1,20,39,.58)),
+                url('imagess/home-water-station-hero-v2.png') center 48% / cover no-repeat;
+            transform:scale(1.035);
+            filter:saturate(1.04) brightness(.92);
+            animation:heroWaterPan 18s ease-in-out infinite alternate;
+            transition:filter 1s ease,transform 1.2s cubic-bezier(.2,.8,.2,1);
+            will-change:background-position,transform;
         }
+        .hero-bg::after{content:'';position:absolute;inset:-25%;pointer-events:none;background:linear-gradient(112deg,transparent 38%,rgba(128,232,255,.11) 49%,transparent 60%);transform:translateX(-45%) rotate(3deg);animation:heroWaterShimmer 9s ease-in-out infinite}
+        .hero:hover .hero-bg{filter:saturate(1.11) brightness(.98);transform:scale(1.055)}
+        @keyframes heroWaterPan{0%{background-position:center,center,44% 47%;transform:scale(1.035)}50%{background-position:center,center,50% 51%;transform:scale(1.055)}100%{background-position:center,center,57% 46%;transform:scale(1.04)}}
+        @keyframes heroWaterShimmer{0%,18%{opacity:0;transform:translateX(-48%) rotate(3deg)}48%{opacity:1}78%,100%{opacity:0;transform:translateX(48%) rotate(3deg)}}
 
         /* Animated water circles */
         .water-ring {
@@ -215,8 +224,8 @@ if (!$check_table || $check_table->num_rows == 0) {
             margin: 0 auto;
             padding: 80px 24px;
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 64px;
+            grid-template-columns: minmax(0, 760px);
+            justify-content: center;
             align-items: center;
         }
 
@@ -1084,6 +1093,7 @@ if (!$check_table || $check_table->num_rows == 0) {
 
             /* Hero — tighter, thumb-friendly */
             .hero { min-height: auto; }
+            .hero-bg{background:linear-gradient(180deg,rgba(2,18,38,.7),rgba(2,25,48,.82)),url('imagess/home-water-station-hero-v2.png') center 48% / cover no-repeat;}
             .hero-content {
                 padding: 52px 18px 60px;
                 gap: 32px;
@@ -1132,7 +1142,11 @@ if (!$check_table || $check_table->num_rows == 0) {
                 scrollbar-width: none;
                 padding: 8px 18px;
                 gap: 8px;
+                cursor: grab;
+                user-select: none;
+                touch-action: pan-y;
             }
+            .trust-inner.is-dragging { cursor: grabbing; scroll-snap-type: none; }
             .trust-inner::-webkit-scrollbar { display: none; }
             .trust-label { flex-basis: 100%; text-align: center; margin-bottom: 10px; }
             .trust-item  { flex-shrink: 0; font-size: .78rem; padding: 7px 14px; }
@@ -1152,7 +1166,12 @@ if (!$check_table || $check_table->num_rows == 0) {
                 padding: 4px 18px 16px;
                 margin: 0 -18px;
                 scroll-snap-type: x mandatory;
+                scroll-behavior: smooth;
+                cursor: grab;
+                user-select: none;
+                touch-action: pan-y;
             }
+            .cards-3.is-dragging { cursor: grabbing; scroll-snap-type: none; scroll-behavior: auto; }
             .cards-3::-webkit-scrollbar { display: none; }
             .role-card {
                 flex: 0 0 82vw;
@@ -1175,8 +1194,13 @@ if (!$check_table || $check_table->num_rows == 0) {
                 height: 6px;
                 border-radius: 50%;
                 background: var(--border);
-                transition: background .2s;
+                border: 0;
+                padding: 0;
+                cursor: pointer;
+                transition: width .25s ease, background .2s, transform .2s;
             }
+            .scroll-dot:hover { transform: scale(1.25); }
+            .scroll-dot:focus-visible { outline: 2px solid var(--blue-mid); outline-offset: 3px; }
             .scroll-dot.active { background: var(--blue-mid); width: 18px; border-radius: 3px; }
 
             /* How it works — vertical on mobile */
@@ -1287,7 +1311,7 @@ if (!$check_table || $check_table->num_rows == 0) {
         }
         @media (max-width:360px){.logo-text{font-size:1.05rem}.logo{width:calc(100% - 24px);gap:8px;margin-left:12px;margin-right:12px}.nav-links{padding-left:6px;padding-right:6px}.nav-links a,.nav-links button{font-size:.69rem;padding:7px 2px;letter-spacing:-.15px}}
         nav { animation: navReveal .65s var(--ease-premium) both; }
-        .logo-icon { box-shadow: 0 8px 24px rgba(6,182,212,.22); }
+        .logo-icon { box-shadow: none; }
         .nav-links a, .mobile-burger, .hero-actions a {
             outline: none;
             transition: transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease,
@@ -1364,11 +1388,31 @@ if (!$check_table || $check_table->num_rows == 0) {
             .hero-actions a { min-height:56px; display:flex; align-items:center; justify-content:center; }
             .hero-scroll-hint { justify-content:center; }
         }
+        /* Premium water-glass navigation */
+        nav{padding:10px 14px;background:linear-gradient(180deg,rgba(3,20,39,.92),rgba(3,27,51,.76));border-bottom:0;transition:padding .35s ease,background .35s ease,box-shadow .35s ease}
+        nav::after{content:'';position:absolute;left:8%;right:8%;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(91,224,255,.72),transparent);opacity:.65}
+        nav.nav-scrolled{padding-top:6px;padding-bottom:6px;background:rgba(3,20,39,.94);box-shadow:0 14px 34px rgba(1,13,29,.28)}
+        .nav-inner{height:66px;max-width:1180px;padding:0 18px;border:1px solid rgba(145,226,255,.16);border-radius:18px;background:linear-gradient(120deg,rgba(13,53,83,.7),rgba(6,33,61,.58));box-shadow:inset 0 1px rgba(255,255,255,.08),0 12px 32px rgba(0,10,25,.2);transition:height .35s ease,background .35s ease,border-color .35s ease}
+        nav.nav-scrolled .nav-inner{height:56px;background:rgba(8,38,67,.74);border-color:rgba(145,226,255,.23)}
+        .logo{transition:transform .3s ease}.logo:hover{transform:translateY(-1px)}.logo-text{color:#f3f9ff}.logo-text span{color:#55d9ff}
+        .nav-links{gap:4px;margin-left:auto}.nav-links a,.nav-links button{position:relative;color:#c4d7e8;background:transparent;font-weight:700;letter-spacing:.01em}
+        .nav-links .btn-ghost::after{content:'';position:absolute;left:16px;right:16px;bottom:2px;height:2px;border-radius:2px;background:linear-gradient(90deg,#31d7e5,#5595ff);transform:scaleX(0);transition:transform .25s ease}
+        .nav-links .btn-ghost:hover,.nav-links .btn-ghost.active{color:#fff;background:rgba(126,220,255,.08)}.nav-links .btn-ghost:hover::after,.nav-links .btn-ghost.active::after{transform:scaleX(1)}
+        .account-menu{position:relative}.account-menu summary{list-style:none;display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:10px;cursor:pointer;color:#c4d7e8;font-size:.875rem;font-weight:700;transition:background .2s ease,color .2s ease}.account-menu summary::-webkit-details-marker{display:none}.account-menu summary:hover,.account-menu[open] summary{color:#fff;background:rgba(126,220,255,.1)}.account-menu summary i:last-child{font-size:9px;transition:transform .25s ease}.account-menu[open] summary i:last-child{transform:rotate(180deg)}
+        .account-popover{position:absolute;right:0;top:calc(100% + 12px);width:220px;padding:8px;border:1px solid rgba(144,221,255,.2);border-radius:15px;background:rgba(5,30,55,.96);box-shadow:0 22px 55px rgba(0,8,22,.38);backdrop-filter:blur(20px);animation:navPopover .25s ease both}.account-popover a{display:flex;align-items:center;gap:10px;padding:11px 12px!important;color:#c8dced!important;border-radius:9px!important}.account-popover a:hover{color:#fff!important;background:rgba(68,200,239,.12)!important}.account-popover i{width:18px;color:#55d9ff;text-align:center}
+        .nav-cta{display:inline-flex;align-items:center;gap:7px;color:#fff!important;background:linear-gradient(120deg,#2878ee,#09b9d1)!important;box-shadow:0 8px 22px rgba(17,157,218,.28)!important}.nav-cta:hover{transform:translateY(-2px);box-shadow:0 12px 27px rgba(17,181,221,.4)!important}@keyframes navPopover{from{opacity:0;transform:translateY(-7px) scale(.98)}to{opacity:1;transform:none}}
+        @media(max-width:760px){nav{padding:7px 9px}.nav-inner{width:100%;height:58px;min-height:0;padding:0 12px;flex-wrap:nowrap;border-radius:15px}.logo{width:auto;margin:0}.logo-text{font-size:1.12rem}.logo-icon{width:34px;height:34px}.nav-links{display:none}.mobile-burger{display:flex;margin-left:auto;color:#d7e9f7;border-color:rgba(145,226,255,.22);background:rgba(104,207,244,.08);box-shadow:none}.mobile-burger:hover{color:#fff;background:rgba(104,207,244,.14)}.mobile-drawer{width:min(84vw,320px);background:linear-gradient(160deg,#071d35,#0b3153);border-left:1px solid rgba(126,220,255,.18)}.mobile-drawer-head{padding:16px 18px;border-color:rgba(126,220,255,.12)}.mobile-drawer-head span{color:#fff!important;font-weight:700!important}.mobile-drawer-head button{color:#c8dced!important}.mobile-nav-label{padding:18px 19px 7px;color:#7196b7;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}.mobile-nav-item{gap:12px;margin:2px 10px;padding:11px 10px;border:0;border-radius:10px;color:#c7d8e7;font-size:15px;font-weight:500}.mobile-nav-item i{width:20px;color:#56bfe6;font-size:14px}.mobile-nav-item:hover{color:#fff;background:rgba(126,220,255,.08)}.mobile-nav-item.primary-account{color:#eaf8ff;background:rgba(68,190,225,.09)}.mobile-nav-cta{margin:18px 14px;padding:12px;min-height:48px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 10px 24px rgba(5,156,211,.24);transition:transform .2s ease,box-shadow .2s ease}.mobile-nav-cta:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(5,179,218,.34)}}
+
+        /* Compact hero actions keep the water scene visible. */
+        .hero-actions{align-items:center}.hero-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:52px;border-radius:999px;padding:12px 22px}.hero-btn-primary{min-width:210px}.hero-btn-secondary{min-width:260px}
+        @media(max-width:640px){.hero-actions{align-items:center}.hero-actions a{width:min(85%,280px);min-height:52px;padding:12px 18px;border-radius:999px}.hero-btn-primary,.hero-btn-secondary{min-width:0}.hero-btn-secondary{font-size:.9rem!important}}
+
         @media (prefers-reduced-motion:reduce) {
             html { scroll-behavior:auto; }
             *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; }
         }
     </style>
+    <script src="js/ui-protection.js" defer></script>
 </head>
 <body>
 
@@ -1376,15 +1420,25 @@ if (!$check_table || $check_table->num_rows == 0) {
     <nav>
         <div class="nav-inner">
             <a href="index.php" class="logo">
-                <div class="logo-icon"><img src="imagess/logosystem.png" alt="HydroMIS Logo" style="width: 100%; height: 100%; object-fit: contain;"></div>
+                <div class="logo-icon"><img src="imagess/hydromis-logo-v2.png" alt="HydroMIS Logo" style="width: 100%; height: 100%; object-fit: contain;"></div>
                 <span class="logo-text">Hydro<span>MIS</span></span>
             </a>
 
             <div class="nav-links">
-                <a href="#home" class="btn-ghost">Home</a>
+                <a href="#home" class="btn-ghost active">Home</a>
                 <a href="#features"    class="btn-ghost">Features</a>
                 <a href="#how"         class="btn-ghost">How it works</a>
-                <a href="login.php?role=admin" class="btn-ghost">Admin</a>
+                <a href="user/track_order.php" class="btn-ghost">Track Order</a>
+                <details class="account-menu">
+                    <summary><i class="fas fa-circle-user"></i> Account <i class="fas fa-chevron-down"></i></summary>
+                    <div class="account-popover">
+                        <a href="user/scan_qr.php"><i class="fas fa-qrcode"></i>Customer login</a>
+                        <a href="login.php?role=staff"><i class="fas fa-briefcase"></i>Staff login</a>
+                        <a href="login.php?role=rider"><i class="fas fa-motorcycle"></i>Rider login</a>
+                        <a href="login.php?role=admin"><i class="fas fa-user-shield"></i>Administrator</a>
+                    </div>
+                </details>
+                <a href="create_account.php" class="nav-cta">Get Started <i class="fas fa-arrow-right"></i></a>
             </div>
 
             <button class="mobile-burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-drawer">
@@ -1398,18 +1452,20 @@ if (!$check_table || $check_table->num_rows == 0) {
         <aside class="mobile-drawer" id="mobile-drawer">
             <div class="mobile-drawer-head">
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <div class="logo-icon" style="width:28px;height:28px;font-size:12px;"><img src="imagess/logosystem.png" alt="HydroMIS Logo" style="width: 100%; height: 100%; object-fit: contain;"></div>
+                    <div class="logo-icon" style="width:28px;height:28px;font-size:12px;"><img src="imagess/hydromis-logo-v2.png" alt="HydroMIS Logo" style="width: 100%; height: 100%; object-fit: contain;"></div>
                     <span style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.1rem;color:var(--text-1);">HydroMIS</span>
                 </div>
                 <button id="drawer-close" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-2);">
                     <i class="fas fa-xmark"></i>
                 </button>
             </div>
+            <div class="mobile-nav-label">Accounts</div>
+            <a href="user/scan_qr.php" class="mobile-nav-item primary-account"><i class="fas fa-qrcode"></i> Customer login</a>
+            <a href="login.php?role=admin" class="mobile-nav-item"><i class="fas fa-user-shield"></i> Admin login</a>
+            <div class="mobile-nav-label">Explore</div>
             <a href="#features"            class="mobile-nav-item"><i class="fas fa-star"></i> Features</a>
             <a href="#how"                 class="mobile-nav-item"><i class="fas fa-route"></i> How it works</a>
-            <a href="login.php?role=admin" class="mobile-nav-item"><i class="fas fa-user-shield"></i> Admin Login</a>
-            <a href="user/scan_qr.php"     class="mobile-nav-item"><i class="fas fa-qrcode"></i> Customer Login</a>
-            <a href="create_account.php" class="mobile-nav-cta"><i class="fas fa-arrow-right" style="margin-right:7px;"></i> Get started</a>
+            <a href="user/track_order.php" class="mobile-nav-item"><i class="fas fa-location-dot"></i> Track order</a>
         </aside>
     </div>
 
@@ -1437,8 +1493,8 @@ if (!$check_table || $check_table->num_rows == 0) {
                     HydroMIS streamlines every drop — from order placement to delivery confirmation — with real-time tracking, QR-based login, and powerful admin tools.
                 </p>
                 <div class="hero-actions">
-                    <a href="create_account.php" class="hero-btn-primary">Sign Up <i class="fas fa-arrow-right" style="margin-left:6px;font-size:.85em;"></i></a>
-                    <a href="user/scan_qr.php"   class="hero-btn-secondary"><i class="fas fa-qrcode" style="margin-right:6px;font-size:.85em;"></i> Log in to your account</a>
+                    <a href="create_account.php" class="hero-btn-primary">Create Account <i class="fas fa-arrow-right" style="margin-left:6px;font-size:.85em;"></i></a>
+                    <a href="user/scan_qr.php" class="hero-btn-secondary"><i class="fas fa-qrcode" style="margin-right:6px;font-size:.85em;"></i> Already registered? Log in</a>
                 </div>
                 <a href="#features" class="hero-scroll-hint"><i class="fas fa-chevron-down"></i> Scroll to explore</a>
                 <div class="hero-stats">
@@ -1457,76 +1513,6 @@ if (!$check_table || $check_table->num_rows == 0) {
                 </div>
             </div>
 
-            <div class="hero-visual">
-                <div style="position:relative;padding:20px;">
-                    <!-- Floating badge top-right -->
-                    <div class="floating-badge">
-                        <span class="big">98%</span>
-                        Customer Satisfaction
-                    </div>
-
-                    <!-- App mockup -->
-                    <div class="app-mockup">
-                        <div class="mockup-header">
-                            <div class="mockup-dots">
-                                <span class="dot-red"></span>
-                                <span class="dot-yellow"></span>
-                                <span class="dot-green"></span>
-                            </div>
-                            <span class="mockup-title">Admin Dashboard · HydroMIS</span>
-                            <span style="font-size:.7rem;color:rgba(255,255,255,.3);">Today</span>
-                        </div>
-
-                        <div class="mockup-stat-row">
-                            <div class="mockup-stat-card">
-                                <div class="label">Today's Orders</div>
-                                <div class="value">48 <span class="badge badge-up">+12%</span></div>
-                            </div>
-                            <div class="mockup-stat-card">
-                                <div class="label">Pending</div>
-                                <div class="value">7 <span class="badge badge-pending">Active</span></div>
-                            </div>
-                        </div>
-
-                        <div style="font-size:.72rem;color:rgba(255,255,255,.35);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Recent Orders</div>
-                        <div class="mockup-order-list">
-                            <div class="mockup-order-item">
-                                <div class="order-avatar" style="background:linear-gradient(135deg,#3b82f6,#06b6d4);">JR</div>
-                                <div class="order-info">
-                                    <div class="order-name">Juan Reyes</div>
-                                    <div class="order-sub">5-gal × 3 · Barangay 12</div>
-                                </div>
-                                <div class="order-status status-delivered">Delivered</div>
-                            </div>
-                            <div class="mockup-order-item">
-                                <div class="order-avatar" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">ML</div>
-                                <div class="order-info">
-                                    <div class="order-name">Maria Lim</div>
-                                    <div class="order-sub">5-gal × 2 · Barangay 4</div>
-                                </div>
-                                <div class="order-status status-transit">In Transit</div>
-                            </div>
-                            <div class="mockup-order-item">
-                                <div class="order-avatar" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);">BS</div>
-                                <div class="order-info">
-                                    <div class="order-name">Ben Santos</div>
-                                    <div class="order-sub">5-gal × 1 · Barangay 7</div>
-                                </div>
-                                <div class="order-status status-pending">Pending</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Floating badge bottom-left -->
-                    <div class="floating-badge-2">
-                        <div class="pulse-dot"></div>
-                        <div>
-                            <div style="font-size:.72rem;color:rgba(255,255,255,.5);">System Status</div>
-                            <div style="font-size:.8rem;font-weight:600;color:#fff;">All systems operational</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </section>
 
@@ -1564,7 +1550,6 @@ if (!$check_table || $check_table->num_rows == 0) {
                         <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> Rate your service experience</li>
                         <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> Order history & receipts</li>
                     </ul>
-                    <a href="create_account.php" class="card-cta card-cta-blue">Register as Customer <i class="fas fa-arrow-right"></i></a>
                 </div>
 
                 <!-- Sign In -->
@@ -1579,7 +1564,6 @@ if (!$check_table || $check_table->num_rows == 0) {
                         <li><span class="check-icon check-green"><i class="fas fa-check"></i></span> Instant account access</li>
                         <li><span class="check-icon check-green"><i class="fas fa-check"></i></span> Secure & private session</li>
                     </ul>
-                    <a href="user/scan_qr.php" class="card-cta card-cta-green">Sign In Now <i class="fas fa-arrow-right"></i></a>
                 </div>
 
                 <!-- Order Tracking -->
@@ -1594,15 +1578,14 @@ if (!$check_table || $check_table->num_rows == 0) {
                         <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> Full order history</li>
                         <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> Rate after delivery</li>
                     </ul>
-                    <a href="user/scan_qr.php" class="card-cta card-cta-purple">Track My Order <i class="fas fa-arrow-right"></i></a>
                 </div>
             </div>
 
             <!-- Scroll hint dots (visible on mobile only) -->
             <div class="cards-scroll-hint" style="display:none;">
-                <div class="scroll-dot active"></div>
-                <div class="scroll-dot"></div>
-                <div class="scroll-dot"></div>
+                <button type="button" class="scroll-dot active" aria-label="Show customer portal" aria-current="true"></button>
+                <button type="button" class="scroll-dot" aria-label="Show sign in portal"></button>
+                <button type="button" class="scroll-dot" aria-label="Show order tracking portal"></button>
             </div>
         </div>
     </section>
@@ -1724,7 +1707,7 @@ if (!$check_table || $check_table->num_rows == 0) {
             <div class="footer-top">
                 <div class="footer-brand">
                     <div class="footer-logo">
-                        <div class="logo-icon"><img src="imagess/logosystem.png" alt="HydroMIS Logo" style="width: 100%; height: 100%; object-fit: contain;"></div>
+                        <div class="logo-icon"><img src="imagess/hydromis-logo-v2.png" alt="HydroMIS Logo" style="width: 100%; height: 100%; object-fit: contain;"></div>
                         <span class="footer-logo-text">HydroMIS</span>
                     </div>
                     <p>Water Refilling Station Management System. Built for efficiency, designed for simplicity.</p>
@@ -1765,6 +1748,17 @@ if (!$check_table || $check_table->num_rows == 0) {
         const burgerIcon    = document.getElementById('burger-icon');
         const mobileOverlay = document.getElementById('mobile-overlay');
         const drawerClose   = document.getElementById('drawer-close');
+        const siteNav       = document.querySelector('nav');
+        const accountMenu   = document.querySelector('.account-menu');
+
+        function syncNavDepth() {
+            siteNav?.classList.toggle('nav-scrolled', window.scrollY > 24);
+        }
+        syncNavDepth();
+        window.addEventListener('scroll', syncNavDepth, { passive: true });
+        document.addEventListener('click', event => {
+            if (accountMenu?.open && !accountMenu.contains(event.target)) accountMenu.open = false;
+        });
 
         function openNav() {
             document.body.classList.add('nav-open');
@@ -1796,12 +1790,65 @@ if (!$check_table || $check_table->num_rows == 0) {
         const carousel = document.querySelector('.cards-3');
         const dots     = document.querySelectorAll('.scroll-dot');
         if (carousel && dots.length) {
-            carousel.addEventListener('scroll', () => {
-                const idx = Math.round(carousel.scrollLeft / carousel.offsetWidth * (dots.length / 0.82));
-                const clamped = Math.min(Math.max(idx, 0), dots.length - 1);
-                dots.forEach((d, i) => d.classList.toggle('active', i === clamped));
-            }, { passive: true });
+            const cards = [...carousel.querySelectorAll('.role-card')];
+            const updateDots = () => {
+                const center = carousel.scrollLeft + carousel.clientWidth / 2;
+                let active = 0;
+                let distance = Infinity;
+                cards.forEach((card, index) => {
+                    const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+                    const nextDistance = Math.abs(center - cardCenter);
+                    if (nextDistance < distance) { distance = nextDistance; active = index; }
+                });
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === active);
+                    dot.setAttribute('aria-current', index === active ? 'true' : 'false');
+                });
+            };
+            carousel.addEventListener('scroll', updateDots, { passive: true });
+            dots.forEach((dot, index) => dot.addEventListener('click', () => {
+                cards[index]?.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+            }));
+            carousel.setAttribute('tabindex', '0');
+            carousel.setAttribute('aria-label', 'Portal options carousel');
+            carousel.addEventListener('keydown', event => {
+                if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                event.preventDefault();
+                const current = [...dots].findIndex(dot => dot.classList.contains('active'));
+                const next = Math.max(0, Math.min(cards.length - 1, current + (event.key === 'ArrowRight' ? 1 : -1)));
+                cards[next]?.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+            });
+            updateDots();
         }
+
+        // Mouse drag support for horizontally scrolling mobile-style rows.
+        function enableDragScroll(element) {
+            if (!element) return;
+            let dragging = false, moved = false, startX = 0, startScroll = 0;
+            element.addEventListener('pointerdown', event => {
+                if (event.pointerType !== 'mouse' || event.button !== 0) return;
+                dragging = true; moved = false; startX = event.clientX; startScroll = element.scrollLeft;
+                element.classList.add('is-dragging'); element.setPointerCapture(event.pointerId);
+            });
+            element.addEventListener('pointermove', event => {
+                if (!dragging) return;
+                const distance = event.clientX - startX;
+                if (Math.abs(distance) > 4) moved = true;
+                element.scrollLeft = startScroll - distance;
+            });
+            const stopDrag = event => {
+                if (!dragging) return;
+                dragging = false; element.classList.remove('is-dragging');
+                if (element.hasPointerCapture?.(event.pointerId)) element.releasePointerCapture(event.pointerId);
+            };
+            element.addEventListener('pointerup', stopDrag);
+            element.addEventListener('pointercancel', stopDrag);
+            element.addEventListener('click', event => {
+                if (moved) { event.preventDefault(); event.stopPropagation(); moved = false; }
+            }, true);
+        }
+        enableDragScroll(carousel);
+        enableDragScroll(document.querySelector('.trust-inner'));
 
         // ─── Sticky bottom bar show/hide ──────
         // ─── Share ────────────────────────────

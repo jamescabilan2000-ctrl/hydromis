@@ -15,7 +15,7 @@ function system_logo_path($conn): string {
     if ($result && ($row = $result->fetch_assoc()) && trim((string)$row['setting_value']) !== '') {
         return (string)$row['setting_value'];
     }
-    return 'imagess/logosystem.png';
+    return 'imagess/hydromis-logo-v2.png';
 }
 
 function system_int_setting($conn, string $key, int $default, int $min = 0, int $max = 100): int {

@@ -87,6 +87,20 @@ if (strtolower((string)($scanned_data['status'] ?? 'pending')) !== 'approved') {
     exit;
 }
 
+// Keep one active order per customer. A new order is allowed only after the
+// current order is delivered or cancelled/denied.
+$activeOrderStmt = $conn->prepare("SELECT transaction_id FROM transactions
+    WHERE user_id = ?
+      AND transaction_id NOT LIKE 'RWD-%'
+      AND (status = 'pending' OR (status = 'approved' AND LOWER(COALESCE(delivery_status, 'pending')) <> 'delivered'))
+    LIMIT 1");
+$activeOrderStmt->bind_param('s', $user_id);
+$activeOrderStmt->execute();
+if ($activeOrderStmt->get_result()->fetch_assoc()) {
+    header('Location: track_order.php?user_id=' . urlencode($user_id) . '&active_order=1');
+    exit;
+}
+
 // Handle Buy Transaction
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     $user_id = sanitize($_POST['user_id']);
@@ -111,13 +125,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
 
     if ($payment_method === 'gcash' || $payment_method === 'maya') {
         $wallet_number = sanitize($_POST[$payment_method . '_number'] ?? '');
-        $payment_reference = sanitize($_POST[$payment_method . '_reference'] ?? '');
         $file_field_name = $payment_method . '_proof';
 
         if (empty($wallet_number) || !preg_match('/^(09)\d{9}$/', $wallet_number)) {
             $error = 'A valid 11-digit mobile number starting with 09 is required for ' . ucfirst($payment_method) . '.';
-        } elseif (empty($payment_reference) || strlen($payment_reference) < 6 || strlen($payment_reference) > 64) {
-            $error = ucfirst($payment_method) . ' reference number must be 6 to 64 characters.';
         } else {
             $temp_pay_id = generateID('PAY');
             list($payment_proof_path, $upload_error) = savePurchasePaymentProof($file_field_name, $temp_pay_id);
@@ -129,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         }
     }
     
-    $water_price_map = ['5gal-round' => 20, '2.5gal-slim' => 20, '5gal-slim' => 40];
+    $water_price_map = ['5gal-round' => 20, '2.5gal-slim' => 15, '5gal-slim' => 40];
     if (!isset($water_price_map[$container_size]) || !in_array($container_status, ['new', 'existing'], true) || !in_array($fulfillment_method, ['delivery', 'pickup'], true)) {
         $error = 'Please select a valid container and order type.';
         $price_per_unit = 0;
@@ -147,7 +158,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         $discount = $discount_count * 5;
     }
     
-    $delivery_fee = $fulfillment_method === 'delivery' ? 10 * $quantity : 0;
+    $free_delivery_claim_id = 0;
+    $free_delivery_redemption_id = '';
+    if ($fulfillment_method === 'delivery') {
+        $safe_reward_user = $conn->real_escape_string((string)$user_id);
+        $reward_result = $conn->query("SELECT id,transaction_id FROM reward_claims WHERE user_id='$safe_reward_user' AND reward_code='free_delivery' AND claim_status='approved' ORDER BY created_at ASC LIMIT 1");
+        $reward_claim = $reward_result ? $reward_result->fetch_assoc() : null;
+        if ($reward_claim) {
+            $free_delivery_claim_id = (int)$reward_claim['id'];
+            $free_delivery_redemption_id = (string)$reward_claim['transaction_id'];
+        }
+    }
+    $delivery_fee = $fulfillment_method === 'delivery' && $free_delivery_claim_id === 0 ? 10 * $quantity : 0;
     $final_amount = $total_amount + $delivery_fee - $discount;
     $change = $amount_tendered - $final_amount;
     
@@ -170,37 +192,72 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         $safe_reference = $payment_reference !== null ? "'" . $conn->real_escape_string($payment_reference) . "'" : "NULL";
         $safe_proof = $payment_proof_path !== null ? "'" . $conn->real_escape_string($payment_proof_path) . "'" : "NULL";
 
+        if ($free_delivery_claim_id > 0) {
+            $reward_note = 'Free Delivery reward applied: ' . $free_delivery_redemption_id;
+            $customer_notes = trim($customer_notes . ($customer_notes !== '' ? "\n" : '') . $reward_note);
+        }
+
         $inventory_item_id = null;
         $inventory_reserved = 0;
         $inventory_transaction_open = false;
-        if ($container_status === 'new') {
-            $item_code = inventory_code_for_container($container_size);
-            $safe_item_code = $conn->real_escape_string((string)$item_code);
-            $conn->begin_transaction();
-            $inventory_transaction_open = true;
-            $stock_result = $item_code ? $conn->query("SELECT id, item_name, quantity FROM inventory_items WHERE item_code='$safe_item_code' FOR UPDATE") : false;
-            $stock_item = $stock_result ? $stock_result->fetch_assoc() : null;
-            if (!$stock_item || (int)$stock_item['quantity'] < $quantity) {
-                $available = (int)($stock_item['quantity'] ?? 0);
+        $item_code = inventory_code_for_container($container_size);
+        $safe_item_code = $conn->real_escape_string((string)$item_code);
+        $conn->begin_transaction();
+        $inventory_transaction_open = true;
+        if ($free_delivery_claim_id > 0) {
+            $locked_reward = $conn->query("SELECT id FROM reward_claims WHERE id=$free_delivery_claim_id AND user_id='" . $conn->real_escape_string((string)$user_id) . "' AND reward_code='free_delivery' AND claim_status='approved' FOR UPDATE");
+            if (!$locked_reward || $locked_reward->num_rows === 0 || !$conn->query("UPDATE reward_claims SET claim_status='claimed',claimed_by='ONLINE-ORDER',claimed_at=NOW(),customer_seen_at=NOW() WHERE id=$free_delivery_claim_id AND claim_status='approved'")) {
                 $conn->rollback();
                 $inventory_transaction_open = false;
-                $error = 'This container is out of stock. Available quantity: ' . $available . '. Your order was not placed.';
-            } else {
-                $inventory_item_id = (int)$stock_item['id'];
-                $stock_before = (int)$stock_item['quantity'];
-                $stock_after = $stock_before - $quantity;
-                $conn->query("UPDATE inventory_items SET quantity=$stock_after, updated_by='ONLINE-ORDER' WHERE id=$inventory_item_id");
-                $movement_reason = "Reserved for online order $transaction_id";
-                $movement = $conn->prepare("INSERT INTO inventory_movements (item_id,movement_type,quantity_change,previous_quantity,new_quantity,reason,staff_id) VALUES (?,'order',?,?,?,?, 'ONLINE-ORDER')");
-                $quantity_change = -$quantity;
-                if ($movement) { $movement->bind_param('iiiis', $inventory_item_id, $quantity_change, $stock_before, $stock_after, $movement_reason); $movement->execute(); }
-                $inventory_reserved = 1;
+                $error = 'Your Free Delivery reward is no longer available. Please return to checkout and try again.';
             }
+        }
+        $new_container_inventory_item_id = null;
+        $new_container_inventory_reserved = 0;
+        if (empty($error) && $container_status === 'new') {
+            $new_container_item = new_container_inventory_item($conn, true);
+            if (!$new_container_item || (int)$new_container_item['quantity'] < $quantity) {
+                $available_new = (int)($new_container_item['quantity'] ?? 0);
+                $conn->rollback();
+                $inventory_transaction_open = false;
+                $error = 'New containers are out of stock. Available quantity: ' . $available_new . '. Your order was not placed.';
+            } else {
+                $new_container_inventory_item_id = (int)$new_container_item['id'];
+                $new_before = (int)$new_container_item['quantity'];
+                $new_after = $new_before - $quantity;
+                $conn->query("UPDATE inventory_items SET quantity=$new_after,updated_by='ONLINE-ORDER' WHERE id=$new_container_inventory_item_id");
+                $new_reason = "New containers reserved for online order $transaction_id";
+                $new_movement = $conn->prepare("INSERT INTO inventory_movements (item_id,movement_type,quantity_change,previous_quantity,new_quantity,reason,staff_id) VALUES (?,'order',?,?,?,?, 'ONLINE-ORDER')");
+                $new_change = -$quantity;
+                if ($new_movement) { $new_movement->bind_param('iiiis', $new_container_inventory_item_id, $new_change, $new_before, $new_after, $new_reason); $new_movement->execute(); }
+                $new_container_inventory_reserved = 1;
+            }
+        }
+        $stock_result = empty($error) && $item_code ? $conn->query("SELECT id, item_name, quantity FROM inventory_items WHERE item_code='$safe_item_code' FOR UPDATE") : false;
+        $stock_item = $stock_result ? $stock_result->fetch_assoc() : null;
+        if (!empty($error)) {
+            // Reward validation supplied the customer-facing error.
+        } elseif (!$stock_item || (int)$stock_item['quantity'] < $quantity) {
+            $available = (int)($stock_item['quantity'] ?? 0);
+            $conn->rollback();
+            $inventory_transaction_open = false;
+            $error = 'This gallon size is out of stock. Available quantity: ' . $available . '. Your order was not placed.';
+        } else {
+            $inventory_item_id = (int)$stock_item['id'];
+            $stock_before = (int)$stock_item['quantity'];
+            $stock_after = $stock_before - $quantity;
+            $conn->query("UPDATE inventory_items SET quantity=$stock_after, updated_by='ONLINE-ORDER' WHERE id=$inventory_item_id");
+            $movement_reason = "Reserved for online order $transaction_id";
+            $movement = $conn->prepare("INSERT INTO inventory_movements (item_id,movement_type,quantity_change,previous_quantity,new_quantity,reason,staff_id) VALUES (?,'order',?,?,?,?, 'ONLINE-ORDER')");
+            $quantity_change = -$quantity;
+            if ($movement) { $movement->bind_param('iiiis', $inventory_item_id, $quantity_change, $stock_before, $stock_after, $movement_reason); $movement->execute(); }
+            $inventory_reserved = 1;
         }
 
         $inventory_item_sql = $inventory_item_id === null ? 'NULL' : (string)$inventory_item_id;
-        $sql = "INSERT INTO transactions (transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, notes, status, payment_method, payment_reference, payment_status, payment_proof, container_size, container_status, fulfillment_method, inventory_item_id, inventory_reserved, created_at)
-                VALUES ('$transaction_id', '$user_id', '$final_amount', '$description', 'regular', '$quantity', '$price_per_unit', '$discount', '$loyalty_points', '$customer_notes', 'pending', '$payment_method', $safe_reference, '$payment_status', $safe_proof, '$container_size', '$container_status', '$fulfillment_method', $inventory_item_sql, $inventory_reserved, NOW())";
+        $new_container_inventory_item_sql = $new_container_inventory_item_id === null ? 'NULL' : (string)$new_container_inventory_item_id;
+        $sql = "INSERT INTO transactions (transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, notes, status, payment_method, payment_reference, payment_status, payment_proof, container_size, container_status, fulfillment_method, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, created_at)
+                VALUES ('$transaction_id', '$user_id', '$final_amount', '$description', 'regular', '$quantity', '$price_per_unit', '$discount', '$loyalty_points', '$customer_notes', 'pending', '$payment_method', $safe_reference, '$payment_status', $safe_proof, '$container_size', '$container_status', '$fulfillment_method', $inventory_item_sql, $inventory_reserved, $new_container_inventory_item_sql, $new_container_inventory_reserved, NOW())";
 
         if (!empty($error)) {
             // Stock validation already supplied the customer-facing message.
@@ -1105,7 +1162,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         :root{--purchase-blue:#1769d2;--purchase-aqua:#09b4c8;--purchase-ink:#10263a;--purchase-ease:cubic-bezier(.22,1,.36,1)}
         body.public-ui{background:radial-gradient(circle at 10% 18%,rgba(9,180,200,.14),transparent 27%),radial-gradient(circle at 90% 82%,rgba(23,105,210,.12),transparent 30%),linear-gradient(145deg,#f1f9fd,#fbfdff 55%,#edf6fb)}
         .navbar{position:relative;z-index:5;background:rgba(255,255,255,.78);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 8px 28px rgba(15,52,78,.06);animation:purchaseNavIn .6s var(--purchase-ease) both}.navbar-brand img{width:36px;height:36px;padding:4px;border-radius:11px;background:linear-gradient(135deg,#1769d2,#09b4c8);box-shadow:0 8px 20px rgba(9,130,170,.2)}
-        .container-main{min-height:calc(100vh - 70px);align-items:flex-start;padding:42px 20px 70px}.purchase-shell{max-width:920px}.checkout-panel{max-width:none;padding:34px;border-radius:28px;border:1px solid rgba(255,255,255,.9);box-shadow:0 30px 80px rgba(14,55,85,.15),0 4px 12px rgba(14,55,85,.05);animation:purchaseCardIn .8s .08s var(--purchase-ease) both}.buy-form{padding:0;border:0;background:transparent;box-shadow:none}.purchase-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:27px}.purchase-heading-main{display:flex;align-items:center;gap:13px}.purchase-heading-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,#1769d2,#09b4c8);color:#fff;box-shadow:0 10px 23px rgba(23,105,210,.22)}.purchase-heading h6{margin:0 0 4px;font-size:20px}.purchase-heading p{margin:0;color:#71869a;font-size:12px}.purchase-step{padding:7px 10px;border:1px solid #d7e7f0;border-radius:999px;background:#f4f9fc;color:#547086;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.form-section{padding-top:22px;margin-bottom:24px;border-top:1px solid #e9f0f4}.section-label{margin-bottom:15px}.section-label i{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#eaf5ff;font-size:13px}.container-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.container-card{gap:0;padding:8px;border:1px solid #e1e9ef;border-radius:18px;background:#f9fbfc;box-shadow:0 5px 14px rgba(16,38,58,.04);overflow:hidden;transition:transform .24s var(--purchase-ease),border-color .24s ease,box-shadow .24s ease}.container-card:hover{transform:translateY(-4px);border-color:#aed9e7;box-shadow:0 15px 30px rgba(18,79,112,.1)}.container-card:has(input:checked){border-color:var(--purchase-aqua);background:linear-gradient(145deg,#f8feff,#eefbfc);box-shadow:0 0 0 2px rgba(9,180,200,.2),0 15px 30px rgba(9,130,160,.12)}.container-image{height:150px;border:0;border-radius:13px;background:radial-gradient(circle at 50% 45%,#fff 0%,#f1f6f9 72%);box-shadow:none!important}.container-image img{padding:12px;transition:transform .35s var(--purchase-ease),filter .3s ease;mix-blend-mode:multiply}.container-card:hover .container-image img,.container-card:has(input:checked) .container-image img{transform:scale(1.045)}.container-info{padding:12px 8px 8px}.container-size{font-size:14px;line-height:1.25}.container-type{margin-top:3px;color:#7890a2;text-transform:capitalize}.radio-circle{top:17px;right:17px;width:25px;height:25px;border-width:2px;box-shadow:0 4px 10px rgba(16,38,58,.1)}.radio-circle::after{width:11px;height:11px;background:var(--purchase-aqua)}.container-card input[type=radio]:checked + .container-image{border:0;box-shadow:none}.status-options{display:grid;grid-template-columns:1fr 1fr;gap:13px}.status-card{min-height:106px;padding:17px;border-radius:15px}.status-card:has(input:checked){border-color:var(--purchase-blue);background:linear-gradient(145deg,#f8fbff,#edf5ff);box-shadow:0 0 0 2px rgba(23,105,210,.18),0 10px 22px rgba(23,105,210,.09)}.status-card:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(16,38,58,.08)}.btn-purchase{position:relative;min-height:56px;border-radius:14px;overflow:hidden;background:linear-gradient(120deg,#0b967f,#09b4a2,#087e73);background-size:180% 180%;box-shadow:0 15px 32px rgba(8,145,125,.25);animation:purchaseGradient 6s ease infinite;transition:transform .2s ease,box-shadow .2s ease}.btn-purchase::after{content:'';position:absolute;inset:0;transform:translateX(-120%) skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transition:transform .7s var(--purchase-ease)}.btn-purchase:hover::after{transform:translateX(120%) skewX(-20deg)}.btn-purchase:hover{transform:translateY(-2px);box-shadow:0 19px 38px rgba(8,145,125,.32)}.btn-purchase:active{transform:scale(.988)}.btn-purchase.is-loading{pointer-events:none;opacity:.84}.notification-permission-button{right:16px!important;bottom:16px!important;padding:9px 13px!important;font-size:11px!important;background:#173f65!important;box-shadow:0 9px 24px rgba(0,0,0,.2)!important}
+        .container-main{min-height:100vh;align-items:flex-start;padding:42px 20px 70px}.purchase-shell{max-width:920px}.checkout-panel{max-width:none;padding:34px;border-radius:28px;border:1px solid rgba(255,255,255,.9);box-shadow:0 30px 80px rgba(14,55,85,.15),0 4px 12px rgba(14,55,85,.05);animation:purchaseCardIn .8s .08s var(--purchase-ease) both}.buy-form{padding:0;border:0;background:transparent;box-shadow:none}.purchase-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:27px}.purchase-heading-main{display:flex;align-items:center;gap:13px}.purchase-heading-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,#1769d2,#09b4c8);color:#fff;box-shadow:0 10px 23px rgba(23,105,210,.22)}.purchase-heading h6{margin:0 0 4px;font-size:20px}.purchase-heading p{margin:0;color:#71869a;font-size:12px}.purchase-step{padding:7px 10px;border:1px solid #d7e7f0;border-radius:999px;background:#f4f9fc;color:#547086;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.form-section{padding-top:22px;margin-bottom:24px;border-top:1px solid #e9f0f4}.section-label{margin-bottom:15px}.section-label i{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#eaf5ff;font-size:13px}.container-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.container-card{gap:0;padding:8px;border:1px solid #e1e9ef;border-radius:18px;background:#f9fbfc;box-shadow:0 5px 14px rgba(16,38,58,.04);overflow:hidden;transition:transform .24s var(--purchase-ease),border-color .24s ease,box-shadow .24s ease}.container-card:hover{transform:translateY(-4px);border-color:#aed9e7;box-shadow:0 15px 30px rgba(18,79,112,.1)}.container-card:has(input:checked){border-color:var(--purchase-aqua);background:linear-gradient(145deg,#f8feff,#eefbfc);box-shadow:0 0 0 2px rgba(9,180,200,.2),0 15px 30px rgba(9,130,160,.12)}.container-image{height:150px;border:0;border-radius:13px;background:radial-gradient(circle at 50% 45%,#fff 0%,#f1f6f9 72%);box-shadow:none!important}.container-image img{padding:12px;transition:transform .35s var(--purchase-ease),filter .3s ease;mix-blend-mode:multiply}.container-card:hover .container-image img,.container-card:has(input:checked) .container-image img{transform:scale(1.045)}.container-info{padding:12px 8px 8px}.container-size{font-size:14px;line-height:1.25}.container-type{margin-top:3px;color:#7890a2;text-transform:capitalize}.radio-circle{top:17px;right:17px;width:25px;height:25px;border-width:2px;box-shadow:0 4px 10px rgba(16,38,58,.1)}.radio-circle::after{width:11px;height:11px;background:var(--purchase-aqua)}.container-card input[type=radio]:checked + .container-image{border:0;box-shadow:none}.status-options{display:grid;grid-template-columns:1fr 1fr;gap:13px}.status-card{min-height:106px;padding:17px;border-radius:15px}.status-card:has(input:checked){border-color:var(--purchase-blue);background:linear-gradient(145deg,#f8fbff,#edf5ff);box-shadow:0 0 0 2px rgba(23,105,210,.18),0 10px 22px rgba(23,105,210,.09)}.status-card:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(16,38,58,.08)}.btn-purchase{position:relative;min-height:56px;border-radius:14px;overflow:hidden;background:linear-gradient(120deg,#0b967f,#09b4a2,#087e73);background-size:180% 180%;box-shadow:0 15px 32px rgba(8,145,125,.25);animation:purchaseGradient 6s ease infinite;transition:transform .2s ease,box-shadow .2s ease}.btn-purchase::after{content:'';position:absolute;inset:0;transform:translateX(-120%) skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transition:transform .7s var(--purchase-ease)}.btn-purchase:hover::after{transform:translateX(120%) skewX(-20deg)}.btn-purchase:hover{transform:translateY(-2px);box-shadow:0 19px 38px rgba(8,145,125,.32)}.btn-purchase:active{transform:scale(.988)}.btn-purchase.is-loading{pointer-events:none;opacity:.84}.notification-permission-button{right:16px!important;bottom:16px!important;padding:9px 13px!important;font-size:11px!important;background:#173f65!important;box-shadow:0 9px 24px rgba(0,0,0,.2)!important}
         @keyframes purchaseNavIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}@keyframes purchaseCardIn{from{opacity:0;transform:translateY(26px) scale(.988)}to{opacity:1;transform:none}}@keyframes purchaseGradient{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}
         @media(max-width:720px){.container-main{padding:22px 12px 64px}.checkout-panel{padding:22px 18px;border-radius:22px}.purchase-heading{align-items:flex-start}.purchase-step{display:none}.container-grid{grid-template-columns:1fr}.container-card{display:grid;grid-template-columns:118px minmax(0,1fr);align-items:center;min-height:118px;padding:8px}.container-image{width:110px;height:100px}.container-info{padding:10px}.radio-circle{top:14px;right:14px}.status-options{grid-template-columns:1fr}.status-card{grid-template-columns:minmax(110px,.7fr) minmax(0,1.3fr) 26px;min-height:0}.form-section{padding-top:19px}.notification-permission-button{top:82px!important;right:12px!important;bottom:auto!important;max-width:205px}}
         @media(max-width:430px){.status-card{grid-template-columns:minmax(0,1fr) 26px;grid-template-areas:"title radio" "description description";row-gap:8px}.status-desc{padding-right:4px}}
@@ -1114,19 +1171,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         .receipt{max-width:620px;margin:0 auto 20px;border:1px solid #dde7ee;border-radius:20px;background:#fff;box-shadow:0 18px 42px rgba(14,55,85,.1);font-family:'Manrope',sans-serif;animation:purchaseCardIn .7s var(--purchase-ease) both}.receipt-header{padding:18px 22px;background:linear-gradient(145deg,#f8fcfe,#eef6fa);color:var(--purchase-ink);font-size:14px;font-weight:800;letter-spacing:.08em}.receipt-section{padding:15px 22px}.receipt-row{gap:18px;font-size:12px}.receipt-label{color:#71869a}.receipt-value{color:#18344b;font-weight:700;overflow-wrap:anywhere;text-align:right}.receipt-line{margin:0 22px;border-color:#e6eef3}.receipt-item-row{font-size:12px}.receipt-footer{padding:15px 22px;border-top:1px solid #e6eef3;background:#f9fcfd}.receipt-footer p:first-child{color:#16866f;font-weight:800}.order-success-panel{max-width:620px;margin:0 auto;padding:30px 24px;border:1px solid #bde8dc;border-radius:20px;background:linear-gradient(145deg,#f3fdf9,#eafaf4);box-shadow:0 18px 40px rgba(9,122,99,.1);animation:purchaseCardIn .7s .12s var(--purchase-ease) both}.order-success-icon{display:grid;place-items:center;width:58px;height:58px;margin:0 auto 17px;border-radius:18px;background:linear-gradient(145deg,#0b9b80,#09b4a2);color:#fff;font-size:24px;box-shadow:0 12px 25px rgba(8,145,125,.24)}.order-success-panel h2{margin:0 0 8px;color:var(--purchase-ink);font-size:24px;font-weight:800}.order-success-panel>p{max-width:430px;margin:0 auto 22px;color:#667f91;font-size:13px;line-height:1.6}.confirmation-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}.confirmation-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:12px 20px;border-radius:12px;color:#fff!important;font-size:13px;font-weight:800;text-decoration:none!important;transition:transform .2s ease,box-shadow .2s ease}.confirmation-action:hover{transform:translateY(-2px)}.confirmation-action.track{background:linear-gradient(135deg,#1769d2,#168ec8);box-shadow:0 11px 24px rgba(23,105,210,.22)}.confirmation-action.home{background:#fff;color:#41627a!important;border:1px solid #d5e4ec;box-shadow:0 8px 18px rgba(16,55,80,.07)}
         .order-success-panel{text-align:center}
         @media(max-width:560px){.receipt-section{padding:13px 16px}.receipt-line{margin:0 16px}.receipt-row{align-items:flex-start}.order-success-panel{padding:25px 17px}.confirmation-actions{display:grid}.confirmation-action{width:100%}}
+        @media(max-width:720px){html,body{scrollbar-width:none}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}.container-main{min-height:100dvh;padding:10px 8px 16px;align-items:center}.checkout-panel{padding:16px 14px;border-radius:20px}.purchase-heading{margin-bottom:14px}.purchase-heading-icon{width:40px;height:40px}.purchase-heading h6{font-size:17px}.purchase-heading p{font-size:10px}.form-section{padding-top:13px;margin-bottom:14px}.section-label{margin-bottom:10px;font-size:13px}.section-label i{width:27px;height:27px}.container-grid{gap:10px}.container-card{grid-template-columns:96px minmax(0,1fr);min-height:100px;padding:6px;border-radius:15px}.container-image{width:90px;height:86px}.container-image img{padding:9px}.container-info{padding:8px}.container-size{font-size:12px}.container-type{font-size:9px}.radio-circle{top:12px;right:12px;width:22px;height:22px}.radio-circle::after{width:9px;height:9px}.btn-purchase{min-height:49px;border-radius:12px;font-size:12px}}
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
     </style>
+<script src="../js/ui-protection.js" defer></script>
 </head>
 <body class="public-ui">
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container-fluid">
-            <a href="../home.php" class="navbar-brand">
-                <img src="../<?php echo htmlspecialchars($systemLogo); ?>" alt="HydroMIS logo"> HydroMIS
-            </a>
-        </div>
-    </nav>
-
     <div class="container-main">
         <div class="purchase-shell">
             <!-- Checkout Panel -->
@@ -1276,7 +1326,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">2.5 Gallon</div>
                                             <div class="container-type">slim</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip">Water: ₱20</span>
+                                                <span class="price-chip">Water: ₱15</span>
                                                 <span class="price-chip">New container: +₱20</span>
                                             </div>
                                         </div>
@@ -1367,7 +1417,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             const quantity = parseFloat(quantityEl.value) || 0;
             
             // Price mapping based on container size and status
-            const waterPriceMap = {'5gal-round':20,'2.5gal-slim':20,'5gal-slim':40};
+            const waterPriceMap = {'5gal-round':20,'2.5gal-slim':15,'5gal-slim':40};
             const price = waterPriceMap[containerSize] + (containerStatus === 'new' ? 20 : 0);
             const subtotal = quantity * price;
             

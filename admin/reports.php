@@ -137,10 +137,10 @@ html, body {
 .brand-icon {
     width: 38px; height: 38px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #1e9e8f, #0e6d7a);
+    background: transparent;
     display: flex; align-items: center; justify-content: center;
     font-size: 17px; color: #fff;
-    box-shadow: 0 4px 14px rgba(45,212,191,0.3);
+    box-shadow: none;
     flex-shrink: 0;
 }
 .brand-name {
@@ -360,6 +360,9 @@ html, body {
     50% { opacity: 0.5; }
 }
     </style>
+    <script src="../js/ui-protection.js" defer></script>
+    <link rel="stylesheet" href="../css/admin-theme.css">
+    <script src="../js/admin-theme.js"></script>
 </head>
 <body>
 <div class="shell">
@@ -397,6 +400,7 @@ html, body {
             <div>
                 <div class="nav-section-label">System</div>
                 <div class="nav-group">
+                    <a href="activity_logs.php" class="nav-item"><i class="fas fa-clock-rotate-left"></i> Activity Log</a>
                     <a href="dashboard.php?open_settings=1" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
                 </div>
             </div>
@@ -407,7 +411,7 @@ html, body {
                 <div class="admin-avatar"><?= strtoupper(substr($_SESSION['full_name'] ?? 'A', 0, 1)) ?></div>
                 <div>
                     <div class="admin-name"><?= htmlspecialchars($_SESSION['full_name'] ?? 'Admin') ?></div>
-                    <div class="admin-role">Super Admin</div>
+                    <div class="admin-role">Administrator</div>
                 </div>
                 <a href="../logout.php" class="logout-link" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
             </div>

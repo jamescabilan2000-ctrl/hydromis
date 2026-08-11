@@ -1902,25 +1902,97 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
 
         /* Premium customer access experience */
         :root{--login-ink:#10263a;--login-blue:#1769d2;--login-aqua:#08b8c8;--login-ease:cubic-bezier(.22,1,.36,1)}
-        body.public-ui{background:radial-gradient(circle at 10% 16%,rgba(8,184,200,.16),transparent 28%),radial-gradient(circle at 90% 86%,rgba(23,105,210,.13),transparent 30%),linear-gradient(145deg,#eff9fd,#f8fbff 52%,#edf7fb);overflow-x:hidden}
-        body.public-ui::before,body.public-ui::after{content:'';position:fixed;z-index:-1;border:1px solid rgba(8,184,200,.12);border-radius:50%;pointer-events:none;animation:loginRing 12s ease-in-out infinite alternate}
-        body.public-ui::before{width:420px;height:420px;left:-230px;top:18%}body.public-ui::after{width:540px;height:540px;right:-300px;bottom:-260px;animation-delay:-5s}
+        body.public-ui{position:relative;isolation:isolate;background-color:#dff4fa;background-image:linear-gradient(115deg,rgba(235,249,252,.36),rgba(200,235,244,.2)),url('../imagess/customer-login-light-lab-v2.png');background-repeat:no-repeat;background-size:cover;background-position:50% 48%;background-attachment:fixed;overflow-x:hidden;animation:customerLabDrift 18s ease-in-out infinite alternate}
+        body.public-ui::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.2),transparent 54%),linear-gradient(180deg,rgba(220,245,250,.03),rgba(91,185,207,.12))}
+        body.public-ui::after{content:'';position:fixed;inset:-32%;z-index:0;pointer-events:none;background:linear-gradient(112deg,transparent 39%,rgba(255,255,255,.44) 49%,transparent 59%);transform:translateX(-46%) rotate(3deg);animation:customerLightSweep 9s ease-in-out infinite}
+        body.public-ui>.navbar,body.public-ui>.container-main,body.public-ui>.mobile-menu-overlay{position:relative;z-index:2}
         .navbar{position:relative;z-index:10;background:rgba(255,255,255,.76)!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 8px 28px rgba(15,52,78,.06);animation:loginNavIn .65s var(--login-ease) both}
         .navbar-brand img{width:38px!important;height:38px!important;padding:4px;border-radius:11px;background:linear-gradient(135deg,#1376ca,#08aeba);box-shadow:0 8px 20px rgba(8,126,170,.2)}
         #mobile-menu-button{width:44px!important;height:44px!important;border-radius:12px!important;transition:transform .2s ease,box-shadow .2s ease}#mobile-menu-button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(16,38,58,.1)}
         .container-main{min-height:calc(100vh - 74px);align-items:center;padding:40px 20px 60px}
-        .scanner-width{position:relative;max-width:540px!important;border:1px solid rgba(255,255,255,.9)!important;border-radius:26px!important;background:rgba(255,255,255,.93)!important;box-shadow:0 30px 80px rgba(14,55,85,.16),0 4px 12px rgba(14,55,85,.06)!important;backdrop-filter:blur(16px);animation:loginCardIn .8s .08s var(--login-ease) both}
+        .scanner-width{--tilt-x:0deg;--tilt-y:0deg;position:relative;max-width:540px!important;border:1px solid rgba(255,255,255,.96)!important;border-radius:26px!important;background:linear-gradient(145deg,rgba(255,255,255,.88),rgba(224,246,251,.76))!important;box-shadow:0 46px 100px rgba(23,91,120,.28),0 18px 36px rgba(25,111,143,.16),inset 0 2px rgba(255,255,255,.98),inset 0 -1px rgba(91,183,205,.18)!important;backdrop-filter:blur(18px) saturate(1.18);transform-style:preserve-3d;transform:perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateZ(0);transition:transform .16s ease-out,box-shadow .45s ease,border-color .45s ease;animation:loginCardIn .8s .08s var(--login-ease) both;will-change:transform}
+        .scanner-width::after{content:'';position:absolute;inset:12px -10px -18px 12px;z-index:-1;border-radius:28px;background:linear-gradient(145deg,rgba(40,161,195,.22),rgba(36,105,172,.08));filter:blur(13px);transform:translateZ(-34px);pointer-events:none}
+        .scanner-width.tilt-ready:hover{border-color:rgba(74,190,218,.82)!important;box-shadow:0 58px 120px rgba(20,82,111,.32),0 24px 44px rgba(25,111,143,.2),inset 0 2px rgba(255,255,255,1)!important}
         .scanner-width::before{content:'';position:absolute;width:240px;height:240px;right:-150px;top:-155px;border-radius:50%;background:radial-gradient(circle,rgba(8,184,200,.16),transparent 68%);pointer-events:none}
-        .scanner-width .card-body{position:relative;padding:42px!important}
-        .login-hero{text-align:center;margin-bottom:26px}.login-icon{display:grid;place-items:center;width:66px;height:66px;margin:0 auto 18px;border-radius:21px;color:#fff!important;font-size:26px!important;background:linear-gradient(145deg,#1769d2,#08b8c8);box-shadow:0 15px 30px rgba(23,105,210,.24);animation:loginIconIn .7s .3s var(--login-ease) both}.login-hero h2{color:var(--login-ink)!important;font-size:29px!important;font-weight:800!important;letter-spacing:-.04em}.login-hero p{color:#71869b!important;margin:0}.security-note{display:inline-flex;align-items:center;gap:6px;margin-top:11px;color:#16836f;font-size:11px;font-weight:700}.login-tabs{position:relative;display:flex;padding:4px;margin-bottom:25px;border:1px solid #dde7ef;border-radius:14px;background:#eef3f7}.tab-button{position:relative;z-index:1;min-height:44px;border-radius:11px!important;color:#61758a!important;transition:color .25s ease,background .25s ease,box-shadow .25s ease,transform .2s ease!important}.tab-button.active{color:var(--login-ink)!important;background:#fff!important;box-shadow:0 5px 14px rgba(16,38,58,.1)!important}.tab-button i{margin-right:6px;color:#1785c7}.login-tab-panel.tab-enter{animation:tabEnter .36s var(--login-ease) both}.login-form label{color:var(--login-ink)!important;font-size:13px!important}.mobile-field{position:relative}.mobile-field .country-code{position:absolute;z-index:2;left:15px;top:50%;transform:translateY(-50%);padding-right:12px;border-right:1px solid #d7e3ec;color:#506b82;font-size:13px;font-weight:800}.mobile-field .form-control{height:56px!important;padding-left:70px!important;border:1px solid #d8e5ee!important;border-radius:14px!important;background:#f7fafc!important;font-size:16px;letter-spacing:.04em;transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}.mobile-field .form-control:hover{border-color:#afc9db!important;background:#fff!important}.mobile-field .form-control:focus{border-color:var(--login-aqua)!important;box-shadow:0 0 0 4px rgba(8,184,200,.12),0 10px 24px rgba(14,70,100,.06)!important;transform:translateY(-1px)}.login-helper{display:flex;align-items:flex-start;gap:7px;color:#71869b!important;font-size:12px!important;line-height:1.5}.login-helper i{margin-top:3px;color:#27a88f}.btn-toggle{position:relative;min-height:55px;overflow:hidden;border-radius:14px!important;background:linear-gradient(120deg,#1769d2,#08aeca,#1769d2)!important;background-size:180% 180%!important;box-shadow:0 14px 30px rgba(23,105,210,.25)!important;transition:transform .2s ease,box-shadow .2s ease!important;animation:loginGradient 6s ease infinite}.btn-toggle::after{content:'';position:absolute;inset:0;transform:translateX(-120%) skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transition:transform .7s var(--login-ease)}.btn-toggle:hover::after{transform:translateX(120%) skewX(-20deg)}.btn-toggle:hover{transform:translateY(-2px)!important;box-shadow:0 18px 36px rgba(23,105,210,.32)!important}.btn-toggle:active,.btn-tracking:active{transform:scale(.985)!important}.btn-tracking{min-height:52px;border-radius:14px!important;background:rgba(255,255,255,.7);transition:transform .2s ease,background .2s ease,box-shadow .2s ease!important}.register-prompt{padding-top:4px;text-align:center}.register-prompt a{display:inline!important}.error-message{animation:errorIn .42s var(--login-ease) both}
+        .scanner-width .card-body{position:relative;padding:42px!important;transform:translateZ(28px);transform-style:preserve-3d}
+        .login-hero{text-align:center;margin-bottom:26px;transform:translateZ(18px)}.login-icon{display:grid;place-items:center;width:66px;height:66px;margin:0 auto 18px;border-radius:21px;color:#fff!important;font-size:26px!important;background:linear-gradient(145deg,#1769d2,#08b8c8);box-shadow:0 18px 34px rgba(23,105,210,.34),inset 0 1px rgba(255,255,255,.36);animation:loginIconIn .7s .3s var(--login-ease) both}.login-hero h2{color:var(--login-ink)!important;font-size:29px!important;font-weight:800!important;letter-spacing:-.04em}.login-hero p{color:#71869b!important;margin:0}.security-note{display:inline-flex;align-items:center;gap:6px;margin-top:11px;color:#16836f;font-size:11px;font-weight:700}.login-tabs{position:relative;display:flex;padding:4px;margin-bottom:25px;border:1px solid #cbdde6;border-radius:14px;background:#e5f0f5;box-shadow:inset 0 2px 5px rgba(42,91,113,.12)}.tab-button{position:relative;z-index:1;min-height:44px;border-radius:11px!important;color:#61758a!important;transition:color .25s ease,background .25s ease,box-shadow .25s ease,transform .2s ease!important}.tab-button.active{color:var(--login-ink)!important;background:#fff!important;box-shadow:0 8px 18px rgba(26,75,96,.16),inset 0 1px rgba(255,255,255,.9)!important;transform:translateY(-1px)}.tab-button i{margin-right:6px;color:#1785c7}.login-tab-panel.tab-enter{animation:tabEnter .36s var(--login-ease) both}.login-form label{color:var(--login-ink)!important;font-size:13px!important}.mobile-field{position:relative}.mobile-field .country-code{position:absolute;z-index:2;left:15px;top:50%;transform:translateY(-50%);padding-right:12px;border-right:1px solid #d7e3ec;color:#506b82;font-size:13px;font-weight:800}.mobile-field .form-control{height:56px!important;padding-left:70px!important;border:1px solid #cbdfe8!important;border-radius:14px!important;background:rgba(248,252,254,.88)!important;box-shadow:inset 0 2px 5px rgba(43,95,118,.07)!important;font-size:16px;letter-spacing:.04em;transition:border-color .2s ease,box-shadow .2s ease,background .2s ease,transform .2s ease}.mobile-field .form-control:hover{border-color:#91bfd0!important;background:#fff!important;transform:translateY(-1px)}.mobile-field .form-control:focus{border-color:var(--login-aqua)!important;box-shadow:0 0 0 4px rgba(8,184,200,.14),0 12px 28px rgba(14,70,100,.12)!important;transform:translateY(-2px)}.login-helper{display:flex;align-items:flex-start;gap:7px;color:#71869b!important;font-size:12px!important;line-height:1.5}.login-helper i{margin-top:3px;color:#27a88f}.btn-toggle{position:relative;min-height:55px;overflow:hidden;border-radius:14px!important;background:linear-gradient(120deg,#1769d2,#08aeca,#1769d2)!important;background-size:180% 180%!important;box-shadow:0 16px 34px rgba(23,105,210,.32),inset 0 1px rgba(255,255,255,.24)!important;transition:transform .2s ease,box-shadow .2s ease!important;animation:loginGradient 6s ease infinite}.btn-toggle::after{content:'';position:absolute;inset:0;transform:translateX(-120%) skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transition:transform .7s var(--login-ease)}.btn-toggle:hover::after{transform:translateX(120%) skewX(-20deg)}.btn-toggle:hover{transform:translateY(-3px)!important;box-shadow:0 22px 42px rgba(23,105,210,.4)!important}.btn-toggle:active,.btn-tracking:active{transform:scale(.985)!important}.btn-tracking{min-height:52px;border-radius:14px!important;background:rgba(255,255,255,.78);box-shadow:0 8px 20px rgba(36,104,130,.1);transition:transform .2s ease,background .2s ease,box-shadow .2s ease!important}.register-prompt{padding-top:4px;text-align:center}.register-prompt a{display:inline!important}.error-message{animation:errorIn .42s var(--login-ease) both}
         #video-container{border-radius:18px;background:#07111d;box-shadow:0 20px 42px rgba(4,15,28,.25)}.scanner-frame{border:0;box-shadow:0 0 0 9999px rgba(2,8,18,.48);animation:none}.scanner-corner{width:32px;height:32px;border-color:#34e4c0;border-width:4px}.scanner-line{position:absolute;left:8px;right:8px;top:12px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,#55f5d3,transparent);box-shadow:0 0 12px #27dfba;animation:scanLine 2.4s ease-in-out infinite}.status-waiting{background:#eff9ff;border-color:#c7e7f2;color:#176484}.scanner-trust{display:flex;justify-content:center;gap:16px;margin:13px 0;color:#71869b;font-size:10px}.scanner-trust span{display:flex;align-items:center;gap:5px}.scanner-trust i{color:#1aa78f}
-        @keyframes loginNavIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}@keyframes loginCardIn{from{opacity:0;transform:translateY(28px) scale(.985)}to{opacity:1;transform:none}}@keyframes loginIconIn{from{opacity:0;transform:scale(.65) rotate(-8deg)}to{opacity:1;transform:none}}@keyframes loginRing{from{opacity:.35;transform:scale(.9)}to{opacity:1;transform:scale(1.08)}}@keyframes loginGradient{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}@keyframes tabEnter{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}@keyframes errorIn{0%{opacity:0;transform:translateX(-7px)}50%{transform:translateX(4px)}100%{opacity:1;transform:none}}@keyframes scanLine{0%,100%{top:12px;opacity:.4}50%{top:calc(100% - 14px);opacity:1}}
+        @keyframes loginNavIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}@keyframes loginCardIn{from{opacity:0;transform:translateY(28px) scale(.985)}to{opacity:1;transform:none}}@keyframes loginIconIn{from{opacity:0;transform:scale(.65) rotate(-8deg)}to{opacity:1;transform:none}}@keyframes loginRing{from{opacity:.35;transform:scale(.9)}to{opacity:1;transform:scale(1.08)}}@keyframes loginGradient{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}@keyframes tabEnter{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}@keyframes errorIn{0%{opacity:0;transform:translateX(-7px)}50%{transform:translateX(4px)}100%{opacity:1;transform:none}}@keyframes scanLine{0%,100%{top:12px;opacity:.4}50%{top:calc(100% - 14px);opacity:1}}@keyframes customerLabDrift{0%{background-position:44% 48%}50%{background-position:50% 52%}100%{background-position:57% 47%}}@keyframes customerLightSweep{0%,18%{opacity:0;transform:translateX(-46%) rotate(3deg)}48%{opacity:.8}78%,100%{opacity:0;transform:translateX(46%) rotate(3deg)}}
         a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid rgba(8,184,200,.3)!important;outline-offset:3px}
-        @media(max-width:575px){.container-main{align-items:flex-start;padding:20px 12px 36px}.scanner-width{border-radius:22px!important}.scanner-width .card-body{padding:30px 22px!important}.login-icon{width:58px;height:58px;border-radius:18px}.login-hero h2{font-size:25px!important}.navbar-brand{font-size:25px}.navbar-brand img{width:34px!important;height:34px!important}}
+        @media(max-width:575px){body.public-ui{background-attachment:scroll;background-position:50% 48%}.container-main{align-items:flex-start;padding:20px 12px 36px}.scanner-width{border-radius:22px!important;transform:none!important}.scanner-width .card-body{padding:30px 22px!important}.login-icon{width:58px;height:58px;border-radius:18px}.login-hero h2{font-size:25px!important}.navbar-brand{font-size:25px}.navbar-brand img{width:34px!important;height:34px!important}}
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+        /* Preserve click/touch hit-testing above the decorative 3D layers. */
+        body.public-ui > .navbar{display:none!important}
+        .container-main{min-height:100vh!important;align-items:center!important;justify-content:center!important;padding:28px 16px!important}
+        .scanner-width{width:min(92vw,540px)!important;margin:auto!important}
+        .login-tabs{z-index:30!important;width:min(100%,350px);margin:0 auto 25px!important;padding:0!important;gap:18px;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;pointer-events:auto!important;transform:translateZ(42px)}
+        .login-tabs .tab-button{position:relative;z-index:31!important;min-height:44px!important;padding:9px 12px 12px!important;border:0!important;border-radius:9px!important;background:transparent!important;color:#6d8294!important;box-shadow:none!important;font-size:13px!important;font-weight:600!important;pointer-events:auto!important;touch-action:manipulation;cursor:pointer;transition:color .25s ease,background .25s ease,transform .25s ease!important}
+        .login-tabs .tab-button::after{content:'';position:absolute;left:18%;right:18%;bottom:2px;height:3px;border-radius:99px;background:linear-gradient(90deg,#16c8b7,#168fe3);box-shadow:0 2px 8px rgba(17,174,208,.3);transform:scaleX(0);transition:transform .32s cubic-bezier(.22,1,.36,1)}
+        .login-tabs .tab-button.active{color:#12304a!important;background:rgba(255,255,255,.45)!important;box-shadow:none!important;transform:translateY(-1px)}
+        .login-tabs .tab-button.active::after{transform:scaleX(1)}
+        .login-tabs .tab-button:hover{color:#176f9e!important;background:rgba(255,255,255,.35)!important}
+        .login-tabs .tab-button i{color:#159bc4!important;transition:transform .25s ease}.login-tabs .tab-button.active i{transform:translateY(-1px) scale(1.06)}
+        /* Latest HydroMIS mark: transparent, animated, and free of the old square tile. */
+        .login-icon{position:relative!important;isolation:isolate;display:grid!important;place-items:center!important;width:92px!important;height:92px!important;margin:0 auto 18px!important;border:0!important;border-radius:50%!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;animation:customerLogoEnter .7s cubic-bezier(.22,1,.36,1) both,customerLogoFloat 4.6s .7s ease-in-out infinite!important;transition:transform .35s cubic-bezier(.22,1,.36,1),filter .35s ease!important}
+        .login-icon::before{content:'';position:absolute;inset:5px;z-index:-2;border-radius:50%;background:radial-gradient(circle,rgba(72,225,255,.32) 0,rgba(24,155,229,.13) 48%,transparent 72%);filter:blur(7px);animation:customerLogoAura 3.2s ease-in-out infinite!important}
+        .login-icon::after{content:'';position:absolute;inset:0;z-index:-1;border-radius:50%;padding:2px;background:conic-gradient(from 30deg,transparent 0 20%,#35d9eb 31%,#2389ec 45%,transparent 57% 76%,rgba(88,239,220,.9) 88%,transparent 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;filter:drop-shadow(0 0 5px rgba(31,177,224,.65));animation:customerLogoOrbit 5.5s linear infinite!important}
+        .login-icon img{display:block;width:84px!important;height:84px!important;object-fit:contain!important;border:0!important;border-radius:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;filter:drop-shadow(0 9px 13px rgba(6,78,139,.24));animation:none!important;transition:transform .5s cubic-bezier(.22,1,.36,1),filter .35s ease!important}
+        .login-icon:hover{transform:translateY(-4px) scale(1.04);filter:brightness(1.06)}
+        .login-icon:hover img{transform:rotate(4deg) scale(1.06);filter:drop-shadow(0 13px 17px rgba(6,78,139,.34))}
+        .login-icon:hover::after{animation-duration:2.7s!important}
+        .station-login-note{display:flex;align-items:flex-start;gap:10px;margin:0 0 20px;padding:12px 14px;border:1px solid rgba(21,163,188,.2);border-radius:13px;background:linear-gradient(135deg,rgba(231,250,251,.88),rgba(238,247,255,.78));color:#42677c;font-size:12px;line-height:1.5;box-shadow:inset 0 1px rgba(255,255,255,.85)}
+        .station-login-note i{flex:0 0 auto;margin-top:2px;color:#13a5ad;font-size:15px}.station-login-note strong{color:#164660;font-weight:700}
+        .register-prompt{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:5px;margin-top:17px;padding-top:15px;border-top:1px solid rgba(103,149,171,.2)}
+        .register-prompt span{color:#526b7e!important;font-size:13px!important}.register-prompt a{display:inline-flex!important;align-items:center;gap:5px;color:#087fba!important;font-size:13px!important;font-weight:700!important;text-decoration:none!important;transition:color .2s ease,transform .2s ease!important}.register-prompt a:hover{color:#05a9b8!important;transform:translateX(2px)}
+        @keyframes customerLogoEnter{from{opacity:0;transform:scale(.62) rotate(-10deg)}to{opacity:1;transform:none}}
+        @keyframes customerLogoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+        @keyframes customerLogoAura{0%,100%{opacity:.55;transform:scale(.92)}50%{opacity:1;transform:scale(1.1)}}
+        @keyframes customerLogoOrbit{to{transform:rotate(360deg)}}
+        @media(max-width:575px){.container-main{align-items:center!important;padding:20px 12px!important}.scanner-width{width:min(94vw,520px)!important;transform:none!important;transform-style:flat!important}.scanner-width .card-body,.login-hero,.login-tabs{transform:none!important}}
+        @media(max-width:575px) and (max-height:700px){.container-main{align-items:flex-start!important}}
+        /* Keep the signed-out customer login within one viewport. */
+        body.login-viewport{width:100%;height:100dvh;min-height:0;padding:0!important;overflow:hidden}
+        body.login-viewport .container-main{width:100%;height:100dvh;min-height:0!important;padding:clamp(10px,2.5vh,22px) 12px!important;overflow:hidden}
+        body.login-viewport #mainLoginCard{max-height:calc(100dvh - clamp(20px,5vh,44px));overflow:hidden}
+        @media(max-height:850px){
+            body.login-viewport .scanner-width .card-body{padding:clamp(18px,3vh,27px)!important}
+            body.login-viewport .login-hero{margin-bottom:14px}
+            body.login-viewport .login-icon{width:68px!important;height:68px!important;margin-bottom:9px!important}
+            body.login-viewport .login-icon img{width:62px!important;height:62px!important}
+            body.login-viewport .login-hero h2{margin-bottom:4px!important;font-size:24px!important}
+            body.login-viewport .login-hero p{font-size:12px!important}
+            body.login-viewport .security-note{margin-top:6px;font-size:10px}
+            body.login-viewport .login-tabs{margin-bottom:14px!important}
+            body.login-viewport .login-tabs .tab-button{min-height:40px!important;padding:7px 10px 9px!important}
+            body.login-viewport .login-form label{margin-bottom:7px!important}
+            body.login-viewport .mobile-field .form-control{height:50px!important;margin-bottom:7px!important}
+            body.login-viewport .login-helper{margin-bottom:10px!important;font-size:10px!important}
+            body.login-viewport .btn-toggle{min-height:48px}
+            body.login-viewport .register-prompt{margin-top:11px;padding-top:10px}
+            body.login-viewport .register-prompt span,body.login-viewport .register-prompt a{font-size:11px!important}
+        }
+        @media(max-width:575px) and (max-height:700px){body.login-viewport .container-main{align-items:center!important}}
+        /* Keep the account verification result within one viewport. */
+        body.account-viewport{width:100%;height:100dvh;min-height:0;padding:0!important;overflow:hidden}
+        body.account-viewport .container-main{width:100%;height:100dvh;min-height:0!important;padding:12px!important;overflow:hidden}
+        body.account-viewport .container-main>div{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;height:100%!important;padding:0!important}
+        body.account-viewport .scan-success{max-height:calc(100dvh - 24px);margin:auto}
+        @media(max-height:650px){
+            body.account-viewport .scan-success{padding:24px 20px 20px}
+            body.account-viewport .success-mark{width:52px;height:52px;margin-bottom:11px;border-radius:17px;font-size:22px}
+            body.account-viewport .success-eyebrow{margin-bottom:4px;font-size:9px}
+            body.account-viewport .scan-success h2{font-size:22px}
+            body.account-viewport .success-copy{margin:9px auto 15px;font-size:12px;line-height:1.45}
+            body.account-viewport .success-actions{gap:8px}
+            body.account-viewport .success-action{min-height:44px;padding:9px 14px;font-size:13px}
+            body.account-viewport .success-security{margin-top:13px;font-size:10px}
+            body.account-viewport .approval-lock{padding:14px}
+        }
+        @media(prefers-reduced-motion:reduce){.login-icon,.login-icon::before,.login-icon::after{animation:none!important}.login-icon,.login-icon img{transition:none!important}}
     </style>
+    <script src="../js/ui-protection.js" defer></script>
 </head>
-<body class="public-ui">
+<body class="public-ui <?php echo empty($scanned_data) ? 'login-viewport' : 'account-viewport'; ?>">
     <!-- Navigation -->
     <nav class="navbar">
         <div class="container-fluid">
@@ -2111,7 +2183,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
             <div class="card-body" style="padding: 35px;">
                 <div class="login-hero">
                     <div class="login-icon">
-                        <i class="fas fa-droplet"></i>
+                        <img src="../imagess/hydromis-logo-v2.png" alt="HydroMIS logo">
                     </div>
                     <h2 style="color: #1f2937; font-weight: 700; margin-bottom: 8px; font-size: 26px; line-height: 1.2;">Customer Login</h2>
                     <p style="color: #64748b; font-size: 14px;">Access your HydroMIS account</p>
@@ -2120,10 +2192,10 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
 
                 <div class="login-tabs" role="tablist" aria-label="Login method">
                     <button type="button" class="tab-button active" onclick="switchTab('mobile')" style="flex: 1; background: #ffffff; color: #111827; border: none; border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: 13px; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);">
-                        <i class="fas fa-mobile-screen"></i> Mobile Number
+                        <i class="fas fa-mobile-screen"></i> Mobile
                     </button>
                     <button type="button" class="tab-button" onclick="switchTab('qr')" style="flex: 1; background: transparent; color: #111827; border: none; border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: 13px; box-shadow: none;">
-                        <i class="fas fa-qrcode"></i> QR Code
+                        <i class="fas fa-qrcode"></i> Scan QR
                     </button>
                 </div>
 
@@ -2144,24 +2216,25 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                         </button>
                     </form>
 
-                    <button type="button" class="btn-tracking" onclick="goToTrackOrder();" style="width: 100%; margin-bottom: 16px;">
-                        <i class="fas fa-map-marker-alt mr-2"></i> Open Tracking Page
-                    </button>
-
                     <div class="register-prompt">
                         <span style="color: #334155; font-size: 14px;">Don't have an account?</span>
-                        <a href="../create_account.php" style="color: #2563eb; text-decoration: none; font-weight: 700; font-size: 14px;"> Register here</a>
+                        <a href="../create_account.php" style="color: #2563eb; text-decoration: none; font-weight: 700; font-size: 14px;">Register here <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
                     </div>
                 </div>
 
                 <div id="qrTab" class="login-tab-panel" style="display: none;">
                     <p style="color: #475569; font-size: 14px; margin-bottom: 18px; text-align: center;">Use your account QR code to continue</p>
+                    <div class="station-login-note" role="note">
+                        <i class="fas fa-store"></i>
+                        <span><strong>Main station QR only.</strong> Scan the customer QR code issued by the HydroMIS water refilling station.</span>
+                    </div>
                     <button type="button" class="btn-toggle" onclick="showScanner();" style="margin-bottom: 12px; width: 100%;">
                         <i class="fas fa-camera mr-2"></i> Start Camera
                     </button>
-                    <button type="button" class="btn-tracking" onclick="goToTrackOrder();" style="width: 100%; margin-bottom: 0;">
-                        <i class="fas fa-map-marker-alt mr-2"></i> Track Order Instead
-                    </button>
+                    <div class="register-prompt">
+                        <span>Don't have an account?</span>
+                        <a href="../create_account.php">Register here <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2214,19 +2287,15 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 <hr>
 
                 <div style="text-align: center; margin-bottom: 20px;">
-                    <p style="color: #6b7280; margin-bottom: 12px; font-size: 14px;">Don't have an account yet?</p>
-                    <a href="../create_account.php" style="color: #2563eb; text-decoration: none; font-weight: 700; font-size: 15px; transition: all 0.3s ease;" onmouseover="this.style.color='#1d4ed8'; this.style.transform='translateX(3px)';" onmouseout="this.style.color='#2563eb'; this.style.transform='translateX(0)';">
-                        <i class="fas fa-user-plus mr-2"></i> Create New Account
-                    </a>
+                    <button type="button" class="btn-back" onclick="hideScanner();" style="margin:0;">
+                        <i class="fas fa-arrow-left mr-2"></i> Back to Customer Login
+                    </button>
                 </div>
 
                 <button type="button" class="btn-tracking" onclick="goToTrackOrder();">
                     <i class="fas fa-map-marker-alt mr-2"></i> Track Your Order
                 </button>
 
-                <button type="button" class="btn-back" onclick="hideScanner();" style="margin-top: 12px;">
-                    <i class="fas fa-arrow-left mr-2"></i> Back to Home
-                </button>
             </div>
         </div>
         <?php endif; ?>
@@ -2580,6 +2649,27 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
         // Initialize price calculation on page load
         window.addEventListener('DOMContentLoaded', function() {
             calculatePrice();
+
+            const loginCard = document.querySelector('.scanner-width');
+            const canTilt = window.matchMedia('(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference)').matches;
+            if (loginCard && canTilt) {
+                const enableTilt = () => {
+                    loginCard.style.animation = 'none';
+                    loginCard.classList.add('tilt-ready');
+                };
+                loginCard.addEventListener('animationend', enableTilt, { once:true });
+                loginCard.addEventListener('pointermove', function(event) {
+                    const box = this.getBoundingClientRect();
+                    const x = (event.clientX - box.left) / box.width - .5;
+                    const y = (event.clientY - box.top) / box.height - .5;
+                    this.style.setProperty('--tilt-x', (-y * 5).toFixed(2) + 'deg');
+                    this.style.setProperty('--tilt-y', (x * 5).toFixed(2) + 'deg');
+                });
+                loginCard.addEventListener('pointerleave', function() {
+                    this.style.setProperty('--tilt-x', '0deg');
+                    this.style.setProperty('--tilt-y', '0deg');
+                });
+            }
 
             const mobileForm = document.getElementById('mobileLoginForm');
             if (mobileForm) mobileForm.addEventListener('submit', function() {

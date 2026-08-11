@@ -1,6 +1,8 @@
 <?php
 require_once '../config/database.php';
 require_once '../config/system_settings.php';
+require_once '../config/inventory_service.php';
+ensure_inventory_schema($conn);
 $systemLogo = system_logo_path($conn);
 
 $user_id = null;
@@ -26,6 +28,10 @@ if (strtolower((string)($scanned_data['status'] ?? 'pending')) !== 'approved') {
     header('Location: scan_qr.php?approval_required=' . urlencode((string)($scanned_data['status'] ?? 'pending')));
     exit;
 }
+$free_delivery_reward = null;
+$safe_reward_user = $conn->real_escape_string((string)$user_id);
+$free_delivery_result = $conn->query("SELECT id,transaction_id FROM reward_claims WHERE user_id='$safe_reward_user' AND reward_code='free_delivery' AND claim_status='approved' ORDER BY created_at ASC LIMIT 1");
+if ($free_delivery_result) $free_delivery_reward = $free_delivery_result->fetch_assoc();
 
 // Load dynamic GCash/Maya QR Settings from DB
 $qr_gcash = ['qr_image_path' => 'imagess/cashg.jpg', 'account_number' => '0993 909 3915', 'account_name' => 'James C.'];
@@ -61,6 +67,27 @@ if ($quantity < 1) {
     $quantity = 1;
 }
 
+// Every order uses the selected gallon stock. "Buy new container" additionally
+// requires the generic New Container inventory item.
+$available_stock = null;
+$stock_blocked = false;
+$inventory_code = inventory_code_for_container($container_size);
+$stock_stmt = $conn->prepare('SELECT quantity FROM inventory_items WHERE item_code = ? LIMIT 1');
+if ($stock_stmt && $inventory_code !== null) {
+    $stock_stmt->bind_param('s', $inventory_code);
+    $stock_stmt->execute();
+    $stock_row = $stock_stmt->get_result()->fetch_assoc();
+    $available_stock = max(0, (int)($stock_row['quantity'] ?? 0));
+} else {
+    $available_stock = 0;
+}
+$new_container_stock = null;
+if ($container_status === 'new') {
+    $new_container_item = new_container_inventory_item($conn);
+    $new_container_stock = max(0, (int)($new_container_item['quantity'] ?? 0));
+}
+$stock_blocked = $quantity > $available_stock || ($container_status === 'new' && $quantity > $new_container_stock);
+
 $size_map = [
     '5gal-round' => '5 Gallon',
     '2.5gal-slim' => '2.5 Gallon',
@@ -75,13 +102,13 @@ $type_map = [
 
 $price_map = [
     '5gal-round' => ['new' => 20, 'pickup' => 20],
-    '2.5gal-slim' => ['new' => 30, 'pickup' => 20],
+    '2.5gal-slim' => ['new' => 35, 'pickup' => 15],
     '5gal-slim' => ['new' => 50, 'pickup' => 40]
 ];
 
 $pickup_base_map = [
     '5gal-round' => 20,
-    '2.5gal-slim' => 20,
+    '2.5gal-slim' => 15,
     '5gal-slim' => 40
 ];
 
@@ -103,7 +130,7 @@ $item_total = $price_per_unit * $quantity;
 
 $discount_count = floor($quantity / 5);
 $discount = $discount_count > 0 ? ($discount_count * 5) : 0;
-$delivery_fee = $fulfillment_method === 'delivery' ? 10 * $quantity : 0;
+$delivery_fee = $fulfillment_method === 'delivery' && !$free_delivery_reward ? 10 * $quantity : 0;
 $final_total = $item_total + $delivery_fee - $discount;
 ?>
 <!DOCTYPE html>
@@ -1133,6 +1160,7 @@ $final_total = $item_total + $delivery_fee - $discount;
         @media(max-width:390px){.checkout-summary-row{gap:10px}.checkout-product{gap:9px}.checkout-product-image{flex-basis:52px;width:52px;height:52px}.checkout-product-name{font-size:13px}.checkout-product-price{font-size:11px}}
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
     </style>
+    <script src="../js/ui-protection.js" defer></script>
 </head>
 <body class="public-ui">
     <nav class="navbar">
@@ -1241,6 +1269,9 @@ $final_total = $item_total + $delivery_fee - $discount;
                         <span class="summary-value" id="summaryDeliveryFee"><?php echo $delivery_fee > 0 ? '₱' . number_format($delivery_fee, 2) : 'Free'; ?></span>
                     </div>
                 </div>
+                <?php if ($fulfillment_method === 'delivery' && $free_delivery_reward): ?>
+                <div style="display:flex;align-items:center;gap:9px;margin:4px 0 13px;padding:10px 12px;border:1px solid #a7f3d0;border-radius:10px;background:#ecfdf5;color:#047857;font-size:12px;font-weight:700;"><i class="fas fa-gift"></i><span>Free Delivery reward applied to this order</span></div>
+                <?php endif; ?>
                 <div class="total-section">
                     <span>Total (Incl. Vat)</span>
                     <span class="final-amount" id="summaryFinalTotal">₱<?php echo number_format($final_total, 2); ?></span>
@@ -1249,6 +1280,15 @@ $final_total = $item_total + $delivery_fee - $discount;
         </div>
 
         <!-- Payment Section -->
+        <?php if ($stock_blocked): ?>
+            <div class="alert alert-danger" id="stockAlert" role="alert" style="margin-bottom:16px; border-radius:12px;">
+                <i class="fas fa-box-open" style="margin-right:6px;"></i>
+                <strong>Not enough stock.</strong>
+                <?php if ($quantity > $available_stock): ?>Only <?php echo (int)$available_stock; ?> of this gallon product <?php echo (int)$available_stock === 1 ? 'is' : 'are'; ?> available.<?php endif; ?>
+                <?php if ($container_status === 'new' && $quantity > $new_container_stock): ?>Only <?php echo (int)$new_container_stock; ?> new container<?php echo (int)$new_container_stock === 1 ? ' is' : 's are'; ?> available.<?php endif; ?>
+                Reduce the quantity or choose another container.
+            </div>
+        <?php endif; ?>
         <form method="POST" action="purchase.php" enctype="multipart/form-data" style="margin-bottom: 20px;" id="checkoutForm" onsubmit="return validateCheckout(event);">
             <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user_id); ?>">
             <input type="hidden" name="buy_submit" value="1">
@@ -1320,10 +1360,6 @@ $final_total = $item_total + $delivery_fee - $discount;
                                 <label class="form-label" style="font-size: 12px; color: #475569; font-weight: 700; text-transform: none; letter-spacing: normal;">Your GCash Mobile Number <span style="color: #ef4444;">*</span></label>
                                 <input type="text" class="form-control" name="gcash_number" id="gcashNumber" placeholder="e.g., 09939093915" maxlength="11" style="font-size: 13px; padding: 8px 10px;">
                             </div>
-                            <div class="form-group" style="margin-bottom: 12px;">
-                                <label class="form-label" style="font-size: 12px; color: #475569; font-weight: 700; text-transform: none; letter-spacing: normal;">GCash Reference Number <span style="color: #ef4444;">*</span></label>
-                                <input type="text" class="form-control" name="gcash_reference" id="gcashReference" placeholder="Enter GCash reference number" style="font-size: 13px; padding: 8px 10px;">
-                            </div>
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label class="form-label" style="font-size: 12px; color: #475569; font-weight: 700; text-transform: none; letter-spacing: normal;">Upload Proof of Payment <span style="color: #ef4444;">*</span></label>
                                 <input type="file" class="form-control-file" name="gcash_proof" id="gcashProof" accept="image/*" style="font-size: 12px;">
@@ -1371,10 +1407,6 @@ $final_total = $item_total + $delivery_fee - $discount;
                                 <label class="form-label" style="font-size: 12px; color: #475569; font-weight: 700; text-transform: none; letter-spacing: normal;">Your Maya Mobile Number <span style="color: #ef4444;">*</span></label>
                                 <input type="text" class="form-control" name="maya_number" id="mayaNumber" placeholder="e.g., 09939093915" maxlength="11" style="font-size: 13px; padding: 8px 10px;">
                             </div>
-                            <div class="form-group" style="margin-bottom: 12px;">
-                                <label class="form-label" style="font-size: 12px; color: #475569; font-weight: 700; text-transform: none; letter-spacing: normal;">Maya Reference Number <span style="color: #ef4444;">*</span></label>
-                                <input type="text" class="form-control" name="maya_reference" id="mayaReference" placeholder="Enter Maya reference number" style="font-size: 13px; padding: 8px 10px;">
-                            </div>
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label class="form-label" style="font-size: 12px; color: #475569; font-weight: 700; text-transform: none; letter-spacing: normal;">Upload Proof of Payment <span style="color: #ef4444;">*</span></label>
                                 <input type="file" class="form-control-file" name="maya_proof" id="mayaProof" accept="image/*" style="font-size: 12px;">
@@ -1398,7 +1430,7 @@ $final_total = $item_total + $delivery_fee - $discount;
             </div>
 
             <div style="padding: 0 16px 16px;">
-                <button type="submit" class="checkout-btn" id="checkoutBtn">
+                <button type="submit" class="checkout-btn" id="checkoutBtn" <?php echo $stock_blocked ? 'disabled aria-disabled="true"' : ''; ?>>
                     <i class="fas fa-lock" style="margin-right: 6px;"></i> <?php echo $fulfillment_method === 'delivery' ? 'Place delivery order' : 'Place pickup order'; ?>
                 </button>
             </div>
@@ -1509,7 +1541,12 @@ $final_total = $item_total + $delivery_fee - $discount;
             }
         }
 
+        const availableStock = <?php echo (int)min($available_stock, $container_status === 'new' ? $new_container_stock : $available_stock); ?>;
+
         function increaseQty() {
+            if (availableStock !== null && currentQuantity >= availableStock) {
+                return;
+            }
             currentQuantity += 1;
             updateDisplay();
         }
@@ -1528,13 +1565,22 @@ $final_total = $item_total + $delivery_fee - $discount;
             const newTotal = currentQuantity * pricePerUnit;
             const discountCount = Math.floor(currentQuantity / 5);
             const discount = discountCount > 0 ? (discountCount * 5) : 0;
-            const deliveryFee = isDelivery ? 10 * currentQuantity : 0;
+            const deliveryFee = isDelivery && !<?php echo $free_delivery_reward ? 'true' : 'false'; ?> ? 10 * currentQuantity : 0;
             const finalAmount = newTotal + deliveryFee - discount;
 
             document.getElementById('itemTotalDisplay').textContent = '₱' + newTotal.toFixed(2);
             document.getElementById('summaryItemTotal').textContent = '₱' + newTotal.toFixed(2);
             document.getElementById('summaryFinalTotal').textContent = '₱' + finalAmount.toFixed(2);
             document.getElementById('hiddenAmount').value = finalAmount.toFixed(2);
+
+            if (availableStock !== null) {
+                const isBlocked = currentQuantity > availableStock;
+                const checkoutButton = document.getElementById('checkoutBtn');
+                checkoutButton.disabled = isBlocked;
+                checkoutButton.setAttribute('aria-disabled', isBlocked ? 'true' : 'false');
+                const stockAlert = document.getElementById('stockAlert');
+                if (stockAlert) stockAlert.style.display = isBlocked ? '' : 'none';
+            }
 
             <?php if ($container_status === 'new'): ?>
             const newContainerCost = 20 * currentQuantity;
@@ -1588,6 +1634,11 @@ $final_total = $item_total + $delivery_fee - $discount;
             let isValid = true;
             const errors = [];
 
+            if (availableStock !== null && currentQuantity > availableStock) {
+                errors.push('Only ' + availableStock + ' of this gallon container are available');
+                isValid = false;
+            }
+
             if (isDelivery && !selectedDate) {
                 errors.push('Select a delivery date');
                 isValid = false;
@@ -1606,15 +1657,10 @@ $final_total = $item_total + $delivery_fee - $discount;
 
             if (selectedPayment === 'gcash') {
                 const gcashNum = document.getElementById('gcashNumber').value.trim();
-                const gcashRef = document.getElementById('gcashReference').value.trim();
                 const gcashFile = document.getElementById('gcashProof').files[0];
 
                 if (!gcashNum || !/^(09)\d{9}$/.test(gcashNum)) {
                     errors.push('Enter a valid 11-digit GCash mobile number (starts with 09)');
-                    isValid = false;
-                }
-                if (!gcashRef || gcashRef.length < 6 || gcashRef.length > 64) {
-                    errors.push('Enter a valid GCash reference number (6-64 characters)');
                     isValid = false;
                 }
                 if (!gcashFile) {
@@ -1623,15 +1669,10 @@ $final_total = $item_total + $delivery_fee - $discount;
                 }
             } else if (selectedPayment === 'maya') {
                 const mayaNum = document.getElementById('mayaNumber').value.trim();
-                const mayaRef = document.getElementById('mayaReference').value.trim();
                 const mayaFile = document.getElementById('mayaProof').files[0];
 
                 if (!mayaNum || !/^(09)\d{9}$/.test(mayaNum)) {
                     errors.push('Enter a valid 11-digit Maya mobile number (starts with 09)');
-                    isValid = false;
-                }
-                if (!mayaRef || mayaRef.length < 6 || mayaRef.length > 64) {
-                    errors.push('Enter a valid Maya reference number (6-64 characters)');
                     isValid = false;
                 }
                 if (!mayaFile) {

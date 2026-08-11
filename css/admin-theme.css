@@ -1,0 +1,105 @@
+/* Shared light-theme contrast rules for every Admin page. */
+html[data-admin-color-mode="light"] {
+    color-scheme: light;
+    --bg: #f4f7fb; --bg2: #fff; --bg3: #edf3fb; --bg4: #e4edf8;
+    --surface: #fff; --surface2: #f7f9fd; --surface-2: #f7f9fd;
+    --card: #fff; --card-bg: #fff; --panel: #fff;
+    --text: #17243a; --text-primary: #17243a; --text-secondary: #526781;
+    --muted: #5f738f; --muted2: #7185a0;
+    --border: #cfdaea; --border2: #bccbe0; --input-bg: #fff;
+}
+html[data-admin-color-mode="light"] body,
+body[data-color-mode="light"] { color-scheme:light; background:#f4f7fb!important; color:#17243a!important; }
+html[data-admin-color-mode="light"] .sidebar,
+html[data-admin-color-mode="light"] aside,
+html[data-admin-color-mode="light"] .admin-sidebar { background:#fff!important; color:#17243a!important; border-color:#cfdaea!important; }
+html[data-admin-color-mode="light"] .topbar,
+html[data-admin-color-mode="light"] .top-bar,
+html[data-admin-color-mode="light"] .page-header,
+html[data-admin-color-mode="light"] header { background-color:#fff!important; color:#17243a!important; border-color:#cfdaea!important; }
+html[data-admin-color-mode="light"] .card,
+html[data-admin-color-mode="light"] .panel,
+html[data-admin-color-mode="light"] .section-card,
+html[data-admin-color-mode="light"] .content-card,
+html[data-admin-color-mode="light"] .table-card,
+html[data-admin-color-mode="light"] .stat-card,
+html[data-admin-color-mode="light"] .metric-card,
+html[data-admin-color-mode="light"] .chart-card,
+html[data-admin-color-mode="light"] .inventory-card,
+html[data-admin-color-mode="light"] .settings-section,
+html[data-admin-color-mode="light"] .modal-content,
+html[data-admin-color-mode="light"] .modal-panel,
+html[data-admin-color-mode="light"] .drawer,
+html[data-admin-color-mode="light"] .settings-drawer,
+html[data-admin-color-mode="light"] .dropdown-menu { background:#fff!important; color:#17243a!important; border-color:#cfdaea!important; }
+html[data-admin-color-mode="light"] h1,
+html[data-admin-color-mode="light"] h2,
+html[data-admin-color-mode="light"] h3,
+html[data-admin-color-mode="light"] h4,
+html[data-admin-color-mode="light"] h5,
+html[data-admin-color-mode="light"] .title,
+html[data-admin-color-mode="light"] .page-title,
+html[data-admin-color-mode="light"] .card-title,
+html[data-admin-color-mode="light"] .section-title,
+html[data-admin-color-mode="light"] .modal-title,
+html[data-admin-color-mode="light"] label { color:#17243a!important; }
+html[data-admin-color-mode="light"] .muted,
+html[data-admin-color-mode="light"] .subtitle,
+html[data-admin-color-mode="light"] .subtext,
+html[data-admin-color-mode="light"] .description,
+html[data-admin-color-mode="light"] .helper-text,
+html[data-admin-color-mode="light"] .help-text,
+html[data-admin-color-mode="light"] .form-hint,
+html[data-admin-color-mode="light"] .card-meta,
+html[data-admin-color-mode="light"] small { color:#5f738f!important; }
+html[data-admin-color-mode="light"] table,
+html[data-admin-color-mode="light"] thead,
+html[data-admin-color-mode="light"] tbody,
+html[data-admin-color-mode="light"] tr,
+html[data-admin-color-mode="light"] td,
+html[data-admin-color-mode="light"] th { border-color:#cfdaea!important; }
+html[data-admin-color-mode="light"] table,
+html[data-admin-color-mode="light"] tbody,
+html[data-admin-color-mode="light"] td { background-color:#fff!important; color:#23344e!important; }
+html[data-admin-color-mode="light"] thead,
+html[data-admin-color-mode="light"] th { background-color:#eaf1fa!important; color:#3d5575!important; }
+html[data-admin-color-mode="light"] tbody tr:hover td { background-color:#f1f6fc!important; }
+html[data-admin-color-mode="light"] input,
+html[data-admin-color-mode="light"] select,
+html[data-admin-color-mode="light"] textarea,
+html[data-admin-color-mode="light"] .search-input,
+html[data-admin-color-mode="light"] .search-box { background-color:#fff!important; color:#17243a!important; border-color:#b9c9df!important; }
+html[data-admin-color-mode="light"] input::placeholder,
+html[data-admin-color-mode="light"] textarea::placeholder { color:#667b97!important; opacity:1; }
+html[data-admin-color-mode="light"] input:focus,
+html[data-admin-color-mode="light"] select:focus,
+html[data-admin-color-mode="light"] textarea:focus { border-color:#347ff0!important; box-shadow:0 0 0 3px rgba(52,127,240,.16)!important; outline:none; }
+html[data-admin-color-mode="light"] input:disabled,
+html[data-admin-color-mode="light"] select:disabled,
+html[data-admin-color-mode="light"] textarea:disabled,
+html[data-admin-color-mode="light"] button:disabled { background:#e8eef7!important; color:#657993!important; border-color:#c8d5e6!important; opacity:1!important; }
+html[data-admin-color-mode="light"] .btn-secondary,
+html[data-admin-color-mode="light"] .btn-outline,
+html[data-admin-color-mode="light"] .secondary-btn,
+html[data-admin-color-mode="light"] .icon-btn,
+html[data-admin-color-mode="light"] .pagination button { background:#eef4fc!important; color:#28496f!important; border-color:#bfd0e6!important; }
+html[data-admin-color-mode="light"] .nav-item,
+html[data-admin-color-mode="light"] .nav-link,
+html[data-admin-color-mode="light"] .submenu a,
+html[data-admin-color-mode="light"] .sidebar a { color:#526b8b!important; }
+html[data-admin-color-mode="light"] .nav-item:hover,
+html[data-admin-color-mode="light"] .nav-link:hover,
+html[data-admin-color-mode="light"] .submenu a:hover { background:#edf4ff!important; color:#1d5fc4!important; }
+html[data-admin-color-mode="light"] .nav-item.active,
+html[data-admin-color-mode="light"] .nav-link.active,
+html[data-admin-color-mode="light"] .sidebar a.active { background:#dceaff!important; color:#174fa6!important; }
+html[data-admin-color-mode="light"] .modal-overlay,
+html[data-admin-color-mode="light"] .overlay,
+html[data-admin-color-mode="light"] .drawer-backdrop { background:rgba(22,36,58,.38)!important; }
+html[data-admin-color-mode="light"] .code,
+html[data-admin-color-mode="light"] code,
+html[data-admin-color-mode="light"] .transaction-id,
+html[data-admin-color-mode="light"] .payment-id,
+html[data-admin-color-mode="light"] .order-id { color:#315d99!important; }
+html[data-admin-color-mode="light"] hr,
+html[data-admin-color-mode="light"] .divider { border-color:#cfdaea!important; }

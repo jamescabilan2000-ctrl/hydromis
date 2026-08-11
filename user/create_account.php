@@ -334,6 +334,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             width: 100%;
         }
     </style>
+    <script src="../js/ui-protection.js" defer></script>
 </head>
 <body>
     <!-- Navigation -->

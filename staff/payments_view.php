@@ -4,7 +4,13 @@ include 'check_auth.php';
 
 $payments_data = [];
 $error = null;
-$filter = isset($_POST['filter']) ? $_POST['filter'] : 'all';
+$status_filter = strtolower(trim((string)($_GET['status'] ?? 'all')));
+$method_filter = strtolower(trim((string)($_GET['method'] ?? 'all')));
+$payment_search = trim((string)($_GET['q'] ?? ''));
+$allowed_status_filters = ['all', 'pending', 'paid', 'failed'];
+$allowed_method_filters = ['all', 'cash', 'gcash', 'maya'];
+if (!in_array($status_filter, $allowed_status_filters, true)) $status_filter = 'all';
+if (!in_array($method_filter, $allowed_method_filters, true)) $method_filter = 'all';
 $total_collected = 0;
 $pending_amount = 0;
 $total_payments = 0;
@@ -19,6 +25,7 @@ if (isset($payments) && $payments) {
     $payments_result = $conn->query("SELECT p.payment_id, p.transaction_id, p.transaction_id AS order_id, p.amount, p.payment_status AS status, p.created_at, p.payment_method, p.payment_reference, p.payment_proof, p.gcash_number, p.maya_number, p.notes, u.full_name, u.contact_number
         FROM payments p
         LEFT JOIN users u ON p.user_id = u.user_id
+        WHERE p.transaction_id NOT LIKE 'RWD-%' AND p.transaction_id NOT LIKE 'DEMO-%'
         ORDER BY p.created_at DESC");
 
     if ($payments_result) {
@@ -31,9 +38,25 @@ if (isset($payments) && $payments) {
 $total_payments = count($payments_data);
 $pending_payments = count(array_filter($payments_data, fn($p) => in_array(strtolower($p['status'] ?? ''), ['pending', 'processing'], true)));
 $verified_payments = count(array_filter($payments_data, fn($p) => strtolower($p['status'] ?? '') === 'paid'));
-$total_collected = array_reduce($payments_data, fn($carry, $p) => $carry + (float)($p['amount'] ?? 0), 0);
+$total_collected = array_reduce($payments_data, fn($carry, $p) => $carry + (strtolower($p['status'] ?? '') === 'paid' ? (float)($p['amount'] ?? 0) : 0), 0);
 $pending_amount = array_reduce($payments_data, fn($carry, $p) => $carry + (in_array(strtolower($p['status'] ?? ''), ['pending', 'processing'], true) ? (float)($p['amount'] ?? 0) : 0), 0);
 $total_amount = $total_collected;
+
+$display_payments = array_values(array_filter($payments_data, function ($payment) use ($status_filter, $method_filter, $payment_search) {
+    $status = strtolower((string)($payment['status'] ?? ''));
+    $method = strtolower((string)($payment['payment_method'] ?? 'cash'));
+    $status_matches = $status_filter === 'all'
+        || ($status_filter === 'pending' && in_array($status, ['pending', 'processing'], true))
+        || $status === $status_filter;
+    $method_matches = $method_filter === 'all' || $method === $method_filter;
+    $haystack = strtolower(implode(' ', [
+        $payment['payment_id'] ?? '', $payment['transaction_id'] ?? '',
+        $payment['full_name'] ?? '', $payment['contact_number'] ?? '',
+        $payment['payment_reference'] ?? ''
+    ]));
+    $search_matches = $payment_search === '' || str_contains($haystack, strtolower($payment_search));
+    return $status_matches && $method_matches && $search_matches;
+}));
 
 ?>
 <!DOCTYPE html>
@@ -380,6 +403,7 @@ body {
 }
 
 /* ─── TABLE ──────────────────────────────────────────────── */
+.payment-filters{display:grid;grid-template-columns:minmax(220px,1fr) 170px 170px auto;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.012)}.payment-filters input,.payment-filters select{width:100%;height:42px;padding:0 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--surface-2);color:var(--text);font:600 12px var(--font-body);outline:none}.payment-filters input:focus,.payment-filters select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}.payment-filters button{height:42px;padding:0 18px;border:0;border-radius:10px;background:var(--accent);color:#fff;font:700 12px var(--font-body);cursor:pointer}.filter-clear{display:inline-flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-decoration:none}.payment-id{display:block;max-width:170px;overflow-wrap:anywhere;color:#cfe0f5}.method-label{display:flex;align-items:center;gap:7px;font-weight:700}.method-label i{width:18px;color:var(--accent)}
 .table-wrap { overflow-x: auto; }
 
 table {
@@ -757,6 +781,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
     .header-actions { width: 100%; }
     .soft-btn { width: 100%; }
     .stats-grid { grid-template-columns: 1fr; }
+    .payment-filters { grid-template-columns: 1fr; }
     thead { display: none; }
     table, tbody, tr, td { display: block; width: 100%; }
     tbody tr { border-top: 1px solid var(--border); }

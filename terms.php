@@ -79,11 +79,12 @@
         }
         li { margin-bottom: 8px; }
     </style>
+    <script src="js/ui-protection.js" defer></script>
 </head>
 <body>
     <div class="wrap">
         <div class="topbar">
-            <a href="home.php" class="brand"><img src="imagess/logosystem.png" alt="HydroMIS Logo" style="width: 24px; height: 24px; object-fit: contain; margin-right: 6px;">HydroMIS</a>
+            <a href="home.php" class="brand"><img src="imagess/hydromis-logo-v2.png" alt="HydroMIS Logo" style="width: 24px; height: 24px; object-fit: contain; margin-right: 6px;">HydroMIS</a>
             <a href="home.php" class="home-link"><i class="fas fa-home"></i> Home</a>
         </div>
 
