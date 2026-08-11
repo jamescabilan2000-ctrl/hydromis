@@ -12,11 +12,23 @@ if (file_exists($databaseConfigPath)) {
     }
 }
 
+$localDatabaseConfigPath = __DIR__ . '/supabase.local.php';
+if (file_exists($localDatabaseConfigPath)) {
+    $localConfig = require $localDatabaseConfigPath;
+    if (is_array($localConfig)) $databaseConfig = array_replace($databaseConfig, $localConfig);
+}
+
 define('DB_HOST', $databaseConfig['host'] ?? getenv('MYSQL_DB_HOST') ?: '127.0.0.1');
 define('DB_PORT', $databaseConfig['port'] ?? getenv('MYSQL_DB_PORT') ?: '3306');
 define('DB_USER', $databaseConfig['user'] ?? getenv('MYSQL_DB_USER') ?: 'root');
 define('DB_PASS', $databaseConfig['password'] ?? getenv('MYSQL_DB_PASSWORD') ?: '');
 define('DB_NAME', $databaseConfig['database'] ?? getenv('MYSQL_DB_NAME') ?: 'hydromis');
+
+if (($databaseConfig['driver'] ?? 'mysql') === 'pgsql') {
+    define('DB_SSLMODE', $databaseConfig['sslmode'] ?? 'require');
+    require __DIR__ . '/database_pgsql.php';
+    return;
+}
 
 /**
  * Lightweight result wrapper for mysqli queries.
