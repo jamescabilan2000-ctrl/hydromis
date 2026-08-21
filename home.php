@@ -984,16 +984,15 @@ if (!$check_table || $check_table->num_rows == 0) {
             justify-content: center;
             width: 44px;
             height: 44px;
-            border-radius: 14px;
-            border: 1.5px solid var(--border);
-            background: #fff;
+            border: 0;
+            background: transparent;
             cursor: pointer;
             color: var(--text-2);
             font-size: 1rem;
-            box-shadow: 0 7px 20px rgba(10,37,64,.08);
-            transition: transform .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease;
+            box-shadow: none;
+            transition: transform .18s ease,color .18s ease;
         }
-        .mobile-burger:hover{color:var(--blue-mid);border-color:#a8c7f7;transform:translateY(-1px);box-shadow:0 10px 26px rgba(26,86,219,.14)}
+        .mobile-burger:hover{color:var(--blue-mid);background:transparent;transform:translateY(-1px);box-shadow:none}
         .mobile-burger:active{transform:scale(.96)}
 
         .mobile-overlay {
@@ -1401,7 +1400,7 @@ if (!$check_table || $check_table->num_rows == 0) {
         .account-menu{position:relative}.account-menu summary{list-style:none;display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:10px;cursor:pointer;color:#c4d7e8;font-size:.875rem;font-weight:700;transition:background .2s ease,color .2s ease}.account-menu summary::-webkit-details-marker{display:none}.account-menu summary:hover,.account-menu[open] summary{color:#fff;background:rgba(126,220,255,.1)}.account-menu summary i:last-child{font-size:9px;transition:transform .25s ease}.account-menu[open] summary i:last-child{transform:rotate(180deg)}
         .account-popover{position:absolute;right:0;top:calc(100% + 12px);width:220px;padding:8px;border:1px solid rgba(144,221,255,.2);border-radius:15px;background:rgba(5,30,55,.96);box-shadow:0 22px 55px rgba(0,8,22,.38);backdrop-filter:blur(20px);animation:navPopover .25s ease both}.account-popover a{display:flex;align-items:center;gap:10px;padding:11px 12px!important;color:#c8dced!important;border-radius:9px!important}.account-popover a:hover{color:#fff!important;background:rgba(68,200,239,.12)!important}.account-popover i{width:18px;color:#55d9ff;text-align:center}
         .nav-cta{display:inline-flex;align-items:center;gap:7px;color:#fff!important;background:linear-gradient(120deg,#2878ee,#09b9d1)!important;box-shadow:0 8px 22px rgba(17,157,218,.28)!important}.nav-cta:hover{transform:translateY(-2px);box-shadow:0 12px 27px rgba(17,181,221,.4)!important}@keyframes navPopover{from{opacity:0;transform:translateY(-7px) scale(.98)}to{opacity:1;transform:none}}
-        @media(max-width:760px){nav{padding:7px 9px}.nav-inner{width:100%;height:58px;min-height:0;padding:0 12px;flex-wrap:nowrap;border-radius:15px}.logo{width:auto;margin:0}.logo-text{font-size:1.12rem}.logo-icon{width:34px;height:34px}.nav-links{display:none}.mobile-burger{display:flex;margin-left:auto;color:#d7e9f7;border-color:rgba(145,226,255,.22);background:rgba(104,207,244,.08);box-shadow:none}.mobile-burger:hover{color:#fff;background:rgba(104,207,244,.14)}.mobile-drawer{width:min(84vw,320px);background:linear-gradient(160deg,#071d35,#0b3153);border-left:1px solid rgba(126,220,255,.18)}.mobile-drawer-head{padding:16px 18px;border-color:rgba(126,220,255,.12)}.mobile-drawer-head span{color:#fff!important;font-weight:700!important}.mobile-drawer-head button{color:#c8dced!important}.mobile-nav-label{padding:18px 19px 7px;color:#7196b7;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}.mobile-nav-item{gap:12px;margin:2px 10px;padding:11px 10px;border:0;border-radius:10px;color:#c7d8e7;font-size:15px;font-weight:500}.mobile-nav-item i{width:20px;color:#56bfe6;font-size:14px}.mobile-nav-item:hover{color:#fff;background:rgba(126,220,255,.08)}.mobile-nav-item.primary-account{color:#eaf8ff;background:rgba(68,190,225,.09)}.mobile-nav-cta{margin:18px 14px;padding:12px;min-height:48px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 10px 24px rgba(5,156,211,.24);transition:transform .2s ease,box-shadow .2s ease}.mobile-nav-cta:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(5,179,218,.34)}}
+        @media(max-width:760px){nav{padding:7px 9px}.nav-inner{width:100%;height:58px;min-height:0;padding:0 12px;flex-wrap:nowrap;border-radius:15px}.logo{width:auto;margin:0}.logo-text{font-size:1.12rem}.logo-icon{width:34px;height:34px}.nav-links{display:none}.mobile-burger{display:flex;margin-left:auto;color:#d7e9f7;border:0;background:transparent;box-shadow:none}.mobile-burger:hover{color:#fff;background:transparent}.mobile-drawer{width:min(84vw,320px);background:linear-gradient(160deg,#071d35,#0b3153);border-left:1px solid rgba(126,220,255,.18)}.mobile-drawer-head{padding:16px 18px;border-color:rgba(126,220,255,.12)}.mobile-drawer-head span{color:#fff!important;font-weight:700!important}.mobile-drawer-head button{color:#c8dced!important}.mobile-nav-label{padding:18px 19px 7px;color:#7196b7;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}.mobile-nav-item{gap:12px;margin:2px 10px;padding:11px 10px;border:0;border-radius:10px;color:#c7d8e7;font-size:15px;font-weight:500}.mobile-nav-item i{width:20px;color:#56bfe6;font-size:14px}.mobile-nav-item:hover{color:#fff;background:rgba(126,220,255,.08)}.mobile-nav-item.primary-account{color:#eaf8ff;background:rgba(68,190,225,.09)}.mobile-nav-cta{margin:18px 14px;padding:12px;min-height:48px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 10px 24px rgba(5,156,211,.24);transition:transform .2s ease,box-shadow .2s ease}.mobile-nav-cta:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(5,179,218,.34)}}
 
         /* Compact hero actions keep the water scene visible. */
         .hero-actions{align-items:center}.hero-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:52px;border-radius:999px;padding:12px 22px}.hero-btn-primary{min-width:210px}.hero-btn-secondary{min-width:260px}
