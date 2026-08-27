@@ -1,28 +1,26 @@
 <?php
 require_once __DIR__ . '/data_security.php';
-// XAMPP/MySQL configuration.
-// Credentials can come from config/supabase.php (kept for compatibility)
-// or from MYSQL_DB_* environment variables.
+// Supabase PostgreSQL configuration. Keep credentials in supabase.local.php
+// or provide the corresponding SUPABASE_DB_* environment variables.
 $databaseConfig = [];
-$databaseConfigPath = __DIR__ . '/supabase.php';
-if (file_exists($databaseConfigPath)) {
-    $loadedConfig = require $databaseConfigPath;
-    if (is_array($loadedConfig)) {
-        $databaseConfig = $loadedConfig;
-    }
+
+$supabaseConfigPath = __DIR__ . '/supabase.php';
+if (is_file($supabaseConfigPath)) {
+    $loadedConfig = require $supabaseConfigPath;
+    if (is_array($loadedConfig)) $databaseConfig = $loadedConfig;
 }
 
-$localDatabaseConfigPath = __DIR__ . '/supabase.local.php';
-if (file_exists($localDatabaseConfigPath)) {
-    $localConfig = require $localDatabaseConfigPath;
+$supabaseLocalConfigPath = __DIR__ . '/supabase.local.php';
+if (is_file($supabaseLocalConfigPath)) {
+    $localConfig = require $supabaseLocalConfigPath;
     if (is_array($localConfig)) $databaseConfig = array_replace($databaseConfig, $localConfig);
 }
 
-define('DB_HOST', $databaseConfig['host'] ?? getenv('MYSQL_DB_HOST') ?: '127.0.0.1');
-define('DB_PORT', $databaseConfig['port'] ?? getenv('MYSQL_DB_PORT') ?: '3306');
-define('DB_USER', $databaseConfig['user'] ?? getenv('MYSQL_DB_USER') ?: 'root');
-define('DB_PASS', $databaseConfig['password'] ?? getenv('MYSQL_DB_PASSWORD') ?: '');
-define('DB_NAME', $databaseConfig['database'] ?? getenv('MYSQL_DB_NAME') ?: 'hydromis');
+define('DB_HOST', $databaseConfig['host'] ?? '');
+define('DB_PORT', $databaseConfig['port'] ?? '6543');
+define('DB_USER', $databaseConfig['user'] ?? '');
+define('DB_PASS', $databaseConfig['password'] ?? '');
+define('DB_NAME', $databaseConfig['database'] ?? 'postgres');
 
 function sanitize($input) {
     global $conn;
@@ -48,17 +46,15 @@ function generateUserID() {
     throw new RuntimeException('Unable to generate a unique customer ID.');
 }
 
-if (($databaseConfig['driver'] ?? 'mysql') === 'pgsql') {
-    define('DB_SSLMODE', $databaseConfig['sslmode'] ?? 'require');
-    require __DIR__ . '/database_pgsql.php';
+define('DB_SSLMODE', $databaseConfig['sslmode'] ?? 'require');
+require __DIR__ . '/database_pgsql.php';
 
-    require_once __DIR__ . '/loyalty_service.php';
-    enforce_annual_loyalty_reset($conn);
+require_once __DIR__ . '/loyalty_service.php';
+enforce_annual_loyalty_reset($conn);
 
-    require_once __DIR__ . '/activity_logger.php';
-    auto_log_system_request($conn);
-    return;
-}
+require_once __DIR__ . '/activity_logger.php';
+auto_log_system_request($conn);
+return;
 
 /**
  * Lightweight result wrapper for mysqli queries.
@@ -116,25 +112,13 @@ class DBCompatConnection {
     public function __construct($host, $user, $pass, $db, $port = 3306) {
         mysqli_report(MYSQLI_REPORT_OFF);
 
-        // Connect to the MySQL server first so a fresh XAMPP installation does
-        // not require a manual phpMyAdmin import before the app can start.
-        $this->mysqli = new mysqli($host, $user, $pass, '', (int) $port);
+        // Connect directly to the configured database. Shared-host database
+        // users normally cannot create databases, and attempting to do so on
+        // each page request prevents the public pages from loading.
+        $this->mysqli = new mysqli($host, $user, $pass, $db, (int) $port);
 
         if ($this->mysqli->connect_errno) {
             $this->connect_error = $this->mysqli->connect_error;
-            return;
-        }
-
-        if (!preg_match('/^[A-Za-z0-9_]+$/', (string) $db)) {
-            $this->connect_error = 'Invalid database name.';
-            $this->mysqli->close();
-            $this->mysqli = null;
-            return;
-        }
-
-        if (!$this->mysqli->query("CREATE DATABASE IF NOT EXISTS `{$db}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci") ||
-            !$this->mysqli->select_db($db)) {
-            $this->connect_error = $this->mysqli->error;
             return;
         }
 
@@ -534,7 +518,13 @@ if (!extension_loaded('mysqli')) {
 $conn = new DBCompatConnection(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
 
 if ($conn->connect_error) {
-    die('MySQL connection failed: ' . $conn->connect_error);
+    if (defined('HYDROMIS_ALLOW_DB_FAILURE') && HYDROMIS_ALLOW_DB_FAILURE) {
+        return;
+    }
+    http_response_code(503);
+    header('Content-Type: text/html; charset=UTF-8');
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>HydroMIS unavailable</title></head><body style="font-family:Arial,sans-serif;margin:48px;color:#10263a"><h1>HydroMIS is temporarily unavailable</h1><p>The database connection could not be established. Please verify the database username, password, and user privileges in the hosting control panel, then try again.</p></body></html>';
+    exit;
 }
 
 $conn->set_charset('utf8mb4');
