@@ -38,7 +38,13 @@ jobs:
             --exclude='tmp_check.php' \
             --exclude='test_gps.html' \
             ./ "$deploy_dir/"
-          printf '%s' "$SUPABASE_LOCAL_PHP" > "$deploy_dir/config/supabase.local.php"
+          # Never upload a raw credential as a PHP file. The GitHub secret must
+          # be a complete PHP configuration block beginning with <?php.
+          if [[ "$SUPABASE_LOCAL_PHP" == "<?php"* ]]; then
+            printf '%s' "$SUPABASE_LOCAL_PHP" > "$deploy_dir/config/supabase.local.php"
+          else
+            printf '%s\n' '<?php return [];' > "$deploy_dir/config/supabase.local.php"
+          fi
           printf '%s' "$HYDROMIS_ENCRYPTION_KEY" > "$deploy_dir/config/.encryption_key"
 
       - name: Deploy files through FTP
