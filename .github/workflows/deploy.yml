@@ -48,7 +48,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
-          server-dir: ${{ vars.FTP_SERVER_DIR || '/public_html/' }}
+          server-dir: /
           local-dir: ${{ runner.temp }}/hydromis-deploy/
           exclude: |
             **/.git*/**
