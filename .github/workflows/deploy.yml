@@ -1,0 +1,63 @@
+name: Deploy HydroMIS to FTP
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-ftp-deployment
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy website
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Prepare protected production configuration
+        env:
+          SUPABASE_LOCAL_PHP: ${{ secrets.SUPABASE_LOCAL_PHP }}
+          HYDROMIS_ENCRYPTION_KEY: ${{ secrets.HYDROMIS_ENCRYPTION_KEY }}
+        run: |
+          deploy_dir="$RUNNER_TEMP/hydromis-deploy"
+          mkdir -p "$deploy_dir"
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.env*' \
+            --exclude='uploads/' \
+            --exclude='qrcodes/*.png' \
+            --exclude='data/' \
+            --exclude='setup.php' \
+            --exclude='clean_setup.php' \
+            --exclude='tmp_check.php' \
+            --exclude='test_gps.html' \
+            ./ "$deploy_dir/"
+          printf '%s' "$SUPABASE_LOCAL_PHP" > "$deploy_dir/config/supabase.local.php"
+          printf '%s' "$HYDROMIS_ENCRYPTION_KEY" > "$deploy_dir/config/.encryption_key"
+
+      - name: Deploy files through FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          server-dir: ${{ vars.FTP_SERVER_DIR || '/public_html/' }}
+          local-dir: ${{ runner.temp }}/hydromis-deploy/
+          exclude: |
+            **/.git*/**
+            **/.github/**
+            **/.env*
+            **/uploads/**
+            **/qrcodes/*.png
+            **/data/**
+            **/setup.php
+            **/clean_setup.php
+            **/tmp_check.php
+            **/test_gps.html
