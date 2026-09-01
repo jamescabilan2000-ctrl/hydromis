@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/data_security.php';
-// Supabase PostgreSQL configuration. Keep credentials in supabase.local.php
-// or provide the corresponding SUPABASE_DB_* environment variables.
+// Database configuration. Production credentials belong in one of the ignored
+// local configuration files, never in Git.
 $databaseConfig = [];
 
 $supabaseConfigPath = __DIR__ . '/supabase.php';
@@ -16,11 +16,17 @@ if (is_file($supabaseLocalConfigPath)) {
     if (is_array($localConfig)) $databaseConfig = array_replace($databaseConfig, $localConfig);
 }
 
+$databaseLocalConfigPath = __DIR__ . '/database.local.php';
+if (is_file($databaseLocalConfigPath)) {
+    $localConfig = require $databaseLocalConfigPath;
+    if (is_array($localConfig)) $databaseConfig = array_replace($databaseConfig, $localConfig);
+}
+
 define('DB_HOST', $databaseConfig['host'] ?? '');
-define('DB_PORT', $databaseConfig['port'] ?? '6543');
+define('DB_PORT', $databaseConfig['port'] ?? (($databaseConfig['driver'] ?? '') === 'mysql' ? '3306' : '6543'));
 define('DB_USER', $databaseConfig['user'] ?? '');
 define('DB_PASS', $databaseConfig['password'] ?? '');
-define('DB_NAME', $databaseConfig['database'] ?? 'postgres');
+define('DB_NAME', $databaseConfig['database'] ?? (($databaseConfig['driver'] ?? '') === 'mysql' ? '' : 'postgres'));
 
 function sanitize($input) {
     global $conn;
@@ -47,14 +53,14 @@ function generateUserID() {
 }
 
 define('DB_SSLMODE', $databaseConfig['sslmode'] ?? 'require');
-require __DIR__ . '/database_pgsql.php';
-
-require_once __DIR__ . '/loyalty_service.php';
-enforce_annual_loyalty_reset($conn);
-
-require_once __DIR__ . '/activity_logger.php';
-auto_log_system_request($conn);
-return;
+if (($databaseConfig['driver'] ?? 'pgsql') === 'pgsql') {
+    require __DIR__ . '/database_pgsql.php';
+    require_once __DIR__ . '/loyalty_service.php';
+    enforce_annual_loyalty_reset($conn);
+    require_once __DIR__ . '/activity_logger.php';
+    auto_log_system_request($conn);
+    return;
+}
 
 /**
  * Lightweight result wrapper for mysqli queries.
