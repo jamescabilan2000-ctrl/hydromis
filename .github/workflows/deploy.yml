@@ -21,7 +21,7 @@ jobs:
 
       - name: Prepare protected production configuration
         env:
-          MYSQL_LOCAL_PHP: ${{ secrets.MYSQL_LOCAL_PHP }}
+          SUPABASE_LOCAL_PHP: ${{ secrets.SUPABASE_LOCAL_PHP }}
           HYDROMIS_ENCRYPTION_KEY: ${{ secrets.HYDROMIS_ENCRYPTION_KEY }}
         run: |
           deploy_dir="$RUNNER_TEMP/hydromis-deploy"
@@ -40,12 +40,11 @@ jobs:
             ./ "$deploy_dir/"
           # Never upload a raw credential as a PHP file. The GitHub secret must
           # be a complete PHP configuration block beginning with <?php.
-          if [[ "$MYSQL_LOCAL_PHP" == "<?php"* ]]; then
-            printf '%s' "$MYSQL_LOCAL_PHP" > "$deploy_dir/config/database.local.php"
+          if [[ "$SUPABASE_LOCAL_PHP" == "<?php"* ]]; then
+            printf '%s' "$SUPABASE_LOCAL_PHP" > "$deploy_dir/config/supabase.local.php"
           else
-            printf '%s\n' '<?php return ["driver" => "mysql"];' > "$deploy_dir/config/database.local.php"
+            printf '%s\n' '<?php return [];' > "$deploy_dir/config/supabase.local.php"
           fi
-          printf '%s\n' '<?php return [];' > "$deploy_dir/config/supabase.local.php"
           printf '%s' "$HYDROMIS_ENCRYPTION_KEY" > "$deploy_dir/config/.encryption_key"
 
       - name: Deploy files through FTP

@@ -1,6 +1,5 @@
 /config/.encryption_key
 /config/supabase.local.php
-/config/database.local.php
 /qrcodes/*.png
 /uploads/avatars/*
 /uploads/payment_proofs/*
