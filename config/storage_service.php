@@ -17,6 +17,9 @@ function hydromis_storage_config(): array {
 }
 
 function hydromis_storage_enabled(): bool {
+    // XAMPP development stays fully offline: uploads are written to the local
+    // uploads/ and qrcodes/ folders instead of contacting Supabase Storage.
+    if (getenv('VERCEL') === false) return false;
     $config = hydromis_storage_config();
     return $config['url'] !== '' && $config['secret_key'] !== '' && $config['bucket'] !== '';
 }

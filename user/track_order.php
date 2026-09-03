@@ -745,10 +745,7 @@ function compactTransactionId(string $id): string {
     .feedback-title i{color:var(--amber)}
     .feedback-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--t2)}
     .feedback-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:rgba(245,158,11,.10);color:#92400e;font-weight:800}
-    .feedback-stars{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px}
-    .feedback-stars label{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--border);border-radius:999px;background:#fff;font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;transition:all .2s}
-    .feedback-stars label:hover{border-color:var(--amber);color:#92400e;background:rgba(245,158,11,.08)}
-    .feedback-stars input{margin:0}
+    .feedback-stars{display:flex;gap:5px;margin:10px 0 12px}.feedback-stars label{position:relative;display:grid;place-items:center;width:42px;height:42px;border:1px solid var(--border);border-radius:50%;background:#fff;color:#cbd5e1;font-size:20px;cursor:pointer;transition:transform .18s,background .18s,border-color .18s,color .18s}.feedback-stars label:hover{transform:translateY(-2px);border-color:var(--amber);background:#fff8e8;color:var(--amber)}.feedback-stars input{position:absolute;opacity:0;pointer-events:none}.feedback-stars label:has(input:checked),.feedback-stars:has(input[value="2"]:checked) label:nth-child(-n+2),.feedback-stars:has(input[value="3"]:checked) label:nth-child(-n+3),.feedback-stars:has(input[value="4"]:checked) label:nth-child(-n+4),.feedback-stars:has(input[value="5"]:checked) label:nth-child(-n+5){border-color:var(--amber);background:#fff8e8;color:var(--amber);box-shadow:0 3px 10px rgba(245,158,11,.18)}.feedback-stars span{line-height:1}.feedback-stars .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.feedback-stars::after{content:'Select a star rating';align-self:center;margin-left:7px;color:var(--t3);font-size:12px;font-weight:600}
     .feedback-text{width:100%;min-height:96px;padding:12px 14px;border:1.5px solid var(--border);border-radius:14px;font-family:inherit;font-size:14px;color:var(--t1);background:#fff;resize:vertical;outline:none}
     .feedback-text:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-glow)}
     .feedback-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px}
@@ -999,11 +996,11 @@ function compactTransactionId(string $id): string {
                                     <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($txn['transaction_id']); ?>">
                                     <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($txn['user_id']); ?>">
                                     <input type="hidden" name="search_value" value="<?php echo htmlspecialchars($search_value); ?>">
-                                    <div class="feedback-stars">
-                                        <?php for($star = 5; $star >= 1; $star--): ?>
-                                        <label>
+                                    <div class="feedback-stars" role="radiogroup" aria-label="Rate your delivery">
+                                        <?php for($star = 1; $star <= 5; $star++): ?>
+                                        <label title="<?php echo $star; ?> star<?php echo $star > 1 ? 's' : ''; ?>">
                                             <input type="radio" name="rating" value="<?php echo $star; ?>" <?php echo $star === 5 ? 'checked' : ''; ?>>
-                                            <span><?php echo $star; ?> Star<?php echo $star > 1 ? 's' : ''; ?></span>
+                                            <span><i class="fas fa-star" aria-hidden="true"></i><span class="sr-only"><?php echo $star; ?> stars</span></span>
                                         </label>
                                         <?php endfor; ?>
                                     </div>
@@ -1375,11 +1372,11 @@ function compactTransactionId(string $id): string {
                 <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($txn['user_id']); ?>">
                 <input type="hidden" name="search_value" value="<?php echo htmlspecialchars($search_value); ?>">
 
-                <div class="feedback-stars">
-                    <?php for($star = 5; $star >= 1; $star--): ?>
-                    <label>
+                <div class="feedback-stars" role="radiogroup" aria-label="Rate your delivery">
+                    <?php for($star = 1; $star <= 5; $star++): ?>
+                    <label title="<?php echo $star; ?> star<?php echo $star > 1 ? 's' : ''; ?>">
                         <input type="radio" name="rating" value="<?php echo $star; ?>" <?php echo $star === 5 ? 'checked' : ''; ?>>
-                        <span><?php echo $star; ?> Star<?php echo $star > 1 ? 's' : ''; ?></span>
+                        <span><i class="fas fa-star" aria-hidden="true"></i><span class="sr-only"><?php echo $star; ?> stars</span></span>
                     </label>
                     <?php endfor; ?>
                 </div>

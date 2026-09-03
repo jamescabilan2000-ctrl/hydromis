@@ -342,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <!-- Navigation -->
     <nav class="navbar">
         <div class="container-fluid">
-            <span class="navbar-brand">🌊 HydroMIS</span>
+            <span class="navbar-brand">HydroMIS</span>
             <div class="ml-auto">
                 <a href="create_account.php" class="nav-link">Create Account</a>
                 <a href="scan_qr.php" class="nav-link">Scan QR Code</a>

@@ -479,7 +479,11 @@ while ($row = $res->fetch_assoc()) {
 
 $active_deliveries = array_values(array_filter($deliveries, fn($d) => $d['status'] !== 'delivered'));
 $completed_deliveries = array_values(array_filter($deliveries, fn($d) => $d['status'] === 'delivered'));
-$completed_today = array_values(array_filter($completed_deliveries, fn($d) => date('Y-m-d', strtotime($d['updated_at'])) === date('Y-m-d')));
+$delivery_history_by_day = [];
+foreach ($completed_deliveries as $delivery) {
+    $day = date('Y-m-d', strtotime($delivery['updated_at']));
+    $delivery_history_by_day[$day][] = $delivery;
+}
 
 /* ---------- earnings: today + total (per rider preference, kept simple) ---------- */
 
@@ -554,9 +558,8 @@ body{
 .topbar .rider-id{color:#b8c7d5;font-family:'JetBrains Mono',monospace;font-size:10px;white-space:nowrap}
 .copy-rider-id{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:6px;background:transparent;color:#7dd3fc;cursor:pointer}
 .copy-rider-id:hover,.copy-rider-id:focus-visible{background:rgba(125,211,252,.12);color:#fff;outline:none}
-.topbar .logout{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 11px;border:1px solid rgba(248,113,113,.3);border-radius:9px;background:rgba(239,68,68,.08);color:#fecaca;text-decoration:none;font-size:11px;font-weight:700;white-space:nowrap}
-.topbar .logout:hover,.topbar .logout:focus-visible{background:rgba(239,68,68,.18);color:#fff;outline:none}
-.notification-toggle{position:relative;display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid rgba(148,163,184,.25);border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;cursor:pointer}.notification-toggle:hover{background:rgba(255,255,255,.12);color:#fff}.notification-toggle.enabled{border-color:rgba(52,211,153,.4);color:#6ee7b7}.notification-toggle .notify-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border:2px solid var(--ink);border-radius:50%;background:#f59e0b}
+.rider-menu{position:relative}.menu-toggle{display:grid;place-items:center;width:38px;height:38px;padding:0;border:0;background:transparent;color:#e2e8f0;font-size:19px;cursor:pointer}.menu-toggle:hover,.menu-toggle:focus-visible{color:#fff;outline:none}.rider-menu.open .menu-toggle{color:#7dd3fc}.rider-menu-panel{position:absolute;right:0;top:calc(100% + 10px);display:none;min-width:220px;padding:7px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 16px 36px rgba(15,23,42,.22);z-index:70}.rider-menu.open .rider-menu-panel{display:block}.rider-menu-panel button,.rider-menu-panel a{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:0;border-radius:8px;background:transparent;color:#253344;text-align:left;text-decoration:none;font:600 13px 'Inter',sans-serif;cursor:pointer}.rider-menu-panel button:hover,.rider-menu-panel a:hover,.rider-menu-panel button:focus-visible,.rider-menu-panel a:focus-visible{background:#f1f5f9;outline:none}.rider-menu-panel .menu-logout{color:#b91c1c}.rider-menu-panel .menu-logout:hover{background:#fef2f2}.rider-menu-panel .menu-divider{height:1px;margin:6px 2px;background:#e2e8f0}.notification-toggle{position:relative}.notification-toggle .notify-dot{width:7px;height:7px;border-radius:50%;background:#f59e0b}
+.rider-menu{position:relative}.menu-toggle{display:grid;place-items:center;width:38px;height:38px;padding:0;border:0;background:transparent;color:#e2e8f0;font-size:19px;cursor:pointer}.menu-toggle:hover,.menu-toggle:focus-visible{color:#fff;outline:none}.rider-menu.open .menu-toggle{color:#7dd3fc}.rider-menu-panel{position:absolute;right:0;top:calc(100% + 10px);display:none;min-width:220px;padding:7px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 16px 36px rgba(15,23,42,.22);z-index:70}.rider-menu.open .rider-menu-panel{display:block}.rider-menu-panel button,.rider-menu-panel a{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:0;border-radius:8px;background:transparent;color:#253344;text-align:left;text-decoration:none;font:600 13px 'Inter',sans-serif;cursor:pointer}.rider-menu-panel button:hover,.rider-menu-panel a:hover,.rider-menu-panel button:focus-visible,.rider-menu-panel a:focus-visible{background:#f1f5f9;outline:none}.rider-menu-panel .menu-logout{color:#b91c1c}.rider-menu-panel .menu-logout:hover{background:#fef2f2}.rider-menu-panel .menu-divider{height:1px;margin:6px 2px;background:#e2e8f0}.menu-rider-id{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 10px 8px;color:#64748b;font:700 11px 'JetBrains Mono',monospace}.menu-rider-id .copy-rider-id{color:#0f766e}.notification-toggle{position:relative}.notification-toggle .notify-dot{width:7px;height:7px;border-radius:50%;background:#f59e0b}
 
 /* ---- shell ---- */
 .shell{max-width:720px; margin:0 auto; padding:16px 14px 40px;}
@@ -685,8 +688,8 @@ body{
 .completed-row{transition:transform .15s ease,box-shadow .15s ease}.completed-row:hover{transform:translateY(-1px);box-shadow:0 7px 18px rgba(16,32,43,.06)}
 .completed-row .destination{display:block;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#486477;font-size:11px}
 
-#home,#earnings,#deliveries,#completed{scroll-margin-top:82px}
-.history-panel,.deliveries-panel,.earnings-panel{display:block}.history-panel .section-head,.deliveries-panel .section-head,.earnings-panel .section-head{margin-top:22px}.history-intro{margin:-3px 0 14px;color:var(--steel);font-size:12px}
+#home,#earnings,#deliveries,#completed{scroll-margin-top:82px}.history-day{margin:18px 0 8px;font-size:13px;color:var(--steel);font-weight:700}.history-day:first-of-type{margin-top:0}
+.history-panel{display:none}.deliveries-panel,.earnings-panel{display:block}.history-panel .section-head,.deliveries-panel .section-head,.earnings-panel .section-head{margin-top:22px}.history-intro{margin:-3px 0 14px;color:var(--steel);font-size:12px}
 
 /* ---- tracking drawer ---- */
 .drawer-overlay{
@@ -748,9 +751,7 @@ body{
 .message-input-row input{flex:1; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:13px;}
 .message-input-row input:focus{outline:none; border-color:var(--teal);}
 
-.feedback-content{font-size:13px; color:var(--ink); line-height:1.5; min-height:60px;}
-.feedback-rating{display:flex; gap:4px; margin-bottom:6px;}
-.feedback-rating span{color:var(--amber);}
+.feedback-content{font-size:13px; color:var(--ink); line-height:1.5; min-height:60px;}.feedback-rating{display:flex;align-items:center;gap:4px;margin-bottom:7px;font-size:20px;color:#d7dce2}.feedback-rating .filled{color:var(--amber)}.feedback-rating .rating-value{margin-left:6px;color:var(--ink);font:700 12px 'Inter',sans-serif}.feedback-empty{color:var(--steel);font-size:12px}
 
 .route-line.expanded{padding:18px 20px; margin:0;}
 .route-line.expanded .step{display:flex; flex-direction:column; align-items:center; flex:1; position:relative;}
@@ -761,10 +762,10 @@ body{
 
 .drawer-body{padding:16px 18px 26px;}
 @media (max-width:480px){
-  .topbar{padding:9px 10px;gap:8px}.topbar .brand{gap:7px}.topbar .brand-logo{width:38px;height:38px;flex-basis:38px;border-radius:10px}.topbar .brand-logo img{width:34px;height:34px}.topbar .brand-text b{font-size:18px}.topbar .brand-text span{font-size:10px}.topbar .rider-chip{gap:6px}.topbar .rider-identity{max-width:128px}.topbar .rider-name{font-size:12px}.topbar .rider-id{font-size:8px}.notification-toggle{width:34px;height:34px}.topbar .logout{width:36px;padding:0;justify-content:center}.topbar .logout span{display:none}.shift-summary{gap:7px}.metric-card{padding:11px}.metric-value{font-size:21px}.metric-icon{width:27px;height:27px;margin-bottom:8px}
+  .topbar{padding:9px 10px;gap:8px}.topbar .brand{gap:7px}.topbar .brand-logo{width:38px;height:38px;flex-basis:38px;border-radius:10px}.topbar .brand-logo img{width:34px;height:34px}.topbar .brand-text b{font-size:18px}.topbar .brand-text span{font-size:10px}.topbar .rider-chip{gap:6px}.topbar .rider-identity{max-width:128px}.topbar .rider-name{font-size:12px}.topbar .rider-id{font-size:8px}.menu-toggle{width:34px;height:34px}.shift-summary{gap:7px}.metric-card{padding:11px}.metric-value{font-size:21px}.metric-icon{width:27px;height:27px;margin-bottom:8px}
   .card-top{flex-direction:column;}
   .card-amount{font-size:15px;}
-  .card-top>div:last-child{text-align:left!important;display:flex;align-items:center;gap:8px}.card-actions{display:grid;grid-template-columns:1fr 1fr}.card-actions form{display:block!important}.card-actions .btn{width:100%;justify-content:center;min-height:44px}.completed-row .destination{max-width:210px}
+  .card-top>div:last-child{text-align:left!important;display:flex;align-items:center;gap:8px}.card-actions{display:grid;grid-template-columns:1fr 1fr}.card-actions form{display:block!important}.card-actions .btn{width:100%;justify-content:center;min-height:44px}.card-actions>.delay-report,.card-actions>.btn-ghost{grid-column:1 / -1}.card-actions>.btn-ghost{order:1}.card-actions>.delay-report{order:2}.completed-row .destination{max-width:210px}
 }
 </style>
 <script src="../js/ui-protection.js" defer></script>
@@ -780,15 +781,20 @@ body{
     </div>
   </div>
   <div class="rider-chip">
-    <button class="notification-toggle" id="notificationToggle" type="button" onclick="enablePushNotifications()" aria-label="Enable assignment notifications" title="Enable assignment notifications"><i class="fas fa-bell"></i><span class="notify-dot" id="notifyDot"></span></button>
     <div class="rider-identity">
       <strong class="rider-name"><?php echo htmlspecialchars($display_name); ?></strong>
-      <div class="rider-id-row">
-        <span class="rider-id" id="riderIdValue"><?php echo htmlspecialchars($rider_id); ?></span>
-        <button class="copy-rider-id" type="button" onclick="copyRiderId(this)" aria-label="Copy rider ID" title="Copy rider ID"><i class="far fa-copy"></i></button>
+    </div>
+    <div class="rider-menu" id="riderMenu">
+      <button class="menu-toggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="riderMenuPanel" aria-label="Open rider menu"><i class="fas fa-bars"></i></button>
+      <div class="rider-menu-panel" id="riderMenuPanel">
+        <div class="menu-rider-id"><span id="riderIdValue"><?php echo htmlspecialchars($rider_id); ?></span><button class="copy-rider-id" type="button" onclick="copyRiderId(this)" aria-label="Copy rider ID" title="Copy rider ID"><i class="far fa-copy"></i></button></div>
+        <div class="menu-divider"></div>
+        <button class="notification-toggle" id="notificationToggle" type="button" onclick="enablePushNotifications()"><i class="fas fa-bell"></i><span>Notifications</span><span class="notify-dot" id="notifyDot" aria-hidden="true"></span></button>
+        <a href="history.php" class="menu-history"><i class="fas fa-clock-rotate-left"></i><span>Delivery history by day</span></a>
+        <div class="menu-divider"></div>
+        <a href="../logout.php" class="menu-logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
       </div>
     </div>
-    <a href="../logout.php" class="logout" aria-label="Log out of HydroMIS"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
   </div>
 </div>
 
@@ -926,16 +932,18 @@ body{
 
   <section class="history-panel" id="completed" aria-labelledby="historyTitle">
   <div class="section-head">
-    <h2 id="historyTitle"><i class="fas fa-check-circle" style="color:var(--green); font-size:17px;"></i>Completed Today</h2>
+    <h2 id="historyTitle"><i class="fas fa-clock-rotate-left" style="color:var(--green); font-size:17px;"></i>Delivery History</h2>
   </div>
-  <p class="history-intro">Your completed deliveries and their order amounts for today.</p>
+  <p class="history-intro">Your completed deliveries, grouped by delivery day.</p>
 
-  <?php if (empty($completed_today)): ?>
+  <?php if (empty($delivery_history_by_day)): ?>
     <div class="empty-state">
       <i class="fas fa-inbox"></i>
-      <p>Nothing delivered yet today. Completed drop-offs will appear here.</p>
+      <p>No completed deliveries yet. Your delivery history will appear here.</p>
     </div>
-  <?php else: foreach (array_slice($completed_today, 0, 10) as $d): ?>
+  <?php else: foreach ($delivery_history_by_day as $day => $day_deliveries): ?>
+    <div class="history-day"><?php echo date('l, F j, Y', strtotime($day)); ?></div>
+    <?php foreach ($day_deliveries as $d): ?>
     <div class="completed-row">
       <div class="c-left">
         <b><?php echo htmlspecialchars($d['customer']); ?></b>
@@ -947,7 +955,7 @@ body{
         <span>Delivered</span>
       </div>
     </div>
-  <?php endforeach; endif; ?>
+    <?php endforeach; endforeach; endif; ?>
   </section>
 
 </div>
@@ -1032,7 +1040,7 @@ body{
 
       <div class="feedback-panel">
         <div class="feedback-head">Customer Feedback</div>
-        <div class="feedback-content" id="feedbackContent">No feedback submitted yet.</div>
+        <div class="feedback-content" id="feedbackContent"><div class="feedback-rating" aria-label="No customer rating yet"><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i></div><div class="feedback-empty">Awaiting the customer's rating.</div></div>
       </div>
 
       <div class="card-actions" id="drawerActions"></div>
@@ -1046,6 +1054,25 @@ body{
 const initialAssignmentNotifications = <?php echo json_encode($notifications, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const notificationToggle = document.getElementById('notificationToggle');
 const notifyDot = document.getElementById('notifyDot');
+const riderMenu = document.getElementById('riderMenu');
+const menuToggle = document.getElementById('menuToggle');
+
+function closeRiderMenu(){
+  riderMenu.classList.remove('open');
+  menuToggle.setAttribute('aria-expanded', 'false');
+}
+
+menuToggle.addEventListener('click', () => {
+  const isOpen = riderMenu.classList.toggle('open');
+  menuToggle.setAttribute('aria-expanded', String(isOpen));
+});
+document.addEventListener('click', (event) => {
+  if (!riderMenu.contains(event.target)) closeRiderMenu();
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeRiderMenu();
+});
+document.querySelector('.menu-history').addEventListener('click', closeRiderMenu);
 
 function syncNotificationButton(){
   const supported = 'Notification' in window;
@@ -1256,11 +1283,12 @@ function fillMessages(messages){
 function fillFeedback(feedback){
   const box = document.getElementById('feedbackContent');
   if (!feedback) {
-    box.textContent = 'No feedback submitted yet.';
+    box.innerHTML = `<div class="feedback-rating" aria-label="No customer rating yet">${'<i class="far fa-star"></i>'.repeat(5)}</div><div class="feedback-empty">Awaiting the customer's rating.</div>`;
     return;
   }
-  const stars = '★'.repeat(parseInt(feedback.rating, 10)) + '☆'.repeat(5 - parseInt(feedback.rating, 10));
-  box.innerHTML = `<div class="feedback-rating">${stars}</div><div>${escapeHtml(feedback.feedback_message || 'No written feedback provided.')}</div><div class="meta" style="margin-top:8px;">${formatDate(feedback.created_at)}</div>`;
+  const rating = Math.max(1, Math.min(5, parseInt(feedback.rating, 10) || 0));
+  const stars = Array.from({length: 5}, (_, index) => `<i class="fa${index < rating ? 's filled' : 'r'} fa-star"></i>`).join('');
+  box.innerHTML = `<div class="feedback-rating" aria-label="Customer rated ${rating} out of 5 stars">${stars}<span class="rating-value">${rating}/5</span></div><div>${escapeHtml(feedback.feedback_message || 'No written feedback provided.')}</div><div class="meta" style="margin-top:8px;">${formatDate(feedback.created_at)}</div>`;
 }
 
 function escapeHtml(str){

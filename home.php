@@ -1,12 +1,16 @@
 <?php
 session_start();
+// The public landing page can still be useful while the database service is
+// temporarily unavailable (for example, during maintenance).  Let the page
+// render its existing setup state instead of returning an HTTP 500.
+define('HYDROMIS_ALLOW_DB_FAILURE', true);
 require_once 'config/database.php';
 
 // Check if database is initialized
-$db_initialized = true;
-$check_table = $conn->query("SHOW TABLES LIKE 'users'");
-if (!$check_table || $check_table->num_rows == 0) {
-    $db_initialized = false;
+$db_initialized = empty($conn->connect_error);
+if ($db_initialized) {
+    $check_table = $conn->query("SHOW TABLES LIKE 'users'");
+    $db_initialized = $check_table && $check_table->num_rows > 0;
 }
 ?>
 <!DOCTYPE html>
@@ -1168,7 +1172,7 @@ if (!$check_table || $check_table->num_rows == 0) {
                 scroll-behavior: smooth;
                 cursor: grab;
                 user-select: none;
-                touch-action: pan-y;
+                touch-action: pan-x pan-y;
             }
             .cards-3.is-dragging { cursor: grabbing; scroll-snap-type: none; scroll-behavior: auto; }
             .cards-3::-webkit-scrollbar { display: none; }
