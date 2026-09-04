@@ -1,0 +1,5 @@
+# Use the system logo when a browser requests the default tab icon.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^favicon\.ico$ imagess/logosystem.png [L]
+</IfModule>
