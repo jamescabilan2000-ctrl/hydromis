@@ -1,116 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroMIS Privacy Terms</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="css/animations.css" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #1f2937;
-            background: linear-gradient(140deg, #ecfeff 0%, #f0f9ff 50%, #f0fdf4 100%);
-        }
-        .wrap {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 24px 16px 40px;
-        }
-        .topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 28px;
-            padding: 12px 0;
-        }
-        .brand {
-            display: inline-flex;
-            align-items: center;
-            gap: 14px;
-            font-weight: 800;
-            font-size: 36px;
-            color: #0f172a;
-            text-decoration: none;
-        }
-        .brand i { color: #2563eb; }
-        .home-link {
-            text-decoration: none;
-            color: #2563eb;
-            font-weight: 700;
-            border: 1px solid #bfdbfe;
-            background: #eff6ff;
-            padding: 8px 14px;
-            border-radius: 10px;
-        }
-        .card {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 16px;
-            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-            padding: 22px;
-        }
-        h1 {
-            margin: 0 0 10px;
-            font-size: 30px;
-            letter-spacing: -0.4px;
-        }
-        .updated {
-            margin: 0 0 20px;
-            color: #4b5563;
-            font-size: 14px;
-        }
-        h2 {
-            font-size: 20px;
-            margin: 22px 0 8px;
-        }
-        p {
-            margin: 0 0 10px;
-            line-height: 1.6;
-            color: #374151;
-        }
-        ul {
-            margin: 0 0 10px;
-            padding-left: 18px;
-            color: #374151;
-        }
-        li { margin-bottom: 8px; }
-    </style>
-    <script src="js/ui-protection.js" defer></script>
-</head>
-<body>
-    <div class="wrap">
-        <div class="topbar">
-            <a href="home.php" class="brand"><img src="imagess/hydromis-logo-v2.png" alt="HydroMIS Logo" style="width: 24px; height: 24px; object-fit: contain; margin-right: 6px;">HydroMIS</a>
-            <a href="home.php" class="home-link"><i class="fas fa-home"></i> Home</a>
-        </div>
-
-        <div class="card">
-            <h1>Privacy Terms</h1>
-            <p class="updated">Last updated: April 25, 2026</p>
-
-            <h2>1. Information We Collect</h2>
-            <p>HydroMIS may collect your name, address, contact number, account identifier, order details, and loyalty point history to operate the service.</p>
-
-            <h2>2. How We Use Your Data</h2>
-            <ul>
-                <li>To process orders and maintain account records.</li>
-                <li>To support QR-based login and customer verification.</li>
-                <li>To generate service history, reports, and loyalty rewards.</li>
-            </ul>
-
-            <h2>3. Data Protection</h2>
-            <p>We apply access controls and technical safeguards to reduce unauthorized access. While we use reasonable protection, no system is completely risk-free.</p>
-
-            <h2>4. Data Sharing</h2>
-            <p>Customer data is used for HydroMIS operations and is not sold to third parties for marketing purposes.</p>
-
-            <h2>5. Contact</h2>
-            <p>For privacy questions, contact hydromis.support@gmail.com.</p>
-        </div>
-    </div>
-</body>
-</html>
+<?php
+$legalTitle = 'Privacy Policy';
+$legalDescription = 'Understand what information is collected, how it is used, and the choices available to you.';
+$legalSummary = 'Your details help the station manage your account and fulfill orders. This page explains the data involved and how to request help.';
+$legalActive = 'privacy';
+$legalSections = [
+    ['scope', 'About this policy', '<p>This policy explains how personal information is handled through HydroMIS for account registration, water refill orders, station operations, and delivery. Your water station handles the service and records associated with your orders; HydroMIS support can help route system and privacy questions.</p>'],
+    ['collection', 'Information collected', '<ul><li><strong>Account details:</strong> name, mobile number, address, account identifier, and QR code details.</li><li><strong>Order records:</strong> items, quantities, delivery details, payment method and status, submitted payment evidence, loyalty history, and feedback.</li><li><strong>Location:</strong> coordinates provided through location-enabled features and rider location updates used for delivery tracking.</li><li><strong>Technical information:</strong> session identifiers, saved browser preferences, and request information processed by the website and its service providers.</li></ul>'],
+    ['use', 'Why information is used', '<p>Information is used to register and verify accounts, support QR login, process and deliver orders, verify payments, maintain transaction and reward records, respond to concerns, and generate operational reports.</p><p>Processing supports the service you request, applicable recordkeeping obligations, and legitimate operational and security needs. Where a feature relies on consent, you may withdraw that consent; doing so may affect that feature.</p>'],
+    ['location', 'Location and browser storage', '<p>Location-enabled features ask for browser permission. Customer coordinates can help identify a delivery location. Rider coordinates support delivery monitoring and are displayed through delivery tracking features. You can manage location permission in your browser or device settings; disabling it can limit these features.</p><p>HydroMIS uses session cookies for account sessions and browser storage for features such as saved preferences and notification account identifiers. Clearing storage or blocking cookies may sign you out or affect functionality. Sign out when using a shared device.</p>'],
+    ['sharing', 'Who receives information', '<p>Authorized station administrators, staff, and assigned riders use information relevant to their work, such as customer contact and delivery details. Information may also be disclosed when required by law.</p><p>The current registration flow sends QR content, including your name, address, contact number, and account identifier, to <strong>api.qrserver.com</strong> to generate a QR image. Treat the resulting QR code as private information.</p><p>Map features request map tiles from OpenStreetMap services. Hosting, file storage, and externally loaded website resources also involve service providers receiving data needed to serve those features, such as request details and IP addresses. Hosted deployments may use Supabase for uploaded files. Provider handling is subject to their own privacy terms.</p>'],
+    ['security', 'Security and retention', '<p>HydroMIS uses account access controls and encryption for selected stored personal information. These safeguards reduce risk but cannot guarantee that every transmission, file, or account is secure. Keep your QR code and login details private and report unexpected account activity.</p><p>Account, transaction, and uploaded-file records are stored to support ongoing service and recordkeeping. The application does not provide a single automatic deletion period for all records. Contact the station or support for the retention period applicable to your records and to request deletion; some records may need to be retained for legal obligations or unresolved transactions.</p>'],
+    ['rights', 'Your privacy rights', '<p>Under the Philippine Data Privacy Act, rights may include being informed, accessing and correcting personal data, objecting to processing, and requesting erasure or blocking, subject to applicable conditions. Data portability and compensation rights may also apply.</p><p>Send requests to <a href="mailto:hydromis.support@gmail.com">hydromis.support@gmail.com</a>, describing the information or concern involved. Identity verification may be needed to protect your records. You may also raise a complaint with the National Privacy Commission. Read its <a href="https://privacy.gov.ph/data-subject-rights/">guide to data subject rights</a> for details.</p>'],
+    ['contact', 'Contact and policy updates', '<p>For privacy questions or requests, contact <a href="mailto:hydromis.support@gmail.com">hydromis.support@gmail.com</a> or the water station handling your account. Share only the details necessary to explain your request; do not email your QR code or password.</p><p>This page will be updated when the described practices change. Check the revision date above when reviewing the policy.</p>']
+];
+require __DIR__ . '/legal-layout.php';

@@ -1,116 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroMIS Terms and Conditions</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="css/animations.css" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #1f2937;
-            background: linear-gradient(140deg, #ecfeff 0%, #f0f9ff 50%, #f0fdf4 100%);
-        }
-        .wrap {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 24px 16px 40px;
-        }
-        .topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 28px;
-            padding: 12px 0;
-        }
-        .brand {
-            display: inline-flex;
-            align-items: center;
-            gap: 14px;
-            font-weight: 800;
-            font-size: 36px;
-            color: #0f172a;
-            text-decoration: none;
-        }
-        .brand i { color: #2563eb; }
-        .home-link {
-            text-decoration: none;
-            color: #2563eb;
-            font-weight: 700;
-            border: 1px solid #bfdbfe;
-            background: #eff6ff;
-            padding: 8px 14px;
-            border-radius: 10px;
-        }
-        .card {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 16px;
-            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-            padding: 22px;
-        }
-        h1 {
-            margin: 0 0 10px;
-            font-size: 30px;
-            letter-spacing: -0.4px;
-        }
-        .updated {
-            margin: 0 0 20px;
-            color: #4b5563;
-            font-size: 14px;
-        }
-        h2 {
-            font-size: 20px;
-            margin: 22px 0 8px;
-        }
-        p {
-            margin: 0 0 10px;
-            line-height: 1.6;
-            color: #374151;
-        }
-        ul {
-            margin: 0 0 10px;
-            padding-left: 18px;
-            color: #374151;
-        }
-        li { margin-bottom: 8px; }
-    </style>
-    <script src="js/ui-protection.js" defer></script>
-</head>
-<body>
-    <div class="wrap">
-        <div class="topbar">
-            <a href="home.php" class="brand"><img src="imagess/hydromis-logo-v2.png" alt="HydroMIS Logo" style="width: 24px; height: 24px; object-fit: contain; margin-right: 6px;">HydroMIS</a>
-            <a href="home.php" class="home-link"><i class="fas fa-home"></i> Home</a>
-        </div>
-
-        <div class="card">
-            <h1>Terms and Conditions</h1>
-            <p class="updated">Last updated: April 25, 2026</p>
-
-            <h2>1. Use of Service</h2>
-            <p>HydroMIS provides water refilling management features for customers and staff. By using this system, you agree to provide accurate account information and use the platform lawfully.</p>
-
-            <h2>2. Account Responsibility</h2>
-            <ul>
-                <li>You are responsible for your mobile number and QR code usage.</li>
-                <li>You must keep your account details up to date.</li>
-                <li>Unauthorized use of another account is prohibited.</li>
-            </ul>
-
-            <h2>3. Orders and Payments</h2>
-            <p>Order totals, discounts, and loyalty points are computed by the system based on configured rules. Final approval and fulfillment remain subject to business verification.</p>
-
-            <h2>4. Service Availability</h2>
-            <p>We may update, suspend, or improve features without prior notice to maintain service quality and security.</p>
-
-            <h2>5. Contact</h2>
-            <p>For concerns regarding these terms, contact us at hydromis.support@gmail.com.</p>
-        </div>
-    </div>
-</body>
-</html>
+<?php
+$legalTitle = 'Terms and Conditions';
+$legalDescription = 'A clear guide to your account, orders, payments, and deliveries.';
+$legalSummary = 'Keep your account details accurate, protect your QR code, and review your order before submitting it.';
+$legalActive = 'terms';
+$legalSections = [
+    ['service', 'Using HydroMIS', '<p>HydroMIS helps customers place water refill orders and helps station staff and riders manage fulfillment and delivery. These terms apply when you use the service. Read the <a href="privacy.php">Privacy Policy</a> to understand how personal information is handled.</p>'],
+    ['account', 'Your account and QR code', '<p>Provide accurate registration and delivery details, and keep your contact number up to date. Account access and orders may be subject to station verification or approval.</p><p>Keep your QR code private: it supports account access and may contain personal information. Do not post it publicly or share it with people you do not trust. Contact support if it is lost, exposed, or used without your permission.</p>'],
+    ['orders', 'Orders, prices and payments', '<p>Check the items, quantities, delivery address, payment method, and total before submitting an order. Fulfillment depends on stock, station approval, and delivery availability. A submitted order is not a guarantee of delivery.</p><p>Use the payment options shown for your order. Electronic payments may require proof and verification. Discounts and loyalty rewards follow the rules shown in the system; contact the station if a total or points balance appears incorrect.</p>'],
+    ['cancellations', 'Cancellations and refunds', '<p>You can cancel an eligible pending order using the cancellation option on the tracking page. Once an order has been approved, started, or completed, contact the station for assistance.</p><p>Cancellation does not mean a payment has already been refunded. Paid GCash or Maya orders may be marked as awaiting a refund. Contact the station with your transaction reference to confirm the refund status and expected timing.</p>'],
+    ['delivery', 'Delivery and order concerns', '<p>Provide a reachable contact number and a complete delivery address. Delivery timing and map positions are estimates and can be affected by traffic, connectivity, GPS accuracy, and station workload.</p><p>Report missing items, incorrect quantities, damaged containers, or water quality concerns promptly to the station. Include your order reference and a description so staff can investigate and discuss the appropriate resolution.</p>'],
+    ['conduct', 'Responsible use', '<p>Do not access another person\'s account without permission, submit false orders or payment evidence, misuse customer or rider details, or interfere with the system. Account access may be restricted while suspected misuse or security concerns are investigated.</p>'],
+    ['availability', 'Availability and changes', '<p>Maintenance, network problems, or service interruptions may temporarily affect access, notifications, and tracking. Contact the station if you need help confirming an order during an interruption.</p><p>These terms may be revised as the service changes. The date on this page identifies the latest revision. Nothing in these terms removes rights or remedies available under applicable law.</p>'],
+    ['contact', 'Questions and support', '<p>For order issues, contact the water station handling your order. For HydroMIS account or service questions, email <a href="mailto:hydromis.support@gmail.com">hydromis.support@gmail.com</a>. Include your order reference when relevant, but do not send passwords, your QR code, or unnecessary personal information.</p>']
+];
+require __DIR__ . '/legal-layout.php';

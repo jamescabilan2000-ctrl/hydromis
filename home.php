@@ -1148,12 +1148,12 @@ if ($db_initialized) {
                 gap: 8px;
                 cursor: grab;
                 user-select: none;
-                touch-action: pan-y;
+                touch-action: pan-x pan-y pinch-zoom;
             }
             .trust-inner.is-dragging { cursor: grabbing; scroll-snap-type: none; }
             .trust-inner::-webkit-scrollbar { display: none; }
-            .trust-label { flex-basis: 100%; text-align: center; margin-bottom: 10px; }
-            .trust-item  { flex-shrink: 0; font-size: .78rem; padding: 7px 14px; }
+            .trust-label { flex: 0 0 auto; white-space: nowrap; margin-bottom: 0; }
+            .trust-item  { flex-shrink: 0; white-space: nowrap; font-size: .78rem; padding: 7px 14px; }
 
             /* Section headers */
             .section-title { font-size: 1.65rem; letter-spacing: -.025em; }
