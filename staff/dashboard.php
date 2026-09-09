@@ -311,7 +311,7 @@ $pending_trans = $conn->query("
     FROM transactions t
     JOIN users u ON t.user_id = u.user_id
     WHERE t.status = 'pending'
-    ORDER BY t.created_at ASC
+    ORDER BY t.qr_priority DESC, t.created_at ASC, t.id ASC
 ");
 
 $rider_list = [];
@@ -338,7 +338,7 @@ $approved_trans = $conn->query("
       AND COALESCE(t.fulfillment_method,'delivery') = 'delivery'
       AND t.transaction_id NOT LIKE 'RWD-%'
       AND COALESCE(t.description,'') NOT LIKE 'Reward Redemption - %'
-    ORDER BY t.created_at DESC
+    ORDER BY t.qr_priority DESC, t.created_at ASC, t.id ASC
     LIMIT 10
 ");
 
@@ -350,7 +350,7 @@ $pickup_trans = $conn->query("
       AND t.fulfillment_method = 'pickup'
       AND COALESCE(t.delivery_status, 'pending') <> 'delivered'
       AND t.transaction_id NOT LIKE 'RWD-%'
-    ORDER BY t.created_at ASC
+    ORDER BY t.qr_priority DESC, t.created_at ASC, t.id ASC
 ");
 
 $avg_feedback  = (float)$scalar_value("SELECT COALESCE(AVG(rating),0) AS avg_rating FROM feedback_ratings", 'avg_rating', 0);
@@ -1244,7 +1244,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                 <?php if ($pending_trans && $pending_trans->num_rows > 0): ?>
                   <?php while ($row = $pending_trans->fetch_assoc()): ?>
                   <tr>
-                    <td><span class="t-id"><?php echo htmlspecialchars($row['transaction_id']); ?></span></td>
+                    <td><span class="t-id"><?php echo htmlspecialchars($row['transaction_id']); ?></span><?php if (!empty($row['qr_priority'])): ?> <span style="display:inline-block;padding:3px 7px;border-radius:6px;background:#dff7ec;color:#12643d;font-size:11px;font-weight:700;">QR priority</span><?php endif; ?></td>
                     <td><span class="t-name"><?php echo htmlspecialchars($row['full_name']); ?></span></td>
                     <td style="color:var(--muted);font-size:12px;"><?php echo htmlspecialchars($row['contact_number']); ?></td>
                     <td><span class="t-amount"><?php echo format_currency($row['amount']); ?></span></td>
@@ -1324,7 +1324,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
               <div class="delivery-item">
                 <div class="delivery-top">
                   <div>
-                    <div class="delivery-id"><?php echo htmlspecialchars($row['transaction_id']); ?></div>
+                    <div class="delivery-id"><?php echo htmlspecialchars($row['transaction_id']); ?><?php if (!empty($row['qr_priority'])): ?> <span style="display:inline-block;padding:3px 7px;border-radius:6px;background:#dff7ec;color:#12643d;font-size:11px;font-weight:700;">QR priority</span><?php endif; ?></div>
                     <div class="delivery-cust"><?php echo htmlspecialchars($row['full_name']); ?></div>
                     <div class="delivery-rider">
                       <?php if ($row['rider_name']): ?>
@@ -1394,7 +1394,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
               <div class="delivery-item">
                 <div class="delivery-top">
                   <div>
-                    <div class="delivery-id"><?php echo htmlspecialchars($pickup['transaction_id']); ?></div>
+                    <div class="delivery-id"><?php echo htmlspecialchars($pickup['transaction_id']); ?><?php if (!empty($pickup['qr_priority'])): ?> <span style="display:inline-block;padding:3px 7px;border-radius:6px;background:#dff7ec;color:#12643d;font-size:11px;font-weight:700;">QR priority</span><?php endif; ?></div>
                     <div class="delivery-cust"><?php echo htmlspecialchars($pickup['full_name']); ?></div>
                     <div class="delivery-rider"><span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($pickup['contact_number'] ?: 'No contact number'); ?></span></div>
                   </div>

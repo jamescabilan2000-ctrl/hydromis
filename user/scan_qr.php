@@ -1,4 +1,5 @@
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 require_once '../config/database.php';
 require_once '../config/storage_service.php';
 require_once '../config/system_settings.php';
@@ -20,6 +21,7 @@ if (isset($_GET['approval_required'])) {
 
 // Handle QR Scan
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qr_data'])) {
+    unset($_SESSION['qr_priority_user']);
     $qr_raw_data = $_POST['qr_data'];
     
     // Try to decode JSON
@@ -33,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qr_data'])) {
         
         if ($result->num_rows > 0) {
             $scanned_data = $result->fetch_assoc();
+            $_SESSION['qr_priority_user'] = (string)$scanned_data['user_id'];
         } else {
             $error = 'User not found in database!';
         }
@@ -43,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qr_data'])) {
 
 // Handle Mobile Number Login (go to purchase/account area)
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mobile_login'])) {
+    unset($_SESSION['qr_priority_user']);
     $mobile_login_value = sanitize(trim($_POST['mobile_number'] ?? ''));
     $mobileDigits = preg_replace('/\D+/', '', $mobile_login_value);
     if (str_starts_with($mobileDigits, '63') && strlen($mobileDigits) === 12) $mobileDigits = '0' . substr($mobileDigits, 2);
@@ -2227,7 +2231,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                     <p style="color: #475569; font-size: 14px; margin-bottom: 18px; text-align: center;">Use your account QR code to continue</p>
                     <div class="station-login-note" role="note">
                         <i class="fas fa-store"></i>
-                        <span><strong>Main station QR only.</strong> Scan the customer QR code issued by the HydroMIS water refilling station.</span>
+                        <span><strong>QR orders receive priority.</strong> Scan your HydroMIS customer QR code. Your next order goes ahead of mobile-login orders; QR orders are served oldest first.</span>
                     </div>
                     <button type="button" class="btn-toggle" onclick="showScanner();" style="margin-bottom: 12px; width: 100%;">
                         <i class="fas fa-camera mr-2"></i> Start Camera

@@ -1,4 +1,5 @@
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 require_once '../config/database.php';
 require_once '../config/storage_service.php';
 require_once '../config/system_settings.php';
@@ -249,13 +250,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         }
 
         $inventory_item_sql = $inventory_item_id === null ? 'NULL' : (string)$inventory_item_id;
+        $qr_priority = (($_SESSION['qr_priority_user'] ?? '') === (string)$scanned_data['user_id']) ? 1 : 0;
         $new_container_inventory_item_sql = $new_container_inventory_item_id === null ? 'NULL' : (string)$new_container_inventory_item_id;
-        $sql = "INSERT INTO transactions (transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, notes, status, payment_method, payment_reference, payment_status, payment_proof, container_size, container_status, fulfillment_method, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, created_at)
-                VALUES ('$transaction_id', '$user_id', '$final_amount', '$description', 'regular', '$quantity', '$price_per_unit', '$discount', '$loyalty_points', '$customer_notes', 'pending', '$payment_method', $safe_reference, '$payment_status', $safe_proof, '$container_size', '$container_status', '$fulfillment_method', $inventory_item_sql, $inventory_reserved, $new_container_inventory_item_sql, $new_container_inventory_reserved, NOW())";
+        $sql = "INSERT INTO transactions (transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, notes, status, payment_method, payment_reference, payment_status, payment_proof, container_size, container_status, fulfillment_method, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, qr_priority, created_at)
+                VALUES ('$transaction_id', '$user_id', '$final_amount', '$description', 'regular', '$quantity', '$price_per_unit', '$discount', '$loyalty_points', '$customer_notes', 'pending', '$payment_method', $safe_reference, '$payment_status', $safe_proof, '$container_size', '$container_status', '$fulfillment_method', $inventory_item_sql, $inventory_reserved, $new_container_inventory_item_sql, $new_container_inventory_reserved, $qr_priority, NOW())";
 
         if (!empty($error)) {
             // Stock validation already supplied the customer-facing message.
         } elseif ($conn->query($sql) === TRUE) {
+            unset($_SESSION['qr_priority_user']);
             if ($inventory_transaction_open) {
                 $conn->commit();
                 $inventory_transaction_open = false;

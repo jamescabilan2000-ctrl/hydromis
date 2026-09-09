@@ -11,6 +11,31 @@
         ? new URL('../api/user_notifications.php', scriptUrl).href
         : '../api/user_notifications.php';
     const shown = new Set(JSON.parse(sessionStorage.getItem('hydromisShownNotifications') || '[]'));
+    const appUrl = new URL('../', scriptUrl || new URL('../js/user-notifications.js', location.href));
+    let registrationPromise;
+    function notificationRegistration() {
+        if (!registrationPromise) {
+            registrationPromise = navigator.serviceWorker.register(new URL('notification-worker.js', appUrl).href)
+                .then(() => navigator.serviceWorker.ready)
+                .catch(error => { registrationPromise = null; throw error; });
+        }
+        return registrationPromise;
+    }
+
+    async function systemNotification(item) {
+        if (!window.isSecureContext || !('Notification' in window) ||
+            Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
+        const registration = await notificationRegistration();
+        const target = new URL('user/track_order.php', appUrl);
+        target.searchParams.set('user_id', userId);
+        if (item.transaction_id) target.searchParams.set('transaction_id', item.transaction_id);
+        await registration.showNotification(item.title, {
+            body: item.message,
+            icon: new URL('imagess/logosystem.png', appUrl).href,
+            tag: 'hydromis-' + userId + '-' + item.id,
+            data: {url: target.href}
+        });
+    }
 
     function toast(item) {
         let container = document.getElementById('user-notification-live');
@@ -51,10 +76,7 @@
             for (const item of data.notifications) {
                 if (!shown.has(String(item.id))) {
                     shown.add(String(item.id)); toast(item);
-                    if ('Notification' in window && Notification.permission === 'granted') {
-                        // Some mobile browsers expose Notification but reject its constructor.
-                        try { new Notification(item.title,{body:item.message,icon:'../imagess/logosystem.png',tag:'hydromis-'+item.id}); } catch (_) {}
-                    }
+                    try { await systemNotification(item); } catch (error) { console.warn('Unable to display phone notification.', error); }
                 }
                 await markRead(item.id);
             }
@@ -62,10 +84,24 @@
         } catch (_) { /* Retry on the next poll when the connection returns. */ }
     }
 
-    if ('Notification' in window && Notification.permission === 'default') {
+    if (window.isSecureContext && 'serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'default') {
         const button=document.createElement('button');button.type='button';button.className='notification-permission-button';button.textContent='Enable account notifications';
         button.style.cssText='position:fixed;right:18px;bottom:18px;z-index:99998;border:0;border-radius:999px;padding:11px 16px;background:#2563eb;color:white;font-weight:700;box-shadow:0 10px 28px rgba(0,0,0,.28);cursor:pointer';
-        button.onclick=async()=>{const permission=await Notification.requestPermission();if(permission!=='default')button.remove();poll();};
+        button.onclick = async () => {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    await systemNotification({id:'enabled',title:'HydroMIS notifications enabled',message:'Customer alerts will appear here while HydroMIS is open.'});
+                    button.remove();
+                } else if (permission === 'denied') {
+                    button.remove();
+                }
+                poll();
+            } catch (error) {
+                button.textContent = 'Retry enabling notifications';
+                console.warn('Unable to enable phone notifications.', error);
+            }
+        };
         document.body.appendChild(button);
     }
     poll(); setInterval(poll,15000);

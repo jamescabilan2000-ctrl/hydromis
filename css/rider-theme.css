@@ -1,0 +1,50 @@
+/* HydroMIS blue and aqua palette for the rider workspace. */
+:root {
+    --ink: #102d47;
+    --paper: #f1f8fc;
+    --teal: #078caa;
+    --green: #087f65;
+    --steel: #59738b;
+    --line: #dceaf2;
+}
+body {
+    min-height: 100vh;
+    background: radial-gradient(ellipse at top left, #def6fa 0, transparent 52%),
+        linear-gradient(145deg, #f1f8fc, #f8fbff);
+}
+.topbar {
+    background: linear-gradient(115deg, #103451, #125881 65%, #087e91);
+    border-bottom: 1px solid #ffffff24;
+    box-shadow: 0 5px 20px #10345124;
+}
+.topbar .brand-logo {
+    background: #ffffffed;
+    border-color: #bce9f4;
+    box-shadow: 0 3px 12px #03273f26;
+}
+.topbar .brand-logo img {
+    animation: riderLogoBreathe 5s ease-in-out infinite;
+    transition: filter .25s ease;
+    filter: drop-shadow(0 2px 3px #1477a02b);
+}
+.topbar .brand-logo:hover img { filter: drop-shadow(0 2px 6px #09b4c866); }
+.topbar .brand-text span { color: #c0f1fc; }
+.metric-card { border-color: var(--line); box-shadow: 0 7px 22px #174b7010; }
+.metric-card.primary { background: linear-gradient(135deg, #1769d2, #078fa8); }
+.metric-icon { background: #e8f7fd; color: #087fa0; }
+.section-head h2 { color: #153d5d; }
+.card { border-color: var(--line); box-shadow: 0 8px 24px #174b7010; }
+.btn-track { background: linear-gradient(120deg, #087f9e, #06959e); color: #fff; }
+.btn-secondary { background: linear-gradient(120deg, #17579d, #1769d2); color: #fff; }
+.btn-ghost { background: #edf5fb; color: #214d70; }
+.btn { transition: filter .2s ease, box-shadow .2s ease; }
+.btn:hover { filter: brightness(1.06); box-shadow: 0 4px 12px #174b7020; }
+.btn:focus-visible, .menu-toggle:focus-visible { outline: 3px solid #38c9df; outline-offset: 3px; }
+@keyframes riderLogoBreathe {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-2px) scale(1.035); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .topbar .brand-logo img { animation: none; transition: none; }
+    .btn { transition: none; }
+}

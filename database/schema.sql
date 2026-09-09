@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     container_size VARCHAR(30),
     container_status VARCHAR(20),
     fulfillment_method VARCHAR(20),
+    qr_priority TINYINT(1) NOT NULL DEFAULT 0,
     inventory_item_id INT,
     inventory_reserved TINYINT(1) NOT NULL DEFAULT 0,
     cancellation_reason VARCHAR(255),
