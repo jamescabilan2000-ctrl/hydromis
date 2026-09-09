@@ -2,31 +2,14 @@
 require_once __DIR__ . '/data_security.php';
 // Database configuration. Production credentials belong in one of the ignored
 // local configuration files, never in Git.
-$databaseConfig = [];
-
-$supabaseConfigPath = __DIR__ . '/supabase.php';
-if (is_file($supabaseConfigPath)) {
-    $loadedConfig = require $supabaseConfigPath;
-    if (is_array($loadedConfig)) $databaseConfig = $loadedConfig;
-}
-
-$supabaseLocalConfigPath = __DIR__ . '/supabase.local.php';
-if (is_file($supabaseLocalConfigPath)) {
-    $localConfig = require $supabaseLocalConfigPath;
-    if (is_array($localConfig)) $databaseConfig = array_replace($databaseConfig, $localConfig);
-}
-
-$databaseLocalConfigPath = __DIR__ . '/database.local.php';
-if (is_file($databaseLocalConfigPath)) {
-    $localConfig = require $databaseLocalConfigPath;
-    if (is_array($localConfig)) $databaseConfig = array_replace($databaseConfig, $localConfig);
-}
+require_once __DIR__ . '/database_config.php';
+$databaseConfig = hydromis_database_config();
 
 define('DB_HOST', $databaseConfig['host'] ?? '');
-define('DB_PORT', $databaseConfig['port'] ?? (($databaseConfig['driver'] ?? '') === 'mysql' ? '3306' : '6543'));
+define('DB_PORT', $databaseConfig['port'] ?? '3306');
 define('DB_USER', $databaseConfig['user'] ?? '');
 define('DB_PASS', $databaseConfig['password'] ?? '');
-define('DB_NAME', $databaseConfig['database'] ?? (($databaseConfig['driver'] ?? '') === 'mysql' ? '' : 'postgres'));
+define('DB_NAME', $databaseConfig['database'] ?? '');
 
 function sanitize($input) {
     global $conn;
@@ -52,15 +35,6 @@ function generateUserID() {
     throw new RuntimeException('Unable to generate a unique customer ID.');
 }
 
-define('DB_SSLMODE', $databaseConfig['sslmode'] ?? 'require');
-if (($databaseConfig['driver'] ?? 'pgsql') === 'pgsql') {
-    require __DIR__ . '/database_pgsql.php';
-    require_once __DIR__ . '/loyalty_service.php';
-    enforce_annual_loyalty_reset($conn);
-    require_once __DIR__ . '/activity_logger.php';
-    auto_log_system_request($conn);
-    return;
-}
 
 /**
  * Lightweight result wrapper for mysqli queries.

@@ -3,6 +3,12 @@
 HydroMIS is organized by application module so a developer can quickly find the
 screen or service they need.
 
+Production runs on Hostinger with PHP, MySQL, and local file storage. Keep the
+hosting credentials in `config/database.local.php` (see
+`config/database.local.example.php`). Preserve that file, `config/.encryption_key`,
+`uploads/`, and `qrcodes/` when updating the live site. The FTP workflow uses the
+`MYSQL_LOCAL_PHP` secret for the database configuration.
+
 ## Start here
 
 - [System module map](PROJECT_STRUCTURE.md) - every feature grouped by module

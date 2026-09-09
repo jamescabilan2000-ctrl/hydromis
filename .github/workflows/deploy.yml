@@ -43,9 +43,9 @@ jobs:
           if [[ "$MYSQL_LOCAL_PHP" == "<?php"* ]]; then
             printf '%s' "$MYSQL_LOCAL_PHP" > "$deploy_dir/config/database.local.php"
           else
-            printf '%s\n' '<?php return ["driver" => "mysql"];' > "$deploy_dir/config/database.local.php"
+            echo 'MYSQL_LOCAL_PHP must contain the complete Hostinger MySQL PHP configuration.' >&2
+            exit 1
           fi
-          printf '%s\n' '<?php return [];' > "$deploy_dir/config/supabase.local.php"
           printf '%s' "$HYDROMIS_ENCRYPTION_KEY" > "$deploy_dir/config/.encryption_key"
 
       - name: Deploy files through FTP

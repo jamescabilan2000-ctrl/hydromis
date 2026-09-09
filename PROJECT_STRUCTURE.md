@@ -73,7 +73,7 @@ Related scripts: `js/rider-gps-tracker.js` and
 | Folder | Contents |
 |---|---|
 | `api/` | HTTP endpoints, currently delivery tracking |
-| `config/` | Database, portal, and Supabase configuration |
+| `config/` | Hostinger MySQL configuration, local storage, and shared services |
 | `database/` | Main schema and incremental SQL migrations |
 | `data/` | Application-managed JSON data |
 
