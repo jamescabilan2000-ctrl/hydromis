@@ -2211,6 +2211,10 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                     <?php endif; ?>
 
                     <style>
+                        #mobileLoginForm .mobile-field { display: flex; align-items: center; margin-bottom: 10px; border: 1px solid #cbdfe8; border-radius: 14px; background: #f8fcfe; }
+                        #mobileLoginForm .mobile-field:focus-within { border-color: #08b8c8; box-shadow: 0 0 0 4px rgba(8,184,200,.14); }
+                        #mobileLoginForm .country-code { position: static; transform: none; flex: 0 0 auto; padding: 0 14px; color: #506b82; }
+                        #mobileLoginForm .mobile-field .form-control { min-width: 0; flex: 1; width: 100%; margin: 0 !important; padding-left: 14px !important; border: 0 !important; background: transparent !important; box-shadow: none !important; transform: none !important; }
                         #mobileLoginForm .btn-toggle:disabled { opacity: .5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
                         #mobileLoginForm .btn-toggle:disabled::after { display: none; }
                     </style>
@@ -2516,6 +2520,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
 
         // Price Calculation Function
         function calculatePrice() {
+            if (!document.getElementById('water_type') || !document.getElementById('quantity')) return;
             const waterType = document.getElementById('water_type').value;
             const quantity = parseInt(document.getElementById('quantity').value) || 0;
             const pricePerUnit = waterType === 'nowater' ? 30 : 20;
