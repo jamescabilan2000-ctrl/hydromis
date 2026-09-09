@@ -13,8 +13,22 @@
     var saved = normalize(localStorage.getItem(key));
     document.documentElement.setAttribute('data-admin-color-mode', saved);
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { window.applyAdminColorMode(saved, false); }, { once:true });
+        document.addEventListener('DOMContentLoaded', function () { 
+            window.applyAdminColorMode(saved, false); 
+            if (!document.querySelector('script[src*="staff-pending-notifications.js"]')) {
+                var s = document.createElement('script');
+                s.src = '../js/staff-pending-notifications.js';
+                s.defer = true;
+                document.head.appendChild(s);
+            }
+        }, { once:true });
     } else {
         window.applyAdminColorMode(saved, false);
+        if (!document.querySelector('script[src*="staff-pending-notifications.js"]')) {
+            var s = document.createElement('script');
+            s.src = '../js/staff-pending-notifications.js';
+            s.defer = true;
+            document.head.appendChild(s);
+        }
     }
 })();
