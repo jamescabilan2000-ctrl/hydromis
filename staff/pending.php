@@ -767,7 +767,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                 <?php if ($pending_trans && $pending_trans->num_rows > 0): ?>
                                     <?php while ($row = $pending_trans->fetch_assoc()): ?>
                                     <tr>
-                                        <td><?php echo htmlspecialchars($row['transaction_id']); ?><?php if (!empty($row['qr_priority'])): ?> <span style="display:inline-block;padding:3px 7px;border-radius:6px;background:#dff7ec;color:#12643d;font-size:11px;font-weight:700;">QR priority</span><?php endif; ?></td>
+                                        <td><?php echo htmlspecialchars($row['transaction_id']); ?></td>
                                         <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                         <td><?php echo htmlspecialchars($row['contact_number']); ?></td>
                                         <td>

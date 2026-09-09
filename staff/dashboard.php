@@ -275,7 +275,6 @@ $analytics_exclusions = "transaction_id NOT LIKE 'RWD-%' AND COALESCE(descriptio
 $pending  = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='pending' AND {$analytics_condition} AND {$analytics_exclusions}", 'count', 0);
 $reward_claims_pending = (int)$scalar_value("SELECT COUNT(*) as count FROM reward_claims WHERE claim_status='pending'", 'count', 0);
 $approved = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='approved' AND {$analytics_condition} AND {$analytics_exclusions}", 'count', 0);
-$approved_operations = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='approved' AND transaction_id NOT LIKE 'RWD-%' AND COALESCE(description,'') NOT LIKE 'Reward Redemption - %'", 'count', 0);
 $denied   = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='denied' AND {$analytics_condition} AND {$analytics_exclusions}", 'count', 0);
 $revenue  = (float)$scalar_value("SELECT COALESCE(SUM(amount),0) AS total FROM transactions WHERE status='approved' AND {$analytics_condition} AND {$analytics_exclusions}", 'total', 0);
 $in_transit = (int)$scalar_value("SELECT COUNT(*) as count FROM transactions WHERE status='approved' AND delivery_status IN ('on_way','on_the_way')", 'count', 0);
@@ -338,9 +337,10 @@ $approved_trans = $conn->query("
       AND COALESCE(t.fulfillment_method,'delivery') = 'delivery'
       AND t.transaction_id NOT LIKE 'RWD-%'
       AND COALESCE(t.description,'') NOT LIKE 'Reward Redemption - %'
-    ORDER BY t.qr_priority DESC, t.created_at ASC, t.id ASC
-    LIMIT 10
+    ORDER BY CASE WHEN t.delivery_status = 'delivered' THEN 1 ELSE 0 END ASC,
+             t.qr_priority DESC, t.created_at ASC, t.id ASC
 ");
+$approved_operations = $approved_trans ? $approved_trans->num_rows : 0;
 
 $pickup_trans = $conn->query("
     SELECT t.*, u.full_name, u.contact_number, u.email, u.address
@@ -1219,7 +1219,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
       <!-- Pending Approvals + Delivery -->
       <div class="content-grid section">
         <!-- Pending Approvals Table -->
-        <?php if (!$delivery_operations_view): ?>
+        <?php if ($operations_section === 'deliveries' && $pending_trans && $pending_trans->num_rows > 0): ?>
         <div class="card">
           <div class="card-head">
             <div class="card-title">
@@ -1244,7 +1244,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                 <?php if ($pending_trans && $pending_trans->num_rows > 0): ?>
                   <?php while ($row = $pending_trans->fetch_assoc()): ?>
                   <tr>
-                    <td><span class="t-id"><?php echo htmlspecialchars($row['transaction_id']); ?></span><?php if (!empty($row['qr_priority'])): ?> <span style="display:inline-block;padding:3px 7px;border-radius:6px;background:#dff7ec;color:#12643d;font-size:11px;font-weight:700;">QR priority</span><?php endif; ?></td>
+                    <td><span class="t-id"><?php echo htmlspecialchars($row['transaction_id']); ?></span></td>
                     <td><span class="t-name"><?php echo htmlspecialchars($row['full_name']); ?></span></td>
                     <td style="color:var(--muted);font-size:12px;"><?php echo htmlspecialchars($row['contact_number']); ?></td>
                     <td><span class="t-amount"><?php echo format_currency($row['amount']); ?></span></td>
@@ -1324,7 +1324,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
               <div class="delivery-item">
                 <div class="delivery-top">
                   <div>
-                    <div class="delivery-id"><?php echo htmlspecialchars($row['transaction_id']); ?><?php if (!empty($row['qr_priority'])): ?> <span style="display:inline-block;padding:3px 7px;border-radius:6px;background:#dff7ec;color:#12643d;font-size:11px;font-weight:700;">QR priority</span><?php endif; ?></div>
+                    <div class="delivery-id"><?php echo htmlspecialchars($row['transaction_id']); ?></div>
                     <div class="delivery-cust"><?php echo htmlspecialchars($row['full_name']); ?></div>
                     <div class="delivery-rider">
                       <?php if ($row['rider_name']): ?>
@@ -1394,7 +1394,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
               <div class="delivery-item">
                 <div class="delivery-top">
                   <div>
-                    <div class="delivery-id"><?php echo htmlspecialchars($pickup['transaction_id']); ?><?php if (!empty($pickup['qr_priority'])): ?> <span style="display:inline-block;padding:3px 7px;border-radius:6px;background:#dff7ec;color:#12643d;font-size:11px;font-weight:700;">QR priority</span><?php endif; ?></div>
+                    <div class="delivery-id"><?php echo htmlspecialchars($pickup['transaction_id']); ?></div>
                     <div class="delivery-cust"><?php echo htmlspecialchars($pickup['full_name']); ?></div>
                     <div class="delivery-rider"><span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($pickup['contact_number'] ?: 'No contact number'); ?></span></div>
                   </div>
