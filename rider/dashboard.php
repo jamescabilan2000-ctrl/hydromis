@@ -830,11 +830,6 @@ body{
       <div class="metric-value"><?php echo $trips_today; ?></div>
       <div class="metric-label">Completed</div>
     </div>
-    <div class="metric-card">
-      <div class="metric-icon"><i class="fas fa-motorcycle"></i></div>
-      <div class="metric-value"><?php echo count($active_deliveries); ?></div>
-      <div class="metric-label">Active now</div>
-    </div>
   </div>
   </section>
 
@@ -1019,7 +1014,7 @@ body{
           <div class="value" id="detailPaymentMethod">–</div>
         </div>
         <div class="detail-group">
-          <div class="label">Notes</div>
+          <div class="label"><i class="fas fa-comment-alt" aria-hidden="true"></i> Customer instructions</div>
           <div class="value" id="detailNotes">–</div>
         </div>
       </div>
@@ -1238,19 +1233,26 @@ function updateDrawerRoute(status){
 
 function updateDrawerActions(delivery){
   const box = document.getElementById('drawerActions');
+  const rawStatus = String(delivery.status || '').trim().toLowerCase();
+  const status = rawStatus === '' || rawStatus === 'pending' ? 'assigned' : rawStatus;
   box.innerHTML = '';
-  if (delivery.status === 'assigned'){
+  if (status === 'assigned'){
     box.innerHTML = `
       <form method="POST"><input type="hidden" name="action" value="start_delivery">
       <input type="hidden" name="transaction_id" value="${delivery.id}">
       <button class="btn btn-primary" type="submit"><i class="fas fa-play"></i> Start Delivery</button></form>`;
-  } else if (delivery.status === 'on_way'){
+  } else if (status === 'on_way'){
     box.innerHTML = `
       <form method="POST"><input type="hidden" name="action" value="complete">
       <input type="hidden" name="transaction_id" value="${delivery.id}">
       <button class="btn btn-secondary" type="submit"><i class="fas fa-check"></i> Mark Delivered</button></form>`;
-  } else {
+  } else if (status === 'delivered') {
     box.innerHTML = `<span class="status-badge status-delivered">Delivered</span>`;
+  } else {
+    const label = document.createElement('span');
+    label.className = 'status-badge';
+    label.textContent = 'Status unavailable';
+    box.appendChild(label);
   }
 }
 
@@ -1263,7 +1265,9 @@ function fillDeliveryDetails(delivery){
   document.getElementById('detailPhone').textContent = delivery.phone || '-';
   document.getElementById('detailEmail').textContent = delivery.email || '-';
   document.getElementById('detailPaymentMethod').textContent = delivery.payment_label || 'Cash';
-  document.getElementById('detailNotes').textContent = delivery.notes || '-';
+  const notes = document.getElementById('detailNotes');
+  notes.textContent = String(delivery.notes || '').trim() || 'No special instructions.';
+  notes.parentElement.classList.add('customer-instructions');
 }
 
 function fillMessages(messages){
@@ -1342,7 +1346,8 @@ function loadDeliveryInfo(transactionId){
       const previousStatus = currentDelivery ? currentDelivery.status : '';
       currentDelivery = Object.assign(currentDelivery || {}, {
         id: delivery.transaction_id,
-        status: (delivery.delivery_status || 'assigned').toLowerCase(),
+        status: String(delivery.delivery_status || 'assigned').trim().toLowerCase() === 'pending'
+          ? 'assigned' : String(delivery.delivery_status || 'assigned').trim().toLowerCase(),
         customer: delivery.customer_name,
         address: delivery.address,
         phone: delivery.contact_number,

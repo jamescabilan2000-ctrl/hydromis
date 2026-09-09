@@ -2236,6 +2236,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                     <button type="button" class="btn-toggle" onclick="showScanner();" style="margin-bottom: 12px; width: 100%;">
                         <i class="fas fa-camera mr-2"></i> Start Camera
                     </button>
+                    <button type="button" class="btn-back" onclick="document.getElementById('qrImageUpload').click();" style="width:100%;margin:0 0 12px;">Upload QR image</button>
                     <div class="register-prompt">
                         <span>Don't have an account?</span>
                         <a href="../create_account.php">Register here <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
@@ -2275,6 +2276,9 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 <button type="button" class="btn-toggle" onclick="toggleCamera();">
                     <i class="fas fa-camera mr-2"></i> Start Camera
                 </button>
+                <button type="button" class="btn-back" onclick="document.getElementById('qrImageUpload').click();" style="width:100%;margin:0 0 14px;"><i class="fas fa-image mr-2" aria-hidden="true"></i> Upload QR image</button>
+                <input type="file" id="qrImageUpload" accept="image/png,image/jpeg,image/webp" hidden onchange="scanUploadedQR(this);">
+                <p style="font-size:12px;text-align:center;color:#475569;">Choose a saved QR code or screenshot (JPG, PNG, WEBP; up to 10 MB).</p>
 
                 <p style="color: #666; font-size: 12px; text-align: center;">
                     <i class="fas fa-info-circle"></i> By scanning your QR code, your information will be displayed
@@ -2412,6 +2416,47 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 cameraActive = false;
                 button.innerHTML = '<i class="fas fa-camera mr-2"></i> Start Camera';
                 updateStatus('Camera stopped', false);
+            }
+        }
+
+        async function scanUploadedQR(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            document.getElementById('mainLoginCard').style.display = 'none';
+            document.getElementById('scannerView').style.display = 'block';
+            if (cameraActive) await toggleCamera();
+            let objectUrl;
+            try {
+                if (file.size > 10 * 1024 * 1024) throw new Error('Please choose an image smaller than 10 MB.');
+                if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Choose a JPG, PNG or WEBP image.');
+                updateStatus('Reading QR image...', 'waiting');
+                objectUrl = URL.createObjectURL(file);
+                const img = new Image();
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = () => reject(new Error('Unable to open this image. Please choose another.'));
+                    img.src = objectUrl;
+                });
+                const canvas = document.createElement('canvas');
+                const scale = Math.min(1, 2400 / Math.max(img.naturalWidth, img.naturalHeight));
+                canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+                canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(pixels.data, canvas.width, canvas.height, {inversionAttempts:'attemptBoth'});
+                if (!code) throw new Error('No QR code found. Choose a clear image showing the entire QR code.');
+                let data;
+                try { data = JSON.parse(code.data); } catch (_) {}
+                if (!data || typeof data.user_id !== 'string' || !data.user_id.trim()) throw new Error('Please upload your HydroMIS customer QR code.');
+                updateStatus('QR code found! Opening your account...', 'success');
+                document.getElementById('qr_data').value = code.data;
+                document.getElementById('qr-form').submit();
+            } catch (error) {
+                updateStatus(error.message || 'Unable to read this QR image.', 'error');
+            } finally {
+                if (objectUrl) URL.revokeObjectURL(objectUrl);
+                input.value = '';
             }
         }
 
