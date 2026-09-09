@@ -2217,7 +2217,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                     <form method="POST" class="login-form" id="mobileLoginForm" style="margin-bottom: 12px;">
                         <input type="hidden" name="mobile_login" value="1">
                         <label for="mobile_number" style="color: #1f2937; font-weight: 700; margin-bottom: 10px; display: block; font-size: 15px;">Mobile Number</label>
-                        <div class="mobile-field"><span class="country-code">+63</span><input type="tel" id="mobile_number" name="mobile_number" pattern=" *9(?: *[0-9]){9} *" title="Enter 10 digits starting with 9. Do not include 0 or +63." class="form-control" placeholder="912 345 6789" autocomplete="tel" inputmode="numeric" value="<?php echo htmlspecialchars($mobile_login_value); ?>" style="border-radius: 12px; border: 1px solid #d1d5db; background: #ffffff; margin-bottom: 10px;" required></div>
+                        <div class="mobile-field"><span class="country-code">+63</span><input type="tel" id="mobile_number" name="mobile_number" pattern="9[0-9]{9}" minlength="10" maxlength="10" title="Enter 10 digits starting with 9. Do not include 0 or +63." class="form-control" placeholder="9123456789" autocomplete="tel" inputmode="numeric" value="<?php echo htmlspecialchars($mobile_login_value); ?>" style="border-radius: 12px; border: 1px solid #d1d5db; background: #ffffff; margin-bottom: 10px;" required></div>
                         <p class="login-helper" style="color: #475569; font-size: 13px; margin-bottom: 16px;"><i class="fas fa-circle-info"></i> Enter 10 digits starting with 9 (for example, 950 785 3937). Do not include 0 or +63.</p>
 
                         <button type="submit" class="btn-toggle" style="margin-bottom: 0; width: 100%;" disabled>
@@ -2731,8 +2731,18 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 const submit = mobileForm.querySelector('.btn-toggle');
                 let submitting = false;
                 const updateLoginButton = () => {
-                    submit.disabled = submitting || !mobileInput.validity.valid;
+                    mobileInput.value = mobileInput.value.replace(/[^0-9]/g, '').slice(0, 10);
+                    submit.disabled = submitting || !/^9[0-9]{9}$/.test(mobileInput.value);
                 };
+                mobileInput.addEventListener('paste', function(event) {
+                    event.preventDefault();
+                    const digits = event.clipboardData.getData('text').replace(/[^0-9]/g, '');
+                    const start = mobileInput.selectionStart ?? mobileInput.value.length;
+                    const end = mobileInput.selectionEnd ?? start;
+                    const available = 10 - (mobileInput.value.length - (end - start));
+                    mobileInput.setRangeText(digits.slice(0, Math.max(0, available)), start, end, 'end');
+                    updateLoginButton();
+                });
                 mobileInput.addEventListener('input', updateLoginButton);
                 mobileInput.addEventListener('change', updateLoginButton);
                 window.addEventListener('pageshow', function(event) {
