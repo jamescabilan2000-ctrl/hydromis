@@ -779,7 +779,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                                         <div class="text-muted" style="font-size: 10px; margin-top: 2px;">Ref: <?php echo htmlspecialchars($row['payment_reference']); ?></div>
                                                     <?php endif; ?>
                                                     <?php if (!empty($row['payment_proof'])): ?>
-                                                        <a href="<?php echo htmlspecialchars(hydromis_storage_url($row['payment_proof'])); ?>" target="_blank" rel="noopener" class="text-success" style="font-size: 11px; font-weight: 700; display: inline-block; margin-top: 4px;"><i class="fas fa-image"></i> View Proof</a>
+                                                        <a href="<?php echo htmlspecialchars(hydromis_payment_proof_url($row['payment_proof'])); ?>" target="_blank" rel="noopener" class="text-success" style="font-size: 11px; font-weight: 700; display: inline-block; margin-top: 4px;"><i class="fas fa-image"></i> View Proof</a>
                                                     <?php endif; ?>
                                                 </div>
                                             <?php endif; ?>

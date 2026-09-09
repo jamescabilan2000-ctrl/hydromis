@@ -691,7 +691,7 @@ html, body {
                                                 <div style="color: var(--muted); font-size: 10px; margin-top: 2px;">Ref: <?php echo htmlspecialchars($row['payment_reference']); ?></div>
                                             <?php endif; ?>
                                             <?php if (!empty($row['payment_proof'])): ?>
-                                                <a href="<?php echo htmlspecialchars(hydromis_storage_url($row['payment_proof'])); ?>" target="_blank" rel="noopener" style="color: var(--aqua); font-size: 11px; font-weight: 700; display: inline-block; margin-top: 4px; text-decoration: none;"><i class="fas fa-image"></i> View Proof</a>
+                                                <a href="<?php echo htmlspecialchars(hydromis_payment_proof_url($row['payment_proof'])); ?>" target="_blank" rel="noopener" style="color: var(--aqua); font-size: 11px; font-weight: 700; display: inline-block; margin-top: 4px; text-decoration: none;"><i class="fas fa-image"></i> View Proof</a>
                                             <?php endif; ?>
                                         </div>
                                     <?php endif; ?>

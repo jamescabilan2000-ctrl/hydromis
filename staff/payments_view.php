@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once '../config/storage_service.php';
 include 'check_auth.php';
 
 $payments_data = [];

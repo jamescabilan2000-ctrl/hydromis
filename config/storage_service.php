@@ -162,3 +162,10 @@ function hydromis_asset_url(string $path, string $localPrefix = ''): string {
     if (preg_match('#^(uploads|qrcodes)/#', $path)) return hydromis_storage_url($path);
     return $localPrefix . $path;
 }
+
+function hydromis_payment_proof_url(string $path): string {
+    $url = hydromis_storage_url($path);
+    if ($url === '' || preg_match('#^https?://#i', $url)) return $url;
+    // Payment screens live one directory below the application root.
+    return '../' . ltrim($url, '/');
+}

@@ -1,6 +1,7 @@
 <?php
 include 'check_auth.php';
 require_once '../config/database.php';
+require_once '../config/storage_service.php';
 
 class PaymentsArrayResult {
     private $data;

@@ -115,7 +115,7 @@
                                             <br><small class="text-muted"><?php echo htmlspecialchars($row['payment_reference']); ?></small>
                                         <?php endif; ?>
                                         <?php if (!empty($row['payment_proof'])): ?>
-                                            <br><a href="../<?php echo htmlspecialchars($row['payment_proof']); ?>" target="_blank" rel="noopener">View proof</a>
+                                            <br><a href="<?php echo htmlspecialchars(hydromis_payment_proof_url($row['payment_proof'])); ?>" target="_blank" rel="noopener">View proof</a>
                                         <?php endif; ?>
                                     </td>
                                     <td><span class="badge badge-<?php echo htmlspecialchars($row['status']); ?>"><?php echo htmlspecialchars(ucfirst($row['status'])); ?></span></td>

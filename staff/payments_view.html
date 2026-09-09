@@ -99,7 +99,7 @@
                                         <?php else: ?>
                                         <?php echo htmlspecialchars($row['payment_reference'] ?: 'No reference'); ?><br>
                                         <?php if (!empty($row['payment_proof'])): ?>
-                                            <a href="../<?php echo htmlspecialchars($row['payment_proof']); ?>" target="_blank" rel="noopener" style="color: var(--accent); font-weight: 700;">View proof</a>
+                                            <a href="<?php echo htmlspecialchars(hydromis_payment_proof_url($row['payment_proof'])); ?>" target="_blank" rel="noopener" style="color: var(--accent); font-weight: 700;">View proof</a>
                                         <?php else: ?>
                                             <small style="color: var(--red);">Proof missing</small>
                                         <?php endif; ?>

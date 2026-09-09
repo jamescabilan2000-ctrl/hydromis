@@ -24,7 +24,7 @@ $publicRootPages = [
 ];
 $isRootPage = in_array($requestedPath, $publicRootPages, true);
 $isPortalPage = preg_match('#^(admin|staff|rider|user)/[A-Za-z0-9_-]+\.php$#', $requestedPath) === 1;
-$isPublicApi = $requestedPath === 'api/delivery_tracker.php';
+$isPublicApi = in_array($requestedPath, ['api/delivery_tracker.php', 'api/user_notifications.php'], true);
 if (!$isRootPage && !$isPortalPage && !$isPublicApi) {
     http_response_code(404);
     exit('Page not found.');

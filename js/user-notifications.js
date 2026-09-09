@@ -18,15 +18,23 @@
             container = document.createElement('div');
             container.id = 'user-notification-live';
             container.setAttribute('aria-live', 'polite');
-            container.style.cssText = 'position:fixed;right:18px;top:18px;z-index:99999;width:min(370px,calc(100vw - 36px));display:grid;gap:10px';
+            container.style.cssText = 'position:fixed;right:12px;top:max(12px,env(safe-area-inset-top));z-index:2147483647;width:min(370px,calc(100vw - 24px));display:grid;gap:10px;max-height:80dvh;overflow-y:auto;pointer-events:none';
             document.body.appendChild(container);
         }
         const card = document.createElement('div');
-        card.style.cssText = 'background:#111c30;color:#e8f1ff;border:1px solid rgba(255,255,255,.13);border-left:4px solid #f59e0b;border-radius:13px;padding:14px 16px;box-shadow:0 18px 40px rgba(0,0,0,.35);font:13px/1.45 system-ui';
+        card.style.cssText = 'position:relative;pointer-events:auto;overflow-wrap:anywhere;background:#111c30;color:#e8f1ff;border:1px solid rgba(255,255,255,.13);border-left:4px solid #f59e0b;border-radius:13px;padding:14px 44px 14px 16px;box-shadow:0 18px 40px rgba(0,0,0,.35);font:14px/1.45 system-ui';
         const title = document.createElement('strong'); title.textContent = item.title; title.style.display = 'block';
         const message = document.createElement('span'); message.textContent = item.message; message.style.cssText = 'display:block;color:#a9bad3;margin-top:4px';
         card.append(title, message); container.appendChild(card);
-        card.addEventListener('click', () => card.remove());
+        const dismiss = document.createElement('button');
+        dismiss.type = 'button'; dismiss.textContent = '\u00d7';
+        dismiss.setAttribute('aria-label', 'Dismiss notification');
+        dismiss.style.cssText = 'position:absolute;right:4px;top:4px;width:40px;height:40px;border:0;background:transparent;color:inherit;font-size:24px;cursor:pointer';
+        dismiss.addEventListener('click', () => card.remove());
+        card.appendChild(dismiss);
+        if (card.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            card.animate([{transform:'translateY(-24px)',opacity:0},{transform:'translateY(0)',opacity:1}], {duration:250,easing:'ease-out'});
+        }
         setTimeout(() => card.remove(), 12000);
     }
 
@@ -44,7 +52,8 @@
                 if (!shown.has(String(item.id))) {
                     shown.add(String(item.id)); toast(item);
                     if ('Notification' in window && Notification.permission === 'granted') {
-                        new Notification(item.title,{body:item.message,icon:'../imagess/logosystem.png',tag:'hydromis-'+item.id});
+                        // Some mobile browsers expose Notification but reject its constructor.
+                        try { new Notification(item.title,{body:item.message,icon:'../imagess/logosystem.png',tag:'hydromis-'+item.id}); } catch (_) {}
                     }
                 }
                 await markRead(item.id);
