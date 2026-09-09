@@ -768,14 +768,15 @@ body{
   .card-top>div:last-child{text-align:left!important;display:flex;align-items:center;gap:8px}.card-actions{display:grid;grid-template-columns:1fr 1fr}.card-actions form{display:block!important}.card-actions .btn{width:100%;justify-content:center;min-height:44px}.card-actions>.delay-report,.card-actions>.btn-ghost{grid-column:1 / -1}.card-actions>.btn-ghost{order:1}.card-actions>.delay-report{order:2}.completed-row .destination{max-width:210px}
 }
 </style>
-<link href="../css/rider-theme.css?v=20260909" rel="stylesheet">
+<link href="../css/rider-theme.css?v=20260909-logo" rel="stylesheet">
+<link href="../css/animations.css" rel="stylesheet">
 <script src="../js/ui-protection.js" defer></script>
 </head>
 <body id="home">
 
 <div class="topbar">
   <div class="brand">
-    <span class="brand-logo"><img src="../imagess/hydromis-logo-v2.png?v=20260802" alt="HydroMIS logo"></span>
+    <span class="brand-logo logo-icon"><img src="../imagess/hydromis-logo-v2.png?v=20260802" alt="HydroMIS logo"></span>
     <div class="brand-text">
       <b>HydroMIS</b>
       <span>Rider Portal</span>

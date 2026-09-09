@@ -47,16 +47,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qr_data'])) {
 // Handle Mobile Number Login (go to purchase/account area)
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mobile_login'])) {
     unset($_SESSION['qr_priority_user']);
-    $mobile_login_value = sanitize(trim($_POST['mobile_number'] ?? ''));
-    $mobileDigits = preg_replace('/\D+/', '', $mobile_login_value);
-    if (str_starts_with($mobileDigits, '63') && strlen($mobileDigits) === 12) $mobileDigits = '0' . substr($mobileDigits, 2);
-    if (strlen($mobileDigits) === 10 && str_starts_with($mobileDigits, '9')) $mobileDigits = '0' . $mobileDigits;
+    $mobile_login_value = trim((string)($_POST['mobile_number'] ?? ''));
+    $mobileDigits = str_replace(' ', '', $mobile_login_value);
 
     if (empty($mobileDigits)) {
         $error = 'Please enter your mobile number.';
-    } elseif (!preg_match('/^09\d{9}$/', $mobileDigits)) {
-        $error = 'Enter a valid Philippine mobile number.';
+    } elseif (!preg_match('/\A9[0-9]{9}\z/', $mobileDigits)) {
+        $error = 'Enter 10 digits starting with 9. The +63 country code is already included.';
     } else {
+        $mobileDigits = '0' . $mobileDigits;
         $safeMobile = $conn->real_escape_string($mobileDigits);
         $contact_lookup = sensitive_lookup($safeMobile);
         $sql = "SELECT * FROM users WHERE contact_lookup = '$contact_lookup' LIMIT 1";
@@ -2211,12 +2210,17 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                         </div>
                     <?php endif; ?>
 
+                    <style>
+                        #mobileLoginForm .btn-toggle:disabled { opacity: .5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+                        #mobileLoginForm .btn-toggle:disabled::after { display: none; }
+                    </style>
                     <form method="POST" class="login-form" id="mobileLoginForm" style="margin-bottom: 12px;">
+                        <input type="hidden" name="mobile_login" value="1">
                         <label for="mobile_number" style="color: #1f2937; font-weight: 700; margin-bottom: 10px; display: block; font-size: 15px;">Mobile Number</label>
-                        <div class="mobile-field"><span class="country-code">+63</span><input type="tel" id="mobile_number" name="mobile_number" class="form-control" placeholder="912 345 6789" autocomplete="tel" inputmode="numeric" value="<?php echo htmlspecialchars($mobile_login_value); ?>" style="border-radius: 12px; border: 1px solid #d1d5db; background: #ffffff; margin-bottom: 10px;" required></div>
-                        <p class="login-helper" style="color: #475569; font-size: 13px; margin-bottom: 16px;"><i class="fas fa-circle-info"></i> Enter the same mobile number used during registration.</p>
+                        <div class="mobile-field"><span class="country-code">+63</span><input type="tel" id="mobile_number" name="mobile_number" pattern=" *9(?: *[0-9]){9} *" title="Enter 10 digits starting with 9. Do not include 0 or +63." class="form-control" placeholder="912 345 6789" autocomplete="tel" inputmode="numeric" value="<?php echo htmlspecialchars($mobile_login_value); ?>" style="border-radius: 12px; border: 1px solid #d1d5db; background: #ffffff; margin-bottom: 10px;" required></div>
+                        <p class="login-helper" style="color: #475569; font-size: 13px; margin-bottom: 16px;"><i class="fas fa-circle-info"></i> Enter 10 digits starting with 9 (for example, 950 785 3937). Do not include 0 or +63.</p>
 
-                        <button type="submit" name="mobile_login" value="1" class="btn-toggle" style="margin-bottom: 0; width: 100%;">
+                        <button type="submit" class="btn-toggle" style="margin-bottom: 0; width: 100%;" disabled>
                             <i class="fas fa-sign-in-alt mr-2"></i> Login & Go to Purchase
                         </button>
                     </form>
@@ -2722,11 +2726,34 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
             }
 
             const mobileForm = document.getElementById('mobileLoginForm');
-            if (mobileForm) mobileForm.addEventListener('submit', function() {
-                const submit = this.querySelector('.btn-toggle');
-                submit.disabled = true;
-                submit.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Verifying account...';
-            });
+            if (mobileForm) {
+                const mobileInput = document.getElementById('mobile_number');
+                const submit = mobileForm.querySelector('.btn-toggle');
+                let submitting = false;
+                const updateLoginButton = () => {
+                    submit.disabled = submitting || !mobileInput.validity.valid;
+                };
+                mobileInput.addEventListener('input', updateLoginButton);
+                mobileInput.addEventListener('change', updateLoginButton);
+                window.addEventListener('pageshow', function(event) {
+                    if (event.persisted) {
+                        submitting = false;
+                        submit.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> Login &amp; Go to Purchase';
+                    }
+                    updateLoginButton();
+                });
+                updateLoginButton();
+                mobileForm.addEventListener('submit', function(event) {
+                    if (submitting || !mobileInput.checkValidity()) {
+                        event.preventDefault();
+                        updateLoginButton();
+                        return;
+                    }
+                    submitting = true;
+                    updateLoginButton();
+                    submit.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Verifying account...';
+                });
+            }
 
             const profileForm = document.getElementById('profileEditForm');
             const editBtn = document.getElementById('editProfileBtn');

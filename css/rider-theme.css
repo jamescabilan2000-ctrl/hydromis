@@ -37,16 +37,10 @@ body {
     box-shadow: 0 5px 20px #10345124;
 }
 .topbar .brand-logo {
-    background: #ffffffed;
-    border-color: #bce9f4;
-    box-shadow: 0 3px 12px #03273f26;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
 }
-.topbar .brand-logo img {
-    animation: riderLogoBreathe 5s ease-in-out infinite;
-    transition: filter .25s ease;
-    filter: drop-shadow(0 2px 3px #1477a02b);
-}
-.topbar .brand-logo:hover img { filter: drop-shadow(0 2px 6px #09b4c866); }
 .topbar .brand-text span { color: #c0f1fc; }
 .metric-card { border-color: var(--line); box-shadow: 0 7px 22px #174b7010; }
 .metric-card.primary { background: linear-gradient(135deg, #1769d2, #078fa8); }
@@ -59,10 +53,6 @@ body {
 .btn { transition: filter .2s ease, box-shadow .2s ease; }
 .btn:hover { filter: brightness(1.06); box-shadow: 0 4px 12px #174b7020; }
 .btn:focus-visible, .menu-toggle:focus-visible { outline: 3px solid #38c9df; outline-offset: 3px; }
-@keyframes riderLogoBreathe {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-2px) scale(1.035); }
-}
 @media (prefers-reduced-motion: reduce) {
     .topbar .brand-logo img { animation: none; transition: none; }
     .btn { transition: none; }
