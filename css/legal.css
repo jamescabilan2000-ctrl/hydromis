@@ -20,9 +20,10 @@ h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.14; letter-spacing: -1.6p
 .intro { color: var(--muted); font-size: 17px; margin: 0 0 20px; }
 .updated { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--muted); margin: 0; }
 .date-dot { width: 7px; height: 7px; border-radius: 50%; background: #167c81; margin-right: 3px; }
-.document-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 30px; }
-.document-tabs a { padding: 12px 18px; text-decoration: none; font-size: 14px; font-weight: 700; color: var(--muted); border-bottom: 3px solid transparent; }
-.document-tabs a[aria-current] { color: var(--blue); border-color: var(--blue); }
+.document-tabs { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 30px; }
+.document-tabs a { display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 20px; text-decoration: none; font-size: 14px; font-weight: 700; color: var(--muted); background: #fff; border: 1px solid var(--border); border-radius: 12px; }
+.document-tabs a:hover { color: var(--blue); background: #edf6ff; border-color: #91bce6; }
+.document-tabs a[aria-current] { color: #fff; background: var(--blue); border-color: var(--blue); }
 .document-grid { display: grid; grid-template-columns: 250px minmax(0, 1fr); align-items: start; gap: 32px; }
 .sidebar { position: sticky; top: 24px; }
 .nav-heading { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.6px; margin: 0 0 14px; }
@@ -55,7 +56,7 @@ footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8p
     .page { padding: 0 18px; }
     .hero { padding: 34px 0 24px; }
     .intro { font-size: 15px; }
-    .document-tabs { gap: 0; margin-bottom: 22px; }
+    .document-tabs { gap: 12px; margin-bottom: 22px; }
     .document-tabs a { flex: 1; padding: 12px 6px; text-align: center; font-size: 13px; }
     .document-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
     .sidebar { position: static; }
@@ -68,7 +69,7 @@ footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8p
     h2 { font-size: 18px; gap: 9px; }
     .summary { padding: 15px; }
 }
-@media (max-width: 380px) { .contents ol { columns: 1; } .header-inner { gap: 8px; } }
+@media (max-width: 380px) { .contents ol { columns: 1; } .header-inner { gap: 8px; } .document-tabs { flex-direction: column; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 @media print {
     body { background: white; color: black; }
