@@ -1417,7 +1417,10 @@ if ($db_initialized) {
         }
     </style>
     <script src="js/ui-protection.js" defer></script>
-<script src="js/customer-home.js?v=20260910" defer></script>
+<style>
+.logo-icon{width:56px!important;height:56px!important;flex-shrink:0}
+@media(max-width:599px){.logo-icon{width:48px!important;height:48px!important}}
+</style>
 </head>
 <body>
 
