@@ -147,7 +147,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'messages') {
     $message = trim((string)($input['message'] ?? ''));
 
     $rider_expr = $transactions_has_assigned_rider ? 'COALESCE(rider_id, assigned_rider)' : 'rider_id';
-    $stmt = $conn->prepare("SELECT {$rider_expr} AS rider_id FROM transactions WHERE transaction_id = ? AND user_id = ? AND status = 'approved' LIMIT 1");
+    $stmt = $conn->prepare("SELECT {$rider_expr} AS rider_id, fulfillment_method FROM transactions WHERE transaction_id = ? AND user_id = ? AND (status = 'approved' OR (status = 'pending' AND fulfillment_method = 'pickup')) LIMIT 1");
     $stmt->bind_param('ss', $transaction_id, $user_id);
     $stmt->execute();
     $order = $stmt->get_result()->fetch_assoc();
@@ -157,7 +157,16 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'messages') {
         exit;
     }
 
+    if (($order['fulfillment_method'] ?? '') === 'pickup') {
+        $order['rider_id'] = 'station';
+    }
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!hash_equals($_SESSION['customer_order_csrf'], (string)($input['csrf'] ?? ''))) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'Refresh the page before sending your message.']);
+            exit;
+        }
         if ($message === '' || strlen($message) > 500) {
             http_response_code(422);
             echo json_encode(['ok' => false, 'error' => 'Enter a message up to 500 characters.']);
@@ -377,7 +386,7 @@ function compactTransactionId(string $id): string {
         --blue:       #1d6fd8;
         --blue-br:    #2d85f0;
         --blue-glow:  rgba(45,133,240,0.2);
-        --orange:     #f97316;
+        --orange:     #0891b2;
         --green:      #10b981;
         --amber:      #f59e0b;
         --red:        #ef4444;
@@ -1188,20 +1197,19 @@ function compactTransactionId(string $id): string {
         </div>
     </div>
 
-    <?php if(($init['fulfillment_method'] ?? 'delivery') !== 'pickup'): ?>
+    <?php $chat_is_pickup = ($init['fulfillment_method'] ?? 'delivery') === 'pickup'; ?>
     <section class="customer-chat is-collapsed" id="customer-chat" aria-labelledby="customer-chat-title">
         <div class="customer-chat-head">
-            <div class="customer-chat-title" id="customer-chat-title"><i class="fas fa-message"></i> Message your rider</div>
+            <div class="customer-chat-title" id="customer-chat-title"><i class="fas fa-message"></i> Message <?php echo $chat_is_pickup ? 'the station' : 'your rider'; ?></div>
             <span class="customer-chat-status">Auto refresh</span>
             <button type="button" class="customer-chat-toggle" id="customer-chat-toggle" aria-expanded="false"><i class="fas fa-comments"></i><span>Show messages</span></button>
         </div>
         <div class="customer-message-list" id="customer-message-list"><div class="customer-chat-empty">Loading conversation…</div></div>
         <form class="customer-chat-form" id="customer-chat-form">
-            <input class="customer-chat-input" id="customer-chat-input" maxlength="500" autocomplete="off" placeholder="Type a message to your rider" aria-label="Message to rider">
+            <input class="customer-chat-input" id="customer-chat-input" maxlength="500" autocomplete="off" placeholder="Type your message" aria-label="Order message">
             <button class="customer-chat-send" id="customer-chat-send" type="submit" aria-label="Send message"><i class="fas fa-paper-plane"></i></button>
         </form>
     </section>
-    <?php endif; ?>
 
     <!-- TXN CARDS -->
     <div class="page-orders <?php echo in_array($init['status'], ['pending', 'approved'], true) && $ids !== 'delivered' ? 'is-active-delivery' : ''; ?>" id="active-order-panel">
@@ -1624,6 +1632,7 @@ let messageRefreshInterval = null;
 const TRACKING_USER_ID = <?php echo json_encode($tracking_info[0]['user_id'] ?? ''); ?>;
 const TRACKING_INITIAL_TRANSACTION = <?php echo json_encode($tracking_info[0]['transaction_id'] ?? ''); ?>;
 const TRACKING_INITIAL_STATUS = <?php echo json_encode(isset($tracking_info[0]) ? trackingDeliveryStatus($tracking_info[0]) : ''); ?>;
+const TRACKING_CONTACT = <?php echo json_encode(($tracking_info[0]['fulfillment_method'] ?? '') === 'pickup' ? 'Station' : 'Rider'); ?>;
 let activeMessageTransaction = '';
 let orderStatusRefreshInterval = null;
 
@@ -1674,7 +1683,7 @@ function renderCustomerMessages(messages) {
     if(!messages.length){
         const empty=document.createElement('div');
         empty.className='customer-chat-empty';
-        empty.textContent='No messages yet. Send your rider an update.';
+        empty.textContent='No messages yet. Send a message to your ' + TRACKING_CONTACT.toLowerCase() + '.';
         list.appendChild(empty);
         return;
     }
@@ -1687,7 +1696,7 @@ function renderCustomerMessages(messages) {
         const meta=document.createElement('div');
         meta.className='customer-message-meta';
         const previousOrder=message.transaction_id && message.transaction_id!==activeMessageTransaction ? ' · Previous order' : '';
-        meta.textContent=(message.sender===TRACKING_USER_ID?'You':'Rider')+' · '+formatMessageTime(message.created_at)+previousOrder;
+        meta.textContent=(message.sender===TRACKING_USER_ID?'You':TRACKING_CONTACT)+' · '+formatMessageTime(message.created_at)+previousOrder;
         item.append(bubble,meta);
         list.appendChild(item);
     });
@@ -1703,7 +1712,7 @@ function loadCustomerMessages(transactionId) {
             if(data.ok) renderCustomerMessages(data.messages||[]);
             else {
                 const list=document.getElementById('customer-message-list');
-                if(list) list.innerHTML='<div class="customer-chat-empty">Messaging is available after approval and rider assignment.</div>';
+                if(list) list.innerHTML='<div class="customer-chat-empty">This order conversation is unavailable. Delivery messaging requires approval and an assigned rider.</div>';
             }
         })
         .catch(()=>{});
@@ -1718,7 +1727,7 @@ document.getElementById('customer-chat-form')?.addEventListener('submit', event=
     button.disabled=true;
     fetch('?ajax=messages',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({transaction_id:activeMessageTransaction,user_id:TRACKING_USER_ID,message})
+        body:JSON.stringify({transaction_id:activeMessageTransaction,user_id:TRACKING_USER_ID,message,csrf:<?php echo json_encode($_SESSION['customer_order_csrf']); ?>})
     }).then(response=>response.json()).then(data=>{
         if(!data.ok) throw new Error(data.error||'Unable to send message.');
         input.value='';
