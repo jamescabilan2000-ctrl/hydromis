@@ -64,6 +64,13 @@ $tracking_info = null;
 $error = '';
 $success = '';
 $success_title = 'Success';
+if (isset($_SESSION['tracking_feedback_flash'])) {
+    $flash = $_SESSION['tracking_feedback_flash'];
+    unset($_SESSION['tracking_feedback_flash']);
+    $error = $flash['error'];
+    $success = $flash['success'];
+    $success_title = $flash['title'];
+}
 $search_value = sanitize($_GET['search_value'] ?? ($_GET['user_id'] ?? ($_GET['contact_number'] ?? '')));
 $search_contact_lookup = '';
 
@@ -231,17 +238,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_feedback'])) {
             ");
 
             if ($existing_feedback && $existing_feedback->num_rows > 0) {
-                $error = 'Feedback has already been submitted for this order.';
+                $success = 'Your feedback has already been saved. Thank you!';
+                $success_title = 'Feedback Saved';
             } else {
-                $conn->query("
+                $feedback_saved = $conn->query("
                     INSERT INTO feedback_ratings (transaction_id, user_id, rating, feedback_message)
                     VALUES ('$transaction_id', '$user_id', $rating, '$feedback_message')
                 ");
-                $success = 'Thank you for your feedback and rating!';
-                $success_title = 'Feedback Saved';
+                if ($feedback_saved) {
+                    $success = 'Thank you for your feedback and rating!';
+                    $success_title = 'Feedback Saved';
+                } else {
+                    $error = 'Unable to save feedback. Please try again.';
+                }
             }
         }
     }
+    $_SESSION['tracking_feedback_flash'] = ['error' => $error, 'success' => $success, 'title' => $success_title];
+    $return_lookup = trim((string)($_POST['search_value'] ?? '')) ?: trim((string)($_POST['user_id'] ?? ''));
+    header('Location: track_order.php?' . http_build_query(['search_value' => $return_lookup]), true, 303);
+    exit;
+
 }
 
 if (
@@ -1765,6 +1782,11 @@ if(document.readyState === 'loading') {
 }
 
 function initializeCustomerOrder() {
+    const navigation = performance.getEntriesByType('navigation')[0];
+    if (navigation?.type === 'reload' && TRACKING_INITIAL_STATUS === 'delivered') {
+        openMob();
+        toggleMobOrders(true);
+    }
     selectCustomerConversation(TRACKING_INITIAL_TRANSACTION);
     if(!TRACKING_INITIAL_TRANSACTION) return;
     updateLiveGPSLocation(TRACKING_INITIAL_TRANSACTION);
