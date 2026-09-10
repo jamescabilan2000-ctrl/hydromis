@@ -42,6 +42,21 @@ while ($delivery = $result->fetch_assoc()) {
 <style>
 :root{--ink:#16202b;--paper:#f7f5f0;--card:#fff;--green:#16a34a;--steel:#64748b;--line:#e7e2d6}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,sans-serif}.topbar{height:62px;padding:0 16px;background:var(--ink);display:flex;align-items:center;gap:12px;color:#fff}.back{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;color:#e2e8f0;text-decoration:none}.back:hover{background:rgba(255,255,255,.1);color:#fff}.topbar b{font:700 21px 'Barlow Condensed',sans-serif}.topbar span{display:block;color:#7dd3fc;font-size:10px}.shell{max-width:720px;margin:0 auto;padding:24px 14px 40px}.heading{display:flex;gap:10px;align-items:center;margin-bottom:4px}.heading i{color:var(--green);font-size:22px}.heading h1{margin:0;font:700 27px 'Barlow Condensed',sans-serif}.intro{margin:0 0 22px;color:var(--steel);font-size:13px}.day{margin:20px 0 10px;color:var(--steel);font-size:14px;font-weight:700}.day:first-of-type{margin-top:0}.delivery{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;margin-bottom:10px;background:var(--card);border:1px solid var(--line);border-radius:14px}.name{display:block;font-size:15px;font-weight:700}.address,.details,.status{display:block;color:var(--steel);font-size:12px;line-height:1.4}.amount{display:block;color:var(--green);font:700 16px 'JetBrains Mono',monospace;text-align:right}.status{text-align:right}.empty{text-align:center;padding:42px 18px;background:#fff;border:1px dashed var(--line);border-radius:14px;color:var(--steel)}.empty i{display:block;margin-bottom:10px;font-size:28px;color:#cbd5e1}@media(max-width:480px){.shell{padding:20px 12px}.delivery{padding:13px 14px}.amount{font-size:14px}}
 </style>
+<link href="../css/rider-theme.css?v=20260909-logo" rel="stylesheet">
+<style>
+.topbar span{color:#c0f1fc}
+.back:focus-visible{outline:3px solid #38c9df;outline-offset:3px}
+.heading h1{color:#153d5d}
+.heading i,.address i{color:var(--teal)}
+.delivery{box-shadow:0 8px 24px #174b7010}
+.delivery>div:first-child{min-width:0;overflow-wrap:anywhere}
+.delivery>div:last-child{flex-shrink:0;text-align:right}
+.name{line-height:1.4;margin-bottom:4px}
+.details{margin-top:4px}
+.status{display:inline-block;margin-top:6px;padding:4px 9px;border-radius:999px;background:#dcfce7;color:#15803d;font-size:11px;font-weight:700}
+.empty i{color:var(--teal)}
+@media(max-width:360px){.delivery{flex-wrap:wrap}.delivery>div:last-child{margin-left:auto}}
+</style>
 </head>
 <body>
 <header class="topbar"><a class="back" href="dashboard.php" aria-label="Back to dashboard"><i class="fas fa-arrow-left"></i></a><div><b>Delivery History</b><span>Rider Portal</span></div></header>
