@@ -78,17 +78,6 @@
         if (!container) {
             container = document.createElement('div');
             container.id = 'hydromis-staff-notif-container';
-            container.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                z-index: 999999;
-                width: min(420px, calc(100vw - 32px));
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-                pointer-events: none;
-            `;
             document.body.appendChild(container);
         }
         return container;
@@ -99,64 +88,31 @@
         const container = getContainer();
 
         const card = document.createElement('div');
-        card.style.cssText = `
-            pointer-events: auto;
-            position: relative;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.96) 0%, rgba(26, 38, 66, 0.96) 100%);
-            color: #f1f5f9;
-            border: 1px solid rgba(245, 158, 11, 0.5);
-            border-left: 5px solid #f59e0b;
-            border-radius: 16px;
-            padding: 18px 20px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 25px rgba(245, 158, 11, 0.18);
-            backdrop-filter: blur(16px);
-            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-            opacity: 0;
-            transform: translateY(-20px) scale(0.95);
-            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-        `;
+        card.className = 'hydromis-order-toast';
+        card.setAttribute('role', 'status');
+        card.setAttribute('aria-live', 'polite');
 
         const isStaff = window.location.pathname.includes('/staff/');
         const reviewUrl = isStaff ? 'pending.php' : 'transactions.php?filter=pending';
 
         const amountFormatted = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(order.amount);
-        const fulfillmentBadge = order.fulfillment_method === 'pickup'
-            ? `<span style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); padding: 3px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; text-transform: uppercase;"><i class="fas fa-store"></i> Pickup</span>`
-            : `<span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); padding: 3px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; text-transform: uppercase;"><i class="fas fa-truck"></i> Delivery</span>`;
-
+        const isPickup = order.fulfillment_method === 'pickup';
         card.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: rgba(245, 158, 11, 0.2); color: #fbbf24;">
-                        <i class="fas fa-bell" style="animation: ringBell 1.5s ease infinite;"></i>
-                    </span>
-                    <strong style="font-size: 13px; letter-spacing: 0.5px; color: #fbbf24; text-transform: uppercase; font-weight: 800;">New Pending Order!</strong>
-                </div>
-                <button type="button" class="hydromis-notif-close" style="border: 0; background: transparent; color: #94a3b8; font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1;" aria-label="Close">&times;</button>
+            <div class="order-toast-head">
+                <span class="order-toast-icon"><i class="fas fa-bell" aria-hidden="true"></i></span>
+                <div class="order-toast-heading"><strong>New order received</strong><span>Awaiting approval</span></div>
+                <button type="button" class="hydromis-notif-close" aria-label="Close notification">&times;</button>
             </div>
-            
-            <div style="margin-bottom: 12px;">
-                <div style="font-size: 16px; font-weight: 800; color: #ffffff; margin-bottom: 2px;">${escapeHtml(order.full_name)}</div>
-                <div style="font-size: 12px; color: #94a3b8; display: flex; align-items: center; gap: 8px;">
-                    <span>Order: <strong>${escapeHtml(order.transaction_id)}</strong></span>
-                    <span>&bull;</span>
-                    <span>${escapeHtml(order.time_ago)}</span>
-                </div>
+            <div class="order-toast-customer">${escapeHtml(order.full_name)}</div>
+            <div class="order-toast-meta"><span>${escapeHtml(order.transaction_id)}</span><span>${escapeHtml(order.time_ago)}</span></div>
+            <div class="order-toast-summary">
+                <strong class="order-toast-amount">${amountFormatted}</strong>
+                <span class="order-toast-badge"><i class="fas ${isPickup ? 'fa-store' : 'fa-truck'}" aria-hidden="true"></i> ${isPickup ? 'Self pickup' : 'Delivery'}</span>
             </div>
-
-            <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px;">
-                <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 8px; border-radius: 99px; font-size: 11px; font-weight: 800;">${amountFormatted}</span>
-                ${fulfillmentBadge}
-                <span style="background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.12); padding: 3px 8px; border-radius: 99px; font-size: 11px;">${escapeHtml(order.quantity)}x ${escapeHtml(order.container_size)} (${escapeHtml(order.water_type)})</span>
-            </div>
-
-            <div style="display: flex; gap: 8px;">
-                <a href="${reviewUrl}" style="flex: 1; text-align: center; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000000; font-weight: 800; font-size: 12px; padding: 9px 12px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); transition: transform 0.2s ease;">
-                    <i class="fas fa-eye"></i> Review Order
-                </a>
-                <button type="button" class="hydromis-notif-dismiss" style="background: rgba(255, 255, 255, 0.1); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15); font-weight: 700; font-size: 12px; padding: 9px 14px; border-radius: 10px; cursor: pointer;">
-                    Dismiss
-                </button>
+            <p class="order-toast-items">${escapeHtml(order.quantity)} ? ${escapeHtml(order.container_size)} ? ${escapeHtml(order.water_type)}</p>
+            <div class="order-toast-actions">
+                <a href="${reviewUrl}" class="order-toast-review">Review order <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+                <button type="button" class="hydromis-notif-dismiss">Dismiss</button>
             </div>
         `;
 
@@ -307,17 +263,27 @@
         }, { once: true });
     }
 
-    // Inject CSS keyframes for bell animation
+    // Shared popup presentation for staff and admin.
     const style = document.createElement('style');
     style.textContent = `
-        @keyframes ringBell {
-            0%, 100% { transform: rotate(0); }
-            15% { transform: rotate(15deg); }
-            30% { transform: rotate(-15deg); }
-            45% { transform: rotate(10deg); }
-            60% { transform: rotate(-10deg); }
-            75% { transform: rotate(5deg); }
-        }
+        #hydromis-staff-notif-container{position:fixed;top:max(16px,env(safe-area-inset-top));right:16px;z-index:999999;width:min(400px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow-y:auto;display:flex;flex-direction:column;gap:12px;pointer-events:none}
+        .hydromis-order-toast{box-sizing:border-box;pointer-events:auto;padding:20px;border:1px solid #33536b;border-top:3px solid #27c5d5;border-radius:20px;background:linear-gradient(145deg,#14283c,#172135);color:#f1f7fc;box-shadow:0 16px 44px #07142466;font-family:'Plus Jakarta Sans',system-ui,sans-serif;opacity:0;transform:translateY(-20px) scale(.98);transition:opacity .25s ease,transform .25s ease}
+        .order-toast-head{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+        .order-toast-icon{display:grid;place-items:center;flex:0 0 38px;height:38px;border-radius:12px;background:#173f53;color:#63deeb}
+        .order-toast-heading{flex:1;min-width:0}.order-toast-heading strong{display:block;font-size:14px;font-weight:800}.order-toast-heading span{display:block;margin-top:3px;font-size:11px;color:#a8bdcf}
+        .hydromis-notif-close{display:grid;place-items:center;flex:0 0 36px;height:36px;border:0;border-radius:10px;background:transparent;color:#a8bdcf;font-size:24px;cursor:pointer}
+        .order-toast-customer{font-size:18px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}
+        .order-toast-meta{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px;color:#a8bdcf;font-size:11px;line-height:1.6;overflow-wrap:anywhere}.order-toast-meta span{min-width:0}
+        .order-toast-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:16px}.order-toast-amount{font-size:22px;color:#66e0c2;font-variant-numeric:tabular-nums}
+        .order-toast-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #345a72;border-radius:8px;color:#a5dff5;background:#1c354a;font-size:11px;font-weight:700}
+        .order-toast-items{margin:9px 0 18px;color:#b9cbd9;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+        .order-toast-actions{display:flex;gap:8px;border-top:1px solid #ffffff12;padding-top:14px}.order-toast-actions a,.order-toast-actions button{display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;padding:10px 14px;border-radius:11px;font:700 12px 'Plus Jakarta Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer}
+        .order-toast-review{flex:1;background:linear-gradient(110deg,#1769d2,#087f9e);color:white;border:1px solid #328dc5}.hydromis-notif-dismiss{background:transparent;color:#b9cbd9;border:1px solid #3a4b60}
+        .order-toast-review:hover{filter:brightness(1.12)}.hydromis-notif-close:hover,.hydromis-notif-dismiss:hover{background:#ffffff0d;color:white}.hydromis-order-toast :is(a,button):focus-visible{outline:3px solid #67e8f9;outline-offset:3px}
+        body.staff-light .hydromis-order-toast{background:linear-gradient(145deg,#fff,#eff8fc);color:#17324d;border-color:#c8e3ef;border-top-color:#0891b2;box-shadow:0 16px 44px #17324d26}
+        body.staff-light .order-toast-icon{background:#e0f4fa;color:#087f9e}body.staff-light :is(.order-toast-heading span,.order-toast-meta,.order-toast-items,.hydromis-notif-dismiss,.hydromis-notif-close){color:#526b80}body.staff-light .order-toast-amount{color:#087f65}body.staff-light .order-toast-badge{background:#e5f4fa;color:#176189;border-color:#c4e2ee}body.staff-light .order-toast-actions{border-color:#d6e5ee}body.staff-light .hydromis-notif-dismiss{border-color:#c5d7e3}body.staff-light :is(.hydromis-notif-close,.hydromis-notif-dismiss):hover{background:#deedf5;color:#17324d}
+        @media(max-width:480px){#hydromis-staff-notif-container{right:12px;width:calc(100vw - 24px)}.hydromis-order-toast{padding:16px}.order-toast-customer{font-size:17px}}
+        @media(prefers-reduced-motion:reduce){.hydromis-order-toast{transition:none}}
     `;
     document.head.appendChild(style);
 
