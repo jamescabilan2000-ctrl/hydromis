@@ -44,7 +44,6 @@ if (isset($conn)) {
     <div class="staff-sidebar-brand"><b><img src="<?php echo htmlspecialchars(hydromis_asset_url($systemLogo, '../')); ?>" alt="HydroMIS logo" style="width:30px;height:30px;object-fit:contain;"></b><div>HydroMIS<span>Water Refilling</span></div></div>
     <nav class="staff-sidebar-nav">
         <span>Main</span>
-        <a href="messages.php"><i class="fas fa-comments"></i>Pickup Messages</a>
         <a class="<?php echo $staff_active === 'dashboard' ? 'active' : ''; ?>" href="dashboard.php"><i class="fas fa-home"></i>Dashboard</a>
         <div class="staff-delivery-menu" id="staffDeliveryMenu">
             <a class="<?php echo $staff_active === 'deliveries' ? 'active' : ''; ?>" href="dashboard.php?view=deliveries"><i class="fas fa-truck-fast"></i>Delivery Operations<?php if ($delivery_nav > 0): ?><span class="staff-nav-redmark"><?php echo $delivery_nav; ?></span><?php endif; ?></a>
