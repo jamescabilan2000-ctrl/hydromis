@@ -456,7 +456,8 @@ body[data-color-mode="light"]{color-scheme:light;--bg:#f4f7fb;--bg2:#fff;--bg3:#
 .tab-group { display: flex; background: var(--bg3); border-radius: 8px; padding: 3px; gap: 2px; }
 .tab { padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; transition: background 0.18s, color 0.18s; user-select: none; }
 .tab.active { background: var(--bg2); color: var(--text); }
-.chart-body { padding: 20px 22px; }
+.chart-body { position: relative; height: 300px; min-width: 0; padding: 20px 22px; }
+.revenue-summary { padding: 0 22px 18px; color: #7a8a9e; font-size: 12px; }
 .donut-body { padding: 20px 22px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
 .donut-wrap { position: relative; width: 180px; height: 180px; }
 .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
@@ -1533,14 +1534,15 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
             <div class="chart-row">
                 <div class="panel">
                     <div class="panel-header">
-                        <div><div class="panel-title">Revenue Trend</div><div class="panel-sub">Monthly approved transaction totals</div></div>
+                        <div><div class="panel-title">Revenue Trend</div><div class="panel-sub" id="revenue-period-label">Daily approved transaction totals ? Last 7 days</div></div>
                         <div class="tab-group">
                             <div class="tab active" onclick="switchTab(this,'week')">7D</div>
                             <div class="tab" onclick="switchTab(this,'month')">30D</div>
                             <div class="tab" onclick="switchTab(this,'year')">12M</div>
                         </div>
                     </div>
-                    <div class="chart-body"><canvas id="revenueChart" height="220"></canvas></div>
+                    <div class="chart-body"><canvas id="revenueChart" height="220" role="img" aria-label="Approved transaction revenue"></canvas></div>
+                    <div class="revenue-summary" id="revenue-summary" role="status"></div>
                 </div>
                 <div class="panel">
                     <div class="panel-header"><div><div class="panel-title">Transaction Status</div><div class="panel-sub">Distribution overview</div></div></div>
@@ -2227,21 +2229,35 @@ const datasets={
 const wkL = revenueSeries.week.labels;
 const moL = revenueSeries.month.labels;
 const yrL = revenueSeries.year.labels;
+function formatRevenueTick(value) {
+    return 'PHP ' + Number(value).toLocaleString('en-PH', {maximumFractionDigits: 2});
+}
+function updateRevenueSummary(period) {
+    const total = datasets[period].reduce((sum, value) => sum + Number(value), 0);
+    const range = {week:'Last 7 days', month:'Last 30 days', year:'Last 12 months'}[period];
+    document.getElementById('revenue-period-label').textContent = (period === 'year' ? 'Monthly' : 'Daily') + ' approved transaction totals ? ' + range;
+    document.getElementById('revenue-summary').textContent = total === 0
+        ? 'No approved revenue in this period.'
+        : 'Period total: PHP ' + total.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
 const rCtx=document.getElementById('revenueChart').getContext('2d');
 const grad=rCtx.createLinearGradient(0,0,0,220);
 grad.addColorStop(0,'rgba(45,212,191,0.25)');grad.addColorStop(1,'rgba(45,212,191,0.00)');
 const revenueChart=new Chart(rCtx,{type:'line',data:{labels:wkL,datasets:[{label:'Revenue (PHP)',data:datasets.week,borderColor:'#2dd4bf',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#2dd4bf',pointBorderColor:'#161b24',pointBorderWidth:2,tension:0.4,fill:true,backgroundColor:grad}]},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
         plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e2533',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,padding:12,callbacks:{label:c=>' PHP '+c.parsed.y.toLocaleString('en-PH',{minimumFractionDigits:2})}}},
-        scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{font:{size:11}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{font:{size:11},callback:v=>'P'+Math.round(v/1000)+'k'}}}}});
+        scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{font:{size:11}}},y:{beginAtZero:true,suggestedMax:datasets.week.some(v=>Number(v)>0)?undefined:1,grid:{color:'rgba(255,255,255,0.04)'},ticks:{maxTicksLimit:6,precision:2,font:{size:11},callback:formatRevenueTick}}}}});
 
 function switchTab(el,p){
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
     el.classList.add('active');
     revenueChart.data.labels=p==='week'?wkL:p==='month'?moL:yrL;
     revenueChart.data.datasets[0].data=datasets[p];
+    revenueChart.options.scales.y.suggestedMax=datasets[p].some(v=>Number(v)>0)?undefined:1;
     revenueChart.update();
+    updateRevenueSummary(p);
 }
+updateRevenueSummary('week');
 
 new Chart(document.getElementById('donutChart'),{type:'doughnut',
     data:{labels:['Approved','Pending','Denied'],datasets:[{data:[<?=(int)$approved?>,<?=(int)$pending?>,<?=(int)$denied?>],backgroundColor:['#22c55e','#f59e0b','#f43f5e'],borderColor:'#161b24',borderWidth:3,hoverOffset:6}]},
