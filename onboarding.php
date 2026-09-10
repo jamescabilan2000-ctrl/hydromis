@@ -575,7 +575,10 @@
         }
     </style>
     <script src="js/ui-protection.js" defer></script>
-<script src="js/customer-home.js?v=20260910" defer></script>
+<style>
+.brand img{width:56px!important;height:56px!important;flex-shrink:0}
+@media(max-width:599px){.brand img{width:48px!important;height:48px!important}}
+</style>
 </head>
 <body>
 
