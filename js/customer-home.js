@@ -22,7 +22,8 @@
         }
     });
     const primary = logos[0]?.closest('a');
-    if (primary && !document.querySelector('.home-link')) {
+    const isHomePage = window.location.pathname === new URL(home).pathname;
+    if (primary && !isHomePage && !document.querySelector('.home-link')) {
         const button = document.createElement('a');
         button.href = home; button.className = 'customer-home-button'; button.textContent = 'Home';
         const brand = primary.closest('.nav-brand,.navbar-brand,.brand,.logo') || primary;
