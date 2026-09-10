@@ -53,6 +53,7 @@ $container_status = isset($_POST['container_status']) ? sanitize($_POST['contain
 $fulfillment_method = isset($_POST['fulfillment_method']) ? sanitize($_POST['fulfillment_method']) : 'delivery';
 $quantity = isset($_POST['quantity']) ? intval($_POST['quantity']) : 1;
 $amount_tendered = isset($_POST['amount_tendered']) ? floatval($_POST['amount_tendered']) : 0;
+$edit_transaction_id = trim((string)($_POST['edit_transaction_id'] ?? ''));
 
 if (!in_array($container_size, $allowed_sizes, true)) {
     $container_size = '2.5gal-slim';
@@ -70,23 +71,46 @@ if ($quantity < 1) {
 // Every order uses the selected gallon stock. "Buy new container" additionally
 // requires the generic New Container inventory item.
 $available_stock = null;
+$current_inventory_item_id = 0;
 $stock_blocked = false;
 $inventory_code = inventory_code_for_container($container_size);
-$stock_stmt = $conn->prepare('SELECT quantity FROM inventory_items WHERE item_code = ? LIMIT 1');
+$stock_stmt = $conn->prepare('SELECT id, quantity FROM inventory_items WHERE item_code = ? LIMIT 1');
 if ($stock_stmt && $inventory_code !== null) {
     $stock_stmt->bind_param('s', $inventory_code);
     $stock_stmt->execute();
     $stock_row = $stock_stmt->get_result()->fetch_assoc();
+    $current_inventory_item_id = (int)($stock_row['id'] ?? 0);
     $available_stock = max(0, (int)($stock_row['quantity'] ?? 0));
 } else {
     $available_stock = 0;
 }
 $new_container_stock = null;
+$current_new_container_item_id = 0;
 if ($container_status === 'new') {
     $new_container_item = new_container_inventory_item($conn);
+    $current_new_container_item_id = (int)($new_container_item['id'] ?? 0);
     $new_container_stock = max(0, (int)($new_container_item['quantity'] ?? 0));
 }
 $stock_blocked = $quantity > $available_stock || ($container_status === 'new' && $quantity > $new_container_stock);
+if ($edit_transaction_id !== '') {
+    $edit_stmt = $conn->prepare("SELECT inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, quantity FROM transactions WHERE transaction_id = ? AND user_id = ? AND status = 'pending' LIMIT 1");
+    if ($edit_stmt) {
+        $edit_stmt->bind_param('ss', $edit_transaction_id, $user_id);
+        $edit_stmt->execute();
+        $edit_order = $edit_stmt->get_result()->fetch_assoc();
+        if ($edit_order) {
+            if (!empty($edit_order['inventory_reserved']) && (int)$edit_order['inventory_item_id'] === $current_inventory_item_id) {
+                $available_stock += (int)$edit_order['quantity'];
+            }
+            if ($container_status === 'new' && !empty($edit_order['new_container_inventory_reserved']) && (int)$edit_order['new_container_inventory_item_id'] === $current_new_container_item_id) {
+                $new_container_stock += (int)$edit_order['quantity'];
+            }
+            $stock_blocked = $quantity > $available_stock || ($container_status === 'new' && $quantity > $new_container_stock);
+        } else {
+            $stock_blocked = true;
+        }
+    }
+}
 
 $size_map = [
     '5gal-round' => '5 Gallon',
@@ -1292,6 +1316,7 @@ $final_total = $item_total + $delivery_fee - $discount;
         <form method="POST" action="purchase.php" enctype="multipart/form-data" style="margin-bottom: 20px;" id="checkoutForm" onsubmit="return validateCheckout(event);">
             <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user_id); ?>">
             <input type="hidden" name="buy_submit" value="1">
+            <?php if ($edit_transaction_id !== ''): ?><input type="hidden" name="edit_transaction_id" value="<?php echo htmlspecialchars($edit_transaction_id); ?>"><?php endif; ?>
             <input type="hidden" name="container_size" value="<?php echo htmlspecialchars($container_size); ?>">
             <input type="hidden" name="container_status" value="<?php echo htmlspecialchars($container_status); ?>">
             <input type="hidden" name="fulfillment_method" value="<?php echo htmlspecialchars($fulfillment_method); ?>">

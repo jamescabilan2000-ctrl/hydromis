@@ -51,6 +51,8 @@ $transaction_success = false;
 $transaction_data = null;
 $profile_success = '';
 $scanned_data = null;
+$edit_transaction_id = trim((string)($_POST['edit_transaction_id'] ?? $_GET['edit_transaction_id'] ?? ''));
+$editing_order = null;
 
 // Get user from URL parameter or POST
 $user_id = null;
@@ -84,14 +86,23 @@ if (strtolower((string)($scanned_data['status'] ?? 'pending')) !== 'approved') {
 
 // Keep one active order per customer. A new order is allowed only after the
 // current order is delivered or cancelled/denied.
-$activeOrderStmt = $conn->prepare("SELECT transaction_id FROM transactions
+$activeOrderStmt = $conn->prepare("SELECT * FROM transactions
     WHERE user_id = ?
       AND transaction_id NOT LIKE 'RWD-%'
       AND (status = 'pending' OR (status = 'approved' AND LOWER(COALESCE(delivery_status, 'pending')) <> 'delivered'))
+    ORDER BY created_at DESC
     LIMIT 1");
 $activeOrderStmt->bind_param('s', $user_id);
 $activeOrderStmt->execute();
-if ($activeOrderStmt->get_result()->fetch_assoc()) {
+$activeOrder = $activeOrderStmt->get_result()->fetch_assoc();
+if ($edit_transaction_id !== '') {
+    if ($activeOrder && hash_equals((string)$activeOrder['transaction_id'], $edit_transaction_id) && strtolower((string)$activeOrder['status']) === 'pending') {
+        $editing_order = $activeOrder;
+    } else {
+        header('Location: track_order.php?user_id=' . urlencode($user_id) . '&active_order=1');
+        exit;
+    }
+} elseif ($activeOrder) {
     header('Location: track_order.php?user_id=' . urlencode($user_id) . '&active_order=1');
     exit;
 }
@@ -106,6 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     $amount_tendered = floatval($_POST['amount_tendered']);
     $customer_notes = isset($_POST['customer_notes']) ? sanitize($_POST['customer_notes']) : '';
     $payment_method = isset($_POST['payment_method']) ? sanitize($_POST['payment_method']) : 'cash';
+    $edit_transaction_id = trim((string)($_POST['edit_transaction_id'] ?? ''));
+    $is_editing_order = $edit_transaction_id !== '';
     
     // Validate payment method
     $allowed_payment_methods = ['cash', 'gcash', 'maya'];
@@ -173,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     } elseif ($amount_tendered < $final_amount) {
         $error = 'Amount tendered is insufficient! Amount needed: ₱' . number_format($final_amount, 2);
     } elseif (empty($error)) {
-        $transaction_id = generateID('TXN');
+        $transaction_id = $is_editing_order ? $edit_transaction_id : generateID('TXN');
         $db_container_map = [
             '5gal-round' => '5 Gallon (Round)',
             '2.5gal-slim' => '2.5 Gallon (Slim)',
@@ -199,6 +212,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         $safe_item_code = $conn->real_escape_string((string)$item_code);
         $conn->begin_transaction();
         $inventory_transaction_open = true;
+        if ($is_editing_order) {
+            $safe_edit_id = $conn->real_escape_string($edit_transaction_id);
+            $existing_result = $conn->query("SELECT * FROM transactions WHERE transaction_id='$safe_edit_id' AND user_id='" . $conn->real_escape_string((string)$user_id) . "' AND status='pending' FOR UPDATE");
+            $existing_order = $existing_result ? $existing_result->fetch_assoc() : null;
+            if (!$existing_order) {
+                $conn->rollback();
+                $inventory_transaction_open = false;
+                $error = 'This order can no longer be edited.';
+            } elseif (!release_order_inventory($conn, $existing_order, 'ONLINE-ORDER', "Customer edited order $transaction_id")) {
+                $conn->rollback();
+                $inventory_transaction_open = false;
+                $error = 'Unable to release the previous order stock. Please try again.';
+            }
+        }
         if ($free_delivery_claim_id > 0) {
             $locked_reward = $conn->query("SELECT id FROM reward_claims WHERE id=$free_delivery_claim_id AND user_id='" . $conn->real_escape_string((string)$user_id) . "' AND reward_code='free_delivery' AND claim_status='approved' FOR UPDATE");
             if (!$locked_reward || $locked_reward->num_rows === 0 || !$conn->query("UPDATE reward_claims SET claim_status='claimed',claimed_by='ONLINE-ORDER',claimed_at=NOW(),customer_seen_at=NOW() WHERE id=$free_delivery_claim_id AND claim_status='approved'")) {
@@ -252,7 +279,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         $inventory_item_sql = $inventory_item_id === null ? 'NULL' : (string)$inventory_item_id;
         $qr_priority = (($_SESSION['qr_priority_user'] ?? '') === (string)$scanned_data['user_id']) ? 1 : 0;
         $new_container_inventory_item_sql = $new_container_inventory_item_id === null ? 'NULL' : (string)$new_container_inventory_item_id;
-        $sql = "INSERT INTO transactions (transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, notes, status, payment_method, payment_reference, payment_status, payment_proof, container_size, container_status, fulfillment_method, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, qr_priority, created_at)
+        $sql = $is_editing_order
+            ? "UPDATE transactions SET amount='$final_amount', description='$description', water_type='regular', quantity='$quantity', price_per_unit='$price_per_unit', discount='$discount', loyalty_points_earned='$loyalty_points', notes='$customer_notes', status='pending', payment_method='$payment_method', payment_reference=$safe_reference, payment_status='$payment_status', payment_proof=$safe_proof, container_size='$container_size', container_status='$container_status', fulfillment_method='$fulfillment_method', inventory_item_id=$inventory_item_sql, inventory_reserved=$inventory_reserved, new_container_inventory_item_id=$new_container_inventory_item_sql, new_container_inventory_reserved=$new_container_inventory_reserved, updated_at=NOW() WHERE transaction_id='" . $conn->real_escape_string($transaction_id) . "' AND user_id='" . $conn->real_escape_string((string)$user_id) . "' AND status='pending'"
+            : "INSERT INTO transactions (transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, notes, status, payment_method, payment_reference, payment_status, payment_proof, container_size, container_status, fulfillment_method, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, qr_priority, created_at)
                 VALUES ('$transaction_id', '$user_id', '$final_amount', '$description', 'regular', '$quantity', '$price_per_unit', '$discount', '$loyalty_points', '$customer_notes', 'pending', '$payment_method', $safe_reference, '$payment_status', $safe_proof, '$container_size', '$container_status', '$fulfillment_method', $inventory_item_sql, $inventory_reserved, $new_container_inventory_item_sql, $new_container_inventory_reserved, $qr_priority, NOW())";
 
         if (!empty($error)) {
@@ -263,20 +292,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
                 $conn->commit();
                 $inventory_transaction_open = false;
             }
+            if ($is_editing_order && $payment_method === 'cash') {
+                $conn->query("UPDATE payments SET payment_method='cash', amount='$final_amount', payment_reference=NULL, payment_status='pending', payment_proof=NULL, gcash_number=NULL, maya_number=NULL, notes='Payment changed to cash during order edit.' WHERE transaction_id='" . $conn->real_escape_string($transaction_id) . "'");
+            }
             // Record payment in payments table if e-wallet
             if ($payment_method === 'gcash' || $payment_method === 'maya') {
                 $payment_id = generateID('PAY');
                 $gcash_num_val = ($payment_method === 'gcash') ? "'" . $conn->real_escape_string($wallet_number) . "'" : "NULL";
                 $maya_num_val = ($payment_method === 'maya') ? "'" . $conn->real_escape_string($wallet_number) . "'" : "NULL";
                 $payment_notes = "'Manual wallet payment submitted during checkout.'";
-                
-                $conn->query("INSERT INTO payments (
-                    payment_id, transaction_id, user_id, amount, payment_method, payment_reference,
-                    payment_status, payment_proof, gcash_number, maya_number, notes
-                ) VALUES (
-                    '$payment_id', '$transaction_id', '$user_id', '$final_amount', '$payment_method', $safe_reference,
-                    '$payment_status', $safe_proof, $gcash_num_val, $maya_num_val, $payment_notes
-                )");
+                $existing_payment = $is_editing_order ? $conn->query("SELECT payment_id FROM payments WHERE transaction_id='" . $conn->real_escape_string($transaction_id) . "' LIMIT 1") : false;
+                if ($existing_payment && $existing_payment->num_rows > 0) {
+                    $conn->query("UPDATE payments SET amount='$final_amount', payment_method='$payment_method', payment_reference=$safe_reference, payment_status='$payment_status', payment_proof=$safe_proof, gcash_number=$gcash_num_val, maya_number=$maya_num_val, notes=$payment_notes WHERE transaction_id='" . $conn->real_escape_string($transaction_id) . "'");
+                } else {
+                    $conn->query("INSERT INTO payments (
+                        payment_id, transaction_id, user_id, amount, payment_method, payment_reference,
+                        payment_status, payment_proof, gcash_number, maya_number, notes
+                    ) VALUES (
+                        '$payment_id', '$transaction_id', '$user_id', '$final_amount', '$payment_method', $safe_reference,
+                        '$payment_status', $safe_proof, $gcash_num_val, $maya_num_val, $payment_notes
+                    )");
+                }
             }
             
             $transaction_success = true;
@@ -1299,7 +1335,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                 <?php else: ?>
                     <!-- Buy Form -->
                     <div class="buy-form">
-                        <div class="purchase-heading"><div class="purchase-heading-main"><div class="purchase-heading-icon"><i class="fas fa-bag-shopping"></i></div><div><h6>Build your order</h6><p>Choose a container and delivery option.</p></div></div><span class="purchase-step">Step 1 of 2</span></div>
+                        <?php
+                            $selected_container_size = $editing_order['container_size'] ?? '2.5gal-slim';
+                            $selected_container_status = $editing_order['container_status'] ?? 'new';
+                            $selected_fulfillment = $editing_order['fulfillment_method'] ?? 'delivery';
+                            $selected_quantity = max(1, (int)($editing_order['quantity'] ?? 2));
+                        ?>
+                        <div class="purchase-heading"><div class="purchase-heading-main"><div class="purchase-heading-icon"><i class="fas fa-bag-shopping"></i></div><div><h6><?php echo $editing_order ? 'Edit your order' : 'Build your order'; ?></h6><p>Choose a container and delivery option.</p></div></div><span class="purchase-step">Step 1 of 2</span></div>
                         <?php if ($error): ?>
                             <div class="error-message">
                                 <i class="fas fa-exclamation-circle mr-2"></i> <?php echo $error; ?>
@@ -1308,13 +1350,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                         <form method="POST" action="order_review.php" id="purchaseForm">
                             <input type="hidden" name="user_id" value="<?php echo $scanned_data['user_id']; ?>">
                             <input type="hidden" name="proceed_submit" value="1">
+                            <?php if ($editing_order): ?><input type="hidden" name="edit_transaction_id" value="<?php echo htmlspecialchars($editing_order['transaction_id']); ?>"><?php endif; ?>
+                            <input type="hidden" name="quantity" value="<?php echo $selected_quantity; ?>">
                             
                             <!-- Container Size Selection -->
                             <div class="form-section">
                                 <label class="section-label"><i class="fas fa-cube"></i> Size</label>
                                 <div class="container-grid">
                                     <label class="container-card">
-                                        <input type="radio" name="container_size" value="2.5gal-slim" checked onchange="calculatePrice()">
+                                        <input type="radio" name="container_size" value="2.5gal-slim" <?php echo $selected_container_size === '2.5gal-slim' ? 'checked' : ''; ?> onchange="calculatePrice()">
                                         <div class="container-image">
                                             <img src="../imagess/water3.jpg" alt="2.5 Gallon Slim">
                                         </div>
@@ -1330,7 +1374,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                     </label>
 
                                     <label class="container-card">
-                                        <input type="radio" name="container_size" value="5gal-slim" onchange="calculatePrice()">
+                                        <input type="radio" name="container_size" value="5gal-slim" <?php echo $selected_container_size === '5gal-slim' ? 'checked' : ''; ?> onchange="calculatePrice()">
                                         <div class="container-image">
                                             <img src="../imagess/water4.webp" alt="5 Gallon Slim">
                                         </div>
@@ -1346,7 +1390,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                     </label>
 
                                     <label class="container-card">
-                                        <input type="radio" name="container_size" value="5gal-round" onchange="calculatePrice()">
+                                        <input type="radio" name="container_size" value="5gal-round" <?php echo $selected_container_size === '5gal-round' ? 'checked' : ''; ?> onchange="calculatePrice()">
                                         <div class="container-image">
                                             <img src="../imagess/water5.webp" alt="5 Gallon Round">
                                         </div>
@@ -1364,8 +1408,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                 <input type="hidden" name="water_type" id="water_type" value="regular">
                             </div>
 
-                            <input type="hidden" name="container_status" value="new">
-                            <input type="hidden" name="fulfillment_method" value="delivery">
+                            <input type="hidden" name="container_status" value="<?php echo htmlspecialchars($selected_container_status); ?>">
+                            <input type="hidden" name="fulfillment_method" value="<?php echo htmlspecialchars($selected_fulfillment); ?>">
                             
                             <!-- Action Buttons -->
                             <button type="submit" class="btn-purchase">

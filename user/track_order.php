@@ -1017,6 +1017,9 @@ function compactTransactionId(string $id): string {
                             </div>
                             <?php endif; ?>
                             <?php if($txn['status'] === 'pending' && in_array($mcs, ['pending', 'assigned'], true)): ?>
+                            <div class="cancel-order-form" style="padding:12px 0 0;">
+                                <a class="cancel-order-btn" style="display:block;text-align:center;text-decoration:none;border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8;" href="purchase.php?user_id=<?php echo urlencode($txn['user_id']); ?>&amp;edit_transaction_id=<?php echo urlencode($txn['transaction_id']); ?>"><i class="fas fa-pen-to-square"></i> Edit Order</a>
+                            </div>
                             <form method="POST" class="cancel-order-form" style="padding:12px 0 0;" onsubmit="return confirm('Cancel this order? This action cannot be undone.');">
                                 <input type="hidden" name="cancel_order" value="1">
                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['customer_order_csrf']); ?>">
@@ -1276,6 +1279,9 @@ function compactTransactionId(string $id): string {
         </div>
 
         <?php if($txn['status'] === 'pending' && in_array($cs, ['pending', 'assigned'], true)): ?>
+        <div class="cancel-order-form" style="padding-bottom:0;">
+            <a class="cancel-order-btn" style="display:block;text-align:center;text-decoration:none;border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8;" href="purchase.php?user_id=<?php echo urlencode($txn['user_id']); ?>&amp;edit_transaction_id=<?php echo urlencode($txn['transaction_id']); ?>"><i class="fas fa-pen-to-square"></i> Edit Order</a>
+        </div>
         <form method="POST" class="cancel-order-form" onsubmit="return confirm('Cancel this order? This action cannot be undone.');">
             <input type="hidden" name="cancel_order" value="1">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['customer_order_csrf']); ?>">
