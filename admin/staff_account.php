@@ -132,6 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <a class="nav-item" href="dashboard.php"><i class="fas fa-chart-pie"></i> Dashboard</a>
         <a class="nav-item" href="transactions.php"><i class="fas fa-exchange-alt"></i> Transactions</a>
         <a class="nav-item" href="reports.php"><i class="fas fa-chart-bar"></i> Reports</a>
+        <a class="nav-item" href="feedback.php"><i class="fas fa-comments"></i> Customer Feedback</a>
         <a class="nav-item" href="inventory.php"><i class="fas fa-boxes-stacked"></i> Inventory</a>
         <div class="nav-label">People</div>
         <a class="nav-item" href="users.php"><i class="fas fa-users"></i> Users</a>

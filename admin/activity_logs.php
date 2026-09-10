@@ -89,6 +89,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans'
     <a href="dashboard.php"><i class="fas fa-chart-pie"></i>Dashboard</a>
     <a href="transactions.php"><i class="fas fa-exchange-alt"></i>Transactions</a>
     <a href="reports.php"><i class="fas fa-chart-column"></i>Reports</a>
+                    <a href="feedback.php" class="nav-item"><i class="fas fa-comments"></i> Customer Feedback</a>
     <a href="inventory.php"><i class="fas fa-boxes-stacked"></i>Inventory</a>
     <div class="nav-label">People</div>
     <a href="users.php"><i class="fas fa-users"></i>Users</a>

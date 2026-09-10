@@ -13,6 +13,7 @@ $escape = static fn($value) => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
     <meta name="description" content="<?= $escape($legalDescription) ?>">
     <title><?= $escape($legalTitle) ?> | HydroMIS</title>
     <link rel="stylesheet" href="css/legal.css">
+<script src="js/customer-home.js?v=20260910" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#content">Skip to content</a>

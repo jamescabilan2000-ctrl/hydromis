@@ -665,6 +665,7 @@ html, body {
                     <a href="dashboard.php" class="nav-item"><i class="fas fa-chart-pie"></i> Dashboard</a>
                     <a href="transactions.php" class="nav-item"><i class="fas fa-exchange-alt"></i> Transactions</a>
                     <a href="reports.php" class="nav-item"><i class="fas fa-chart-bar"></i> Reports</a>
+                    <a href="feedback.php" class="nav-item"><i class="fas fa-comments"></i> Customer Feedback</a>
                     <a href="inventory.php" class="nav-item"><i class="fas fa-boxes-stacked"></i> Inventory</a>
                 </div>
             </div>

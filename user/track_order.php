@@ -863,6 +863,7 @@ function compactTransactionId(string $id): string {
     }
     </style>
 <script src="../js/ui-protection.js" defer></script>
+<script src="../js/customer-home.js?v=20260910" defer></script>
 </head>
 <body class="<?php echo $view === 'search' ? 'search-view' : 'results-view'; ?>">
 

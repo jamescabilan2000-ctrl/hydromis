@@ -1408,6 +1408,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                     <a href="dashboard.php" class="nav-item active"><i class="fas fa-chart-pie"></i> Dashboard</a>
                     <a href="transactions.php" class="nav-item"><i class="fas fa-exchange-alt"></i> Transactions <?php if($pending>0): ?><span class="nav-badge"><?=(int)$pending?></span><?php endif; ?></a>
                     <a href="reports.php" class="nav-item"><i class="fas fa-chart-bar"></i> Reports</a>
+                    <a href="feedback.php" class="nav-item"><i class="fas fa-comments"></i> Customer Feedback</a>
                     <a href="inventory.php" class="nav-item"><i class="fas fa-boxes-stacked"></i> Inventory</a>
                 </div>
             </div>

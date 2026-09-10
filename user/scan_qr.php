@@ -1997,6 +1997,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
         @media(prefers-reduced-motion:reduce){.login-icon,.login-icon::before,.login-icon::after{animation:none!important}.login-icon,.login-icon img{transition:none!important}}
     </style>
     <script src="../js/ui-protection.js" defer></script>
+<script src="../js/customer-home.js?v=20260910" defer></script>
 </head>
 <body class="public-ui <?php echo empty($scanned_data) ? 'login-viewport' : 'account-viewport'; ?>">
     <!-- Navigation -->
