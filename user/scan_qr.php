@@ -48,7 +48,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qr_data'])) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mobile_login'])) {
     unset($_SESSION['qr_priority_user']);
     $mobile_login_value = trim((string)($_POST['mobile_number'] ?? ''));
-    $mobileDigits = str_replace(' ', '', $mobile_login_value);
+    $mobileDigits = preg_replace('/\D+/', '', $mobile_login_value);
+    if (str_starts_with($mobileDigits, '63') && strlen($mobileDigits) === 12) $mobileDigits = substr($mobileDigits, 2);
+    if (str_starts_with($mobileDigits, '0') && strlen($mobileDigits) === 11) $mobileDigits = substr($mobileDigits, 1);
 
     if (empty($mobileDigits)) {
         $error = 'Please enter your mobile number.';
@@ -2224,7 +2226,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                         <div class="mobile-field"><span class="country-code">+63</span><input type="tel" id="mobile_number" name="mobile_number" pattern="9[0-9]{9}" minlength="10" maxlength="10" title="Enter 10 digits starting with 9. Do not include 0 or +63." class="form-control" placeholder="9123456789" autocomplete="tel" inputmode="numeric" value="<?php echo htmlspecialchars($mobile_login_value); ?>" style="border-radius: 12px; border: 1px solid #d1d5db; background: #ffffff; margin-bottom: 10px;" required></div>
                         <p class="login-helper" style="color: #475569; font-size: 13px; margin-bottom: 16px;"><i class="fas fa-circle-info"></i> Enter 10 digits starting with 9 (for example, 950 785 3937). Do not include 0 or +63.</p>
 
-                        <button type="submit" class="btn-toggle" style="margin-bottom: 0; width: 100%;" disabled>
+                        <button type="submit" class="btn-toggle" style="margin-bottom: 0; width: 100%;">
                             <i class="fas fa-sign-in-alt mr-2"></i> Login & Go to Purchase
                         </button>
                     </form>
