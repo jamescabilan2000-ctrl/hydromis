@@ -305,14 +305,6 @@ $maxAnalyticsOrders = max(1, ...array_column($analyticsDays, 'orders'));
 $weekOrders = array_sum(array_column($analyticsDays, 'orders'));
 $weekRevenue = array_sum(array_column($analyticsDays, 'revenue'));
 
-$pending_trans = $conn->query("
-    SELECT t.*, u.full_name, u.contact_number, u.qr_code_path
-    FROM transactions t
-    JOIN users u ON t.user_id = u.user_id
-    WHERE t.status = 'pending'
-    ORDER BY t.qr_priority DESC, t.created_at ASC, t.id ASC
-");
-
 $rider_list = [];
 $rider_result = $conn->query("SELECT rider_id, full_name, age, address, contact_number FROM rider_users WHERE status = 'active' ORDER BY full_name ASC");
 if ($rider_result) {
@@ -1216,90 +1208,8 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
       <?php endif; ?>
 
       <?php if ($delivery_operations_view): ?>
-      <!-- Pending Approvals + Delivery -->
+      <!-- Delivery Operations -->
       <div class="content-grid section">
-        <!-- Pending Approvals Table -->
-        <?php if ($operations_section === 'deliveries' && $pending_trans && $pending_trans->num_rows > 0): ?>
-        <div class="card">
-          <div class="card-head">
-            <div class="card-title">
-              <span class="dot dot-amber"></span>
-              Pending Approvals
-            </div>
-            <a href="pending.php" class="card-link">View all <i class="fas fa-arrow-right"></i></a>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Order ID</th>
-                  <th>Customer</th>
-                  <th>Contact</th>
-                  <th>Amount</th>
-                  <th>Date</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php if ($pending_trans && $pending_trans->num_rows > 0): ?>
-                  <?php while ($row = $pending_trans->fetch_assoc()): ?>
-                  <tr>
-                    <td><span class="t-id"><?php echo htmlspecialchars($row['transaction_id']); ?></span></td>
-                    <td><span class="t-name"><?php echo htmlspecialchars($row['full_name']); ?></span></td>
-                    <td style="color:var(--muted);font-size:12px;"><?php echo htmlspecialchars($row['contact_number']); ?></td>
-                    <td><span class="t-amount"><?php echo format_currency($row['amount']); ?></span></td>
-                    <td><span class="t-date"><?php echo date('M d, Y', strtotime($row['created_at'])); ?></span></td>
-                    <td>
-                      <div class="action-row" style="display:flex;flex-direction:column;align-items:flex-start;gap:8px;">
-                        <?php if (!empty($rider_list) && ($row['status'] ?? '') === 'approved' && ($row['payment_status'] ?? '') === 'paid'): ?>
-                        <form method="POST" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                          <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($row['transaction_id']); ?>">
-                          <input type="hidden" name="action" value="assign_rider">
-                          <select name="rider_id" class="assign-select" aria-label="Select rider" style="min-width:140px;">
-                            <option value="">— Select rider —</option>
-                            <?php foreach ($rider_list as $rider): ?>
-                            <option value="<?php echo htmlspecialchars($rider['rider_id']); ?>"><?php echo htmlspecialchars($rider['full_name']); ?></option>
-                            <?php endforeach; ?>
-                          </select>
-                          <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-user-check"></i> Assign</button>
-                        </form>
-                        <?php else: ?>
-                        <div style="font-size:11px;color:var(--amber);"><i class="fas fa-lock"></i> Approve order and verify payment before rider assignment</div>
-                        <?php endif; ?>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                          <form method="POST" style="display:inline;">
-                            <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($row['transaction_id']); ?>">
-                            <input type="hidden" name="action" value="approve">
-                            <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Approve transaction <?php echo htmlspecialchars($row['transaction_id']); ?>?')">
-                              <i class="fas fa-check"></i> Approve
-                            </button>
-                          </form>
-                          <form method="POST" style="display:inline;">
-                            <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($row['transaction_id']); ?>">
-                            <input type="hidden" name="action" value="deny">
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Deny transaction <?php echo htmlspecialchars($row['transaction_id']); ?>?')">
-                              <i class="fas fa-xmark"></i> Deny
-                            </button>
-                          </form>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                  <?php endwhile; ?>
-                <?php else: ?>
-                  <tr><td colspan="6">
-                    <div class="empty">
-                      <i class="fas fa-circle-check"></i>
-                      <p>No pending transactions — you're all caught up!</p>
-                    </div>
-                  </td></tr>
-                <?php endif; ?>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <?php endif; ?>
-
         <?php if ($operations_section === 'deliveries'): ?>
         <!-- Delivery Runs -->
         <div class="card">
