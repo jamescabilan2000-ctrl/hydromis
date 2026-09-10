@@ -1118,7 +1118,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
     </div>
   </aside>
   </div>
-  <?php $staff_active = $delivery_operations_view ? 'deliveries' : 'dashboard'; include 'sidebar.php'; ?>
+  <?php $staff_active = $delivery_operations_view ? ($operations_section === 'feedbacks' ? 'feedbacks' : 'deliveries') : 'dashboard'; include 'sidebar.php'; ?>
 
   <!-- ─── MAIN ─────────────────────────────────────────── -->
   <main class="main">
