@@ -193,11 +193,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'messages') {
     $list = $conn->prepare('SELECT id, transaction_id, sender, recipient, message, created_at FROM (
         SELECT id, transaction_id, sender, recipient, message, created_at
         FROM rider_messages
-        WHERE transaction_id = ?
+        WHERE (? <> \'station\' OR transaction_id = ?)
           AND ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?))
         ORDER BY id DESC LIMIT 100
     ) recent_messages ORDER BY id ASC');
-    $list->bind_param('sssss', $transaction_id, $user_id, $order['rider_id'], $order['rider_id'], $user_id);
+    $list->bind_param('ssssss', $order['rider_id'], $transaction_id, $user_id, $order['rider_id'], $order['rider_id'], $user_id);
     $list->execute();
     $result = $list->get_result();
     while ($row = $result->fetch_assoc()) $messages[] = $row;

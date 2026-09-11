@@ -191,11 +191,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'delivery_info') {
     $msgStmt = $conn->prepare("SELECT id, transaction_id, sender, recipient, message, created_at FROM (
         SELECT id, transaction_id, sender, recipient, message, created_at
         FROM rider_messages
-        WHERE transaction_id = ?
-          AND ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?))
+        WHERE ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?))
         ORDER BY id DESC LIMIT 100
     ) recent_messages ORDER BY id ASC");
-    $msgStmt->bind_param('sssss', $transaction_id, $rider_id, $customer_id, $customer_id, $rider_id);
+    $msgStmt->bind_param('ssss', $rider_id, $customer_id, $customer_id, $rider_id);
     $msgStmt->execute();
     $msgRes = $msgStmt->get_result();
     while ($msg = $msgRes->fetch_assoc()) {
