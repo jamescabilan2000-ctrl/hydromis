@@ -430,7 +430,7 @@ body[data-color-mode="light"]{color-scheme:light;--bg:#f4f7fb;--bg2:#fff;--bg3:#
 .stat-blue::after   { background: var(--blue); }
 .stat-purple::after { background: var(--purple); }
 .stat-amber::after  { background: var(--amber); }
-.stat-top { display: flex; align-items: flex-start; justify-content: space-between; }
+.stat-top { display: flex; align-items: flex-start; justify-content: flex-end; }
 .stat-icon-wrap { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
 .icon-aqua   { background: var(--aqua-dim);   color: var(--aqua); }
 .icon-blue   { background: var(--blue-dim);   color: var(--blue); }
@@ -1502,28 +1502,28 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
             <!-- Stat Cards -->
             <div class="stats-grid">
                 <div class="card stat-card stat-aqua">
-                    <div class="stat-top"><div class="stat-icon-wrap icon-aqua"><i class="fas fa-peso-sign"></i></div><span class="stat-trend trend-up"><i class="fas fa-arrow-up"></i> 12.4%</span></div>
+                    <div class="stat-top"><span class="stat-trend trend-up"><i class="fas fa-arrow-up"></i> 12.4%</span></div>
                     <div class="stat-value"><?=htmlspecialchars(format_currency($total_sales))?></div>
                     <div class="stat-label">Total Revenue</div>
                     <div class="stat-detail"><b><?=(int)$approved?></b> approved transactions</div>
                     <div class="sparkline-wrap"><canvas id="spark1"></canvas></div>
                 </div>
                 <div class="card stat-card stat-blue">
-                    <div class="stat-top"><div class="stat-icon-wrap icon-blue"><i class="fas fa-exchange-alt"></i></div><span class="stat-trend trend-up"><i class="fas fa-arrow-up"></i> 8.1%</span></div>
+                    <div class="stat-top"><span class="stat-trend trend-up"><i class="fas fa-arrow-up"></i> 8.1%</span></div>
                     <div class="stat-value"><?=(int)$total_transactions?></div>
                     <div class="stat-label">Transactions</div>
                     <div class="stat-detail"><b><?=(int)$pending?></b> pending review</div>
                     <div class="sparkline-wrap"><canvas id="spark2"></canvas></div>
                 </div>
                 <div class="card stat-card stat-purple">
-                    <div class="stat-top"><div class="stat-icon-wrap icon-purple"><i class="fas fa-users"></i></div><span class="stat-trend trend-up"><i class="fas fa-arrow-up"></i> 5.7%</span></div>
+                    <div class="stat-top"><span class="stat-trend trend-up"><i class="fas fa-arrow-up"></i> 5.7%</span></div>
                     <div class="stat-value"><?=(int)$total_users?></div>
                     <div class="stat-label">Registered Users</div>
                     <div class="stat-detail"><b><?=(int)$approved_users?></b> active · <b><?=(int)$pending_users?></b> pending</div>
                     <div class="sparkline-wrap"><canvas id="spark3"></canvas></div>
                 </div>
                 <div class="card stat-card stat-amber">
-                    <div class="stat-top"><div class="stat-icon-wrap icon-amber"><i class="fas fa-triangle-exclamation"></i></div><span class="stat-trend trend-flat"><i class="fas fa-minus"></i> Stable</span></div>
+                    <div class="stat-top"><span class="stat-trend trend-flat"><i class="fas fa-minus"></i> Stable</span></div>
                     <div class="stat-value"><?=(int)($pending+$pending_users)?></div>
                     <div class="stat-label">Pending Actions</div>
                     <div class="stat-detail"><b><?=(int)$pending?></b> txns · <b><?=(int)$pending_users?></b> users · <b><?=(int)$denied?></b> denied</div>
