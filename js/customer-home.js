@@ -23,7 +23,7 @@
     });
     const primary = logos[0]?.closest('a');
     const isHomePage = window.location.pathname === new URL(home).pathname;
-    if (primary && !isHomePage && !document.querySelector('.home-link')) {
+    if (primary && !isHomePage && script.dataset.hideHome !== 'true' && !document.querySelector('.home-link')) {
         const button = document.createElement('a');
         button.href = home; button.className = 'customer-home-button'; button.textContent = 'Home';
         const brand = primary.closest('.nav-brand,.navbar-brand,.brand,.logo') || primary;

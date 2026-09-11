@@ -142,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <a class="nav-item" href="activity_logs.php"><i class="fas fa-clock-rotate-left"></i> Activity Log</a>
         <a class="nav-item" href="dashboard.php?open_settings=1"><i class="fas fa-cog"></i> Settings</a>
     </nav>
-    <div class="sidebar-foot"><div class="avatar"><?php echo htmlspecialchars(strtoupper(substr($_SESSION['full_name'] ?? 'A',0,1))); ?></div><div><strong><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Administrator'); ?></strong><span>Administrator</span></div><a href="../logout.php" title="Logout"><i class="fas fa-sign-out-alt"></i></a></div>
+    <div class="sidebar-foot"><div class="avatar"><?php include __DIR__ . "/profile_avatar.php"; ?></div><div><strong><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Administrator'); ?></strong><span>Administrator</span></div><a href="../logout.php" title="Logout"><i class="fas fa-sign-out-alt"></i></a></div>
 </aside>
 <main class="main"><div class="topbar"><i class="fas fa-home" style="margin-right:8px"></i> Admin &nbsp;/&nbsp; Staff Account</div>
 <div class="content">

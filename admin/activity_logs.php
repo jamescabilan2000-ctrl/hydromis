@@ -100,7 +100,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans'
     <a href="dashboard.php?open_settings=1"><i class="fas fa-cog"></i>Settings</a>
   </nav>
   <div class="sidebar-user">
-    <div class="sidebar-avatar"><?=strtoupper(substr($_SESSION['full_name'] ?? 'A',0,1))?></div>
+    <div class="sidebar-avatar"><?php include __DIR__ . "/profile_avatar.php"; ?></div>
     <div><b><?=htmlspecialchars($_SESSION['full_name'] ?? 'Admin')?></b><span>Administrator</span></div>
     <a href="../logout.php" aria-label="Log out" title="Log out"><i class="fas fa-sign-out-alt"></i></a>
   </div>

@@ -646,7 +646,7 @@ html, body {
 
         <div class="sidebar-footer">
             <div class="admin-card">
-                <div class="admin-avatar"><?= strtoupper(substr($_SESSION['full_name'] ?? 'A', 0, 1)) ?></div>
+                <div class="admin-avatar"><?php include __DIR__ . "/profile_avatar.php"; ?></div>
                 <div>
                     <div class="admin-name"><?= htmlspecialchars($_SESSION['full_name'] ?? 'Admin') ?></div>
                     <div class="admin-role">Administrator</div>
