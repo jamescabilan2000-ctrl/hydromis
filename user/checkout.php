@@ -1185,7 +1185,7 @@ $final_total = $item_total + $delivery_fee - $discount;
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
     </style>
     <script src="../js/ui-protection.js" defer></script>
-<script src="../js/customer-home.js?v=20260910" defer></script>
+<script src="../js/customer-home.js?v=20260911" data-hide-home="true" defer></script>
 </head>
 <body class="public-ui">
     <nav class="navbar">
