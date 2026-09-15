@@ -30,10 +30,6 @@ $escape = static fn($value) => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
         <p class="intro"><?= $escape($legalDescription) ?></p>
         <p class="updated"><span class="date-dot" aria-hidden="true"></span>Last updated <time datetime="2026-09-05">September 5, 2026</time></p>
     </div>
-    <nav class="document-tabs" aria-label="Legal documents">
-        <a href="terms.php" <?= $legalActive === 'terms' ? 'aria-current="page"' : '' ?>>Terms &amp; Conditions</a>
-        <a href="privacy.php" <?= $legalActive === 'privacy' ? 'aria-current="page"' : '' ?>>Privacy Policy</a>
-    </nav>
     <div class="document-grid">
         <aside class="sidebar">
             <nav class="contents" aria-label="On this page">

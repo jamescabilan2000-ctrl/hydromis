@@ -320,8 +320,8 @@
         /* Chips */
         .chips {
             margin-top: 18px;
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 8px;
             opacity: 0;
             animation: fadeUp 0.6s 0.9s both;
@@ -351,7 +351,7 @@
         .stats {
             margin-top: 20px;
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 10px;
             opacity: 0;
             animation: fadeUp 0.6s 1.0s both;
@@ -373,8 +373,8 @@
         .stat-label {
             font-size: 10px;
             font-weight: 600;
-            color: var(--text-500);
-            margin-top: 4px;
+            color: var(--text-700);
+            margin-top: 10px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -533,8 +533,8 @@
         }
 
         @media (max-width: 600px) {
-            html, body { height: 100%; height: 100dvh; overflow: hidden; }
-            .card { height: 100%; height: 100dvh; min-height: 0; display: flex; flex-direction: column; }
+            html, body { min-height: 100%; overflow-x: hidden; }
+            .card { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
             .hero {
                 flex: 0 0 290px;
                 min-height: 290px;
@@ -549,20 +549,20 @@
             .content {
                 flex: 1 1 auto;
                 min-height: 0;
-                padding: clamp(16px, 2.8vh, 24px) 28px 14px;
+                padding: 24px 20px 28px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
             }
             .eyebrow { font-size: 10px; letter-spacing: 1.35px; }
-            .headline { margin-top: 6px; font-size: clamp(25px, 7vw, 30px); line-height: 1.06; }
-            .sub { margin-top: 10px; font-size: 13.5px; line-height: 1.42; }
+            .headline { margin-top: 10px; font-size: clamp(28px, 8vw, 36px); line-height: 1.15; }
+            .sub { margin-top: 14px; font-size: 14px; line-height: 1.6; }
             .chips { margin-top: 12px; gap: 6px; }
-            .chip { padding: 5px 9px; font-size: 10.5px; gap: 5px; }
+            .chip { padding: 8px; font-size: 11px; gap: 6px; border-radius: 10px; }
             .stats { margin-top: 13px; gap: 7px; }
             .stat { padding: 9px 6px; border-radius: 12px; }
             .stat-num { font-size: 18px; }
-            .stat-label { margin-top: 3px; font-size: 8.5px; }
+            .stat-label { margin-top: 8px; font-size: 10px; }
             .bottles { height: 180px; }
         }
 
@@ -713,31 +713,31 @@
 
     <!-- ── Content ── -->
     <section class="content">
-        <p class="eyebrow"><i class="fas fa-droplet" style="margin-right:5px;"></i>Pure Hydration, Every Refill</p>
+        <p class="eyebrow"><i class="fas fa-droplet" style="margin-right:5px;"></i>Your everyday refill, simplified</p>
 
-        <h1 class="headline">Taste &amp; Feel<br><span>the Difference!</span></h1>
+        <h1 class="headline">Fresh water.<br><span>Fewer worries.</span></h1>
 
-        <p class="sub">HydroMIS ensures clean, purified, and safe drinking water for every refill. Track orders, scan QR codes, and manage your water purchases with confidence.</p>
+        <p class="sub">Keep your water refills organized with HydroMIS. Place orders, track deliveries, and view your purchase history in one place.</p>
 
         <div class="chips">
-            <span class="chip"><i class="fas fa-shield-alt"></i> Quality Assured</span>
-            <span class="chip"><i class="fas fa-tint"></i> Daily Purification</span>
-            <span class="chip"><i class="fas fa-qrcode"></i> Smart QR Tracking</span>
-            <span class="chip"><i class="fas fa-truck"></i> Fast Delivery</span>
+            <span class="chip"><i class="fas fa-cart-shopping" aria-hidden="true"></i> Easy Ordering</span>
+            <span class="chip"><i class="fas fa-clock-rotate-left" aria-hidden="true"></i> Order History</span>
+            <span class="chip"><i class="fas fa-qrcode" aria-hidden="true"></i> QR Tracking</span>
+            <span class="chip"><i class="fas fa-truck" aria-hidden="true"></i> Delivery Updates</span>
         </div>
 
-        <div class="stats">
+        <div class="stats" role="group" aria-label="Your refill in three steps">
             <div class="stat">
-                <div class="stat-num" data-target="500">0</div>
-                <div class="stat-label">Happy Clients</div>
+                <div class="stat-num" aria-hidden="true"><i class="fas fa-cart-shopping"></i></div>
+                <div class="stat-label">1. Order</div>
             </div>
             <div class="stat">
-                <div class="stat-num" data-target="99">0<span style="font-size:12px">%</span></div>
-                <div class="stat-label">Purity Rate</div>
+                <div class="stat-num" aria-hidden="true"><i class="fas fa-truck"></i></div>
+                <div class="stat-label">2. Track</div>
             </div>
             <div class="stat">
-                <div class="stat-num" data-target="24">0<span style="font-size:12px">h</span></div>
-                <div class="stat-label">Service</div>
+                <div class="stat-num" aria-hidden="true"><i class="fas fa-droplet"></i></div>
+                <div class="stat-label">3. Enjoy</div>
             </div>
         </div>
 
@@ -745,37 +745,6 @@
 </main>
 
 <script>
-    /* ── Counter animation ── */
-    function animateCounter(el) {
-        const parent = el.closest('.stat');
-        if (!parent) return;
-        const target = parseInt(el.dataset.target);
-        const suffix = el.querySelector('span') ? el.querySelector('span').outerHTML : '';
-        let start = null;
-        const duration = 1600;
-        function step(ts) {
-            if (!start) start = ts;
-            const progress = Math.min((ts - start) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            el.innerHTML = Math.round(eased * target) + suffix;
-            if (progress < 1) requestAnimationFrame(step);
-        }
-        requestAnimationFrame(step);
-    }
-
-    const observer = new IntersectionObserver(entries => {
-        entries.forEach(e => {
-            if (e.isIntersecting) {
-                document.querySelectorAll('.stat-num').forEach(animateCounter);
-                observer.disconnect();
-            }
-        });
-    }, { threshold: 0.5 });
-
-    const statsEl = document.querySelector('.stats');
-    if (statsEl) observer.observe(statsEl);
-
-    /* ── Ripple on CTA ── */
     document.getElementById('ctaBtn').addEventListener('click', function(e) {
         const ripple = document.createElement('span');
         ripple.className = 'ripple';
