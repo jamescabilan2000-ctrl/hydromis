@@ -791,7 +791,7 @@ body{
         <div class="menu-rider-id"><span id="riderIdValue"><?php echo htmlspecialchars($rider_id); ?></span><button class="copy-rider-id" type="button" onclick="copyRiderId(this)" aria-label="Copy rider ID" title="Copy rider ID"><i class="far fa-copy"></i></button></div>
         <div class="menu-divider"></div>
         <button class="notification-toggle" id="notificationToggle" type="button" onclick="enablePushNotifications()"><i class="fas fa-bell"></i><span>Notifications</span><span class="notify-dot" id="notifyDot" aria-hidden="true"></span></button>
-        <a href="history.php" class="menu-history"><i class="fas fa-clock-rotate-left"></i><span>Delivery history by day</span></a>
+        <a href="history.php" class="menu-history"><i class="fas fa-clock-rotate-left"></i><span>Delivery history</span></a>
         <div class="menu-divider"></div>
         <a href="../logout.php" class="menu-logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
       </div>

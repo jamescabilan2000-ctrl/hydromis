@@ -19,7 +19,7 @@ if ($db_initialized) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HydroMIS — Water Refilling Station Management</title>
-    <link rel="icon" type="image/png" href="imagess/logosystem.png">
+    <link rel="icon" type="image/png" href="imagess/favicon-cropped.png?v=2">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
@@ -1217,22 +1217,24 @@ if ($db_initialized) {
                 flex-direction: row;
                 text-align: left;
                 align-items: flex-start;
-                gap: 16px;
-                padding: 0 0 28px 0;
+                gap: 14px;
+                padding: 0 0 24px 0;
                 position: relative;
             }
             .step-item:not(:last-child)::after {
                 content: '';
                 position: absolute;
-                left: 35px;
-                top: 72px;
+                left: 23px;
+                top: 48px;
                 bottom: 0;
                 width: 2px;
                 background: linear-gradient(to bottom, var(--blue-mid), var(--aqua));
                 opacity: .3;
             }
-            .step-num { margin-bottom: 0; flex-shrink: 0; width: 60px; height: 60px; font-size: 1.1rem; }
-            .step-text { padding-top: 10px; }
+            .step-num { margin-bottom: 0; flex-shrink: 0; width: 48px; height: 48px; font-size: 1rem; }
+            .step-item.active .step-num { box-shadow: 0 4px 12px rgba(26,86,219,.18); }
+            .step-item:last-child { padding-bottom: 0; }
+            .step-text { min-width: 0; padding-top: 3px; }
             .step-title { font-size: .95rem; }
             .step-desc  { font-size: .82rem; }
 
