@@ -2037,8 +2037,8 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 </div>
 
                 <div class="mobile-menu-group">
-                    <a href="../terms.php" class="mobile-menu-item mobile-menu-item-secondary">Terms & conditions</a>
-                    <a href="../privacy.php" class="mobile-menu-item mobile-menu-item-secondary">Privacy terms</a>
+                    <a href="../terms.php?return=user%2Fscan_qr.php" class="mobile-menu-item mobile-menu-item-secondary">Terms & conditions</a>
+                    <a href="../privacy.php?return=user%2Fscan_qr.php" class="mobile-menu-item mobile-menu-item-secondary">Privacy terms</a>
                 </div>
             </div>
         </aside>

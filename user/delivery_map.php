@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once '../config/delivery_destination.php';
 require_once '../config/system_settings.php';
 
 $transactionId = sanitize(trim((string)($_GET['transaction_id'] ?? '')));
@@ -9,7 +10,7 @@ if ($transactionId === '' || $userId === '') {
     exit;
 }
 
-$stmt = $conn->prepare("SELECT t.transaction_id,t.delivery_status,t.status,t.user_id,u.address,ru.full_name AS rider_name,ru.contact_number AS rider_contact
+$stmt = $conn->prepare("SELECT t.transaction_id,t.delivery_status,t.status,t.user_id,t.delivery_latitude,t.delivery_longitude,u.address,ru.full_name AS rider_name,ru.contact_number AS rider_contact
     FROM transactions t
     JOIN users u ON u.user_id=t.user_id
     LEFT JOIN rider_users ru ON ru.rider_id=t.rider_id
@@ -21,6 +22,7 @@ if (!$order) {
     header('Location: track_order.php?user_id=' . urlencode($userId));
     exit;
 }
+$destination = delivery_destination($order['delivery_latitude'] ?? null, $order['delivery_longitude'] ?? null);
 $status = strtolower((string)($order['delivery_status'] ?? 'pending'));
 $statusLabel = in_array($status, ['on_way','on_the_way'], true) ? 'On the way' : ucfirst(str_replace('_', ' ', $status));
 ?>
@@ -37,19 +39,19 @@ $statusLabel = in_array($status, ['on_way','on_the_way'], true) ? 'On the way' :
 </head>
 <body><main class="page">
 <header class="top"><a class="back" href="track_order.php?user_id=<?php echo urlencode($userId); ?>"><i class="fas fa-arrow-left"></i> Back to orders</a><span class="status" id="statusLabel"><?php echo htmlspecialchars($statusLabel); ?></span></header>
-<section class="heading"><h1>Live delivery map</h1><p>Order <?php echo htmlspecialchars($transactionId); ?> · Rider location refreshes automatically</p></section>
+<section class="heading"><h1>Live delivery map</h1><p>Order <?php echo htmlspecialchars($transactionId); ?> · Rider location refreshes automatically</p><p><?= $destination ? 'Orange pin: your delivery location. Green pin: live rider.' : 'No delivery pin was saved for this order. Only the live rider location is shown.' ?></p></section>
 <section class="map-wrap"><div id="map"></div><div class="live-card"><div class="rider"><span class="rider-icon"><i class="fas fa-motorcycle"></i></span><div><strong id="riderName">Your delivery rider</strong><small id="lastUpdate">Waiting for live location…</small></div></div><a class="call" id="callRider" href="#" hidden aria-label="Call rider"><i class="fas fa-phone"></i></a></div></section>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const transactionId=<?php echo json_encode($transactionId); ?>;
-const station=[9.9403,123.9517];
-const map=L.map('map').setView(station,14);
+const destination=<?= json_encode($destination) ?>;
+const map=L.map('map').setView(destination || [9.9509,123.9622],destination ? 16 : 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-L.marker(station).addTo(map).bindTooltip('HydroMIS Station · Guiwanon, Tubigon');
+if(destination) L.marker(destination,{icon:L.divIcon({className:'',html:'<div class="marker" style="background:#f97316"><i class="fas fa-house"></i></div>',iconSize:[38,38],iconAnchor:[19,19]})}).addTo(map).bindTooltip('Your delivery location');
 let riderMarker=null,route=null;
 const icon=L.divIcon({className:'',html:'<div class="marker"><i class="fas fa-motorcycle"></i></div>',iconSize:[38,38],iconAnchor:[19,19]});
 function labelStatus(value){value=(value||'pending').toLowerCase();return value==='on_way'||value==='on_the_way'?'On the way':value.replaceAll('_',' ').replace(/^./,c=>c.toUpperCase())}
-function refresh(){fetch('../api/delivery_tracker.php?request=get_rider_location&transaction_id='+encodeURIComponent(transactionId)).then(r=>r.json()).then(result=>{if(!result.success)return;const d=result.data||{};document.getElementById('statusLabel').textContent=labelStatus(d.delivery_status);if(d.rider_name)document.getElementById('riderName').textContent=d.rider_name;if(d.rider_contact_number){const call=document.getElementById('callRider');call.href='tel:'+d.rider_contact_number;call.hidden=false}if(!d.has_live_location||!d.rider_location){document.getElementById('lastUpdate').textContent='Waiting for rider GPS…';return}const point=[Number(d.rider_location.latitude),Number(d.rider_location.longitude)];if(!riderMarker)riderMarker=L.marker(point,{icon}).addTo(map);else riderMarker.setLatLng(point);if(route)map.removeLayer(route);route=L.polyline([station,point],{color:'#1769d2',weight:4,dashArray:'8 8'}).addTo(map);map.fitBounds(L.latLngBounds([station,point]),{padding:[45,45],maxZoom:16});document.getElementById('lastUpdate').textContent='Location updated just now'}).catch(()=>{document.getElementById('lastUpdate').textContent='Unable to refresh location'});}
+function refresh(){fetch('../api/delivery_tracker.php?request=get_rider_location&transaction_id='+encodeURIComponent(transactionId)).then(r=>r.json()).then(result=>{if(!result.success)return;const d=result.data||{};document.getElementById('statusLabel').textContent=labelStatus(d.delivery_status);if(d.rider_name)document.getElementById('riderName').textContent=d.rider_name;if(d.rider_contact_number){const call=document.getElementById('callRider');call.href='tel:'+d.rider_contact_number;call.hidden=false}if(!d.has_live_location||!d.rider_location){document.getElementById('lastUpdate').textContent='Waiting for rider GPS…';return}const point=[Number(d.rider_location.latitude),Number(d.rider_location.longitude)];if(!riderMarker)riderMarker=L.marker(point,{icon}).addTo(map);else riderMarker.setLatLng(point);if(route)map.removeLayer(route);if(destination) route=L.polyline([destination,point],{color:'#1769d2',weight:4,dashArray:'8 8'}).addTo(map);map.fitBounds(L.latLngBounds(destination ? [destination,point] : [point,point]),{padding:[45,45],maxZoom:16});document.getElementById('lastUpdate').textContent='Location updated just now'}).catch(()=>{document.getElementById('lastUpdate').textContent='Unable to refresh location'});}
 refresh();setInterval(refresh,5000);
 </script></body></html>

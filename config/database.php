@@ -397,6 +397,8 @@ class DBCompatConnection {
             ['transactions', 'container_size', 'VARCHAR(30) NULL'],
             ['transactions', 'container_status', 'VARCHAR(20) NULL'],
             ['transactions', 'fulfillment_method', 'VARCHAR(20) NULL'],
+            ['transactions', 'delivery_latitude', 'DECIMAL(10,8) NULL'],
+            ['transactions', 'delivery_longitude', 'DECIMAL(11,8) NULL'],
             ['transactions', 'qr_priority', 'TINYINT(1) NOT NULL DEFAULT 0'],
             ['transactions', 'inventory_item_id', 'INT NULL'],
             ['transactions', 'inventory_reserved', 'TINYINT(1) NOT NULL DEFAULT 0'],

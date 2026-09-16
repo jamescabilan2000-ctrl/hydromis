@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . "/../config/delivery_destination.php";
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 require_once '../config/database.php';
 require_once '../config/storage_service.php';
@@ -114,6 +115,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     $container_size = sanitize($_POST['container_size']); // '5gal-round', '2.5gal-slim', '5gal-slim'
     $container_status = sanitize($_POST['container_status']); // 'new' or 'existing'
     $fulfillment_method = sanitize($_POST['fulfillment_method'] ?? 'delivery');
+    $destination = $fulfillment_method === 'delivery'
+        ? delivery_destination($_POST['delivery_latitude'] ?? null, $_POST['delivery_longitude'] ?? null) : null;
+    if ($fulfillment_method === 'delivery' && $destination === null) {
+        $error = 'Please return to checkout and select your delivery pin on the map.';
+    }
+    // Validated numeric values only; pickup orders deliberately have no delivery pin.
+    $delivery_lat_sql = $destination === null ? 'NULL' : sprintf('%.8F', $destination[0]);
+    $delivery_lng_sql = $destination === null ? 'NULL' : sprintf('%.8F', $destination[1]);
     $amount_tendered = floatval($_POST['amount_tendered']);
     $customer_notes = isset($_POST['customer_notes']) ? sanitize($_POST['customer_notes']) : '';
     $payment_method = isset($_POST['payment_method']) ? sanitize($_POST['payment_method']) : 'cash';
@@ -280,9 +289,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         $qr_priority = (($_SESSION['qr_priority_user'] ?? '') === (string)$scanned_data['user_id']) ? 1 : 0;
         $new_container_inventory_item_sql = $new_container_inventory_item_id === null ? 'NULL' : (string)$new_container_inventory_item_id;
         $sql = $is_editing_order
-            ? "UPDATE transactions SET amount='$final_amount', description='$description', water_type='regular', quantity='$quantity', price_per_unit='$price_per_unit', discount='$discount', loyalty_points_earned='$loyalty_points', notes='$customer_notes', status='pending', payment_method='$payment_method', payment_reference=$safe_reference, payment_status='$payment_status', payment_proof=$safe_proof, container_size='$container_size', container_status='$container_status', fulfillment_method='$fulfillment_method', inventory_item_id=$inventory_item_sql, inventory_reserved=$inventory_reserved, new_container_inventory_item_id=$new_container_inventory_item_sql, new_container_inventory_reserved=$new_container_inventory_reserved, updated_at=NOW() WHERE transaction_id='" . $conn->real_escape_string($transaction_id) . "' AND user_id='" . $conn->real_escape_string((string)$user_id) . "' AND status='pending'"
-            : "INSERT INTO transactions (transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, notes, status, payment_method, payment_reference, payment_status, payment_proof, container_size, container_status, fulfillment_method, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, qr_priority, created_at)
-                VALUES ('$transaction_id', '$user_id', '$final_amount', '$description', 'regular', '$quantity', '$price_per_unit', '$discount', '$loyalty_points', '$customer_notes', 'pending', '$payment_method', $safe_reference, '$payment_status', $safe_proof, '$container_size', '$container_status', '$fulfillment_method', $inventory_item_sql, $inventory_reserved, $new_container_inventory_item_sql, $new_container_inventory_reserved, $qr_priority, NOW())";
+            ? "UPDATE transactions SET amount='$final_amount', description='$description', water_type='regular', quantity='$quantity', price_per_unit='$price_per_unit', discount='$discount', loyalty_points_earned='$loyalty_points', notes='$customer_notes', status='pending', payment_method='$payment_method', payment_reference=$safe_reference, payment_status='$payment_status', payment_proof=$safe_proof, container_size='$container_size', container_status='$container_status', fulfillment_method='$fulfillment_method', delivery_latitude=$delivery_lat_sql, delivery_longitude=$delivery_lng_sql, inventory_item_id=$inventory_item_sql, inventory_reserved=$inventory_reserved, new_container_inventory_item_id=$new_container_inventory_item_sql, new_container_inventory_reserved=$new_container_inventory_reserved, updated_at=NOW() WHERE transaction_id='" . $conn->real_escape_string($transaction_id) . "' AND user_id='" . $conn->real_escape_string((string)$user_id) . "' AND status='pending'"
+            : "INSERT INTO transactions (transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, notes, status, payment_method, payment_reference, payment_status, payment_proof, container_size, container_status, fulfillment_method, delivery_latitude, delivery_longitude, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, qr_priority, created_at)
+                VALUES ('$transaction_id', '$user_id', '$final_amount', '$description', 'regular', '$quantity', '$price_per_unit', '$discount', '$loyalty_points', '$customer_notes', 'pending', '$payment_method', $safe_reference, '$payment_status', $safe_proof, '$container_size', '$container_status', '$fulfillment_method', $delivery_lat_sql, $delivery_lng_sql, $inventory_item_sql, $inventory_reserved, $new_container_inventory_item_sql, $new_container_inventory_reserved, $qr_priority, NOW())";
 
         if (!empty($error)) {
             // Stock validation already supplied the customer-facing message.

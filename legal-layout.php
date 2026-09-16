@@ -4,6 +4,15 @@ if (!isset($legalTitle, $legalDescription, $legalSummary, $legalActive, $legalSe
     exit;
 }
 $escape = static fn($value) => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+$returnTo = 'home.php';
+$returnLabel = 'Back to home';
+$candidate = $_GET['return'] ?? '';
+// Only permit the customer pages that link to these documents.
+if (is_string($candidate) && preg_match('~\Auser/(track_order|scan_qr)\.php(?:\?[^\r\n#]*)?\z~D', $candidate, $match)) {
+    $returnTo = $candidate;
+    $returnLabel = $match[1] === 'track_order' ? 'Back to tracking' : 'Back to customer portal';
+}
+$legalReturnQuery = $returnTo !== 'home.php' ? '?return=' . rawurlencode($returnTo) : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -20,7 +29,7 @@ $escape = static fn($value) => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 <header class="site-header">
     <div class="header-inner">
         <a class="brand" href="home.php"><img src="imagess/hydromis-logo-v2.png" width="38" height="38" alt="">Hydro<span>MIS</span></a>
-        <a class="home-link" href="home.php"><span aria-hidden="true">&larr;</span> Back to home</a>
+        <a class="home-link" href="<?= $escape($returnTo) ?>"><span aria-hidden="true">&larr;</span> <?= $returnLabel ?></a>
     </div>
 </header>
 <main id="content" class="page">
@@ -47,7 +56,7 @@ $escape = static fn($value) => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
             <?php foreach ($legalSections as $index => [$id, $heading, $body]): ?>
             <section id="<?= $escape($id) ?>" class="legal-section">
                 <h2><span class="section-number" aria-hidden="true"><?= sprintf('%02d', $index + 1) ?></span><?= $escape($heading) ?></h2>
-                <?= $body /* Trusted, static document HTML defined in terms.php or privacy.php. */ ?>
+                <?= str_replace(['href="terms.php"', 'href="privacy.php"'], ['href="' . $escape('terms.php' . $legalReturnQuery) . '"', 'href="' . $escape('privacy.php' . $legalReturnQuery) . '"'], $body) /* Trusted, static document HTML. Preserve the return page across legal links. */ ?>
             </section>
             <?php endforeach; ?>
             <a class="back-top" href="#content">Back to top <span aria-hidden="true">&uarr;</span></a>

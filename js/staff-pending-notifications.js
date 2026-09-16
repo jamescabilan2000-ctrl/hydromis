@@ -170,26 +170,19 @@
             }
         });
 
-        // Delivery Operations navigation badges
-        const deliveryBadges = document.querySelectorAll('.staff-delivery-menu > a .staff-nav-redmark, a[href*="view=deliveries"] .nav-badge');
-        deliveryBadges.forEach(el => {
-            if (data.delivery_count > 0) {
-                el.textContent = data.delivery_count;
-                el.style.display = '';
-            } else {
-                el.style.display = 'none';
-            }
+        // Keep badges mounted so a new pickup appears even when the initial count was zero.
+        const pickupCount = Math.max(0, Number(data.pickup_count) || 0);
+        const deliveryCount = Math.max(0, Number(data.delivery_count) || 0);
+        document.querySelectorAll('.staff-delivery-menu > a .staff-nav-redmark, a[href*="view=deliveries"] .nav-badge').forEach(el => {
+            el.textContent = deliveryCount + pickupCount;
+            el.style.display = deliveryCount + pickupCount > 0 ? '' : 'none';
         });
-
-        // Pickup Order sub-menu badges
-        const pickupBadges = document.querySelectorAll('a[href*="section=pickups"] .staff-nav-redmark');
-        pickupBadges.forEach(el => {
-            if (data.pickup_count > 0) {
-                el.textContent = data.pickup_count;
-                el.style.display = '';
-            } else {
-                el.style.display = 'none';
-            }
+        document.querySelectorAll('a[href*="section=pickups"] .staff-nav-redmark').forEach(el => {
+            el.textContent = pickupCount;
+            el.style.display = pickupCount > 0 ? '' : 'none';
+        });
+        document.querySelectorAll('.staff-pickup-dot').forEach(el => {
+            el.style.display = pickupCount > 0 ? '' : 'none';
         });
 
         // Reward Claims badges

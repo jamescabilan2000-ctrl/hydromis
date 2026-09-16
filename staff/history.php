@@ -652,7 +652,6 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                     <div class="filter-value" data-period="month"><label for="filter-month">Select month</label><input id="filter-month" type="month" name="month" value="<?php echo htmlspecialchars($filterMonth); ?>"></div>
                     <div class="filter-value" data-period="year"><label for="filter-year">Select year</label><input id="filter-year" type="number" min="2020" max="<?php echo date('Y') + 1; ?>" name="year" value="<?php echo htmlspecialchars($filterYear); ?>"></div>
                     <a href="history.php">Reset</a>
-                    <span class="filter-live"><i class="fas fa-bolt"></i> Updates automatically</span>
                 </form>
                 <div class="stats-row">
                     <div class="stat-card green">

@@ -93,7 +93,7 @@ if ($container_status === 'new') {
 }
 $stock_blocked = $quantity > $available_stock || ($container_status === 'new' && $quantity > $new_container_stock);
 if ($edit_transaction_id !== '') {
-    $edit_stmt = $conn->prepare("SELECT inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, quantity FROM transactions WHERE transaction_id = ? AND user_id = ? AND status = 'pending' LIMIT 1");
+    $edit_stmt = $conn->prepare("SELECT delivery_latitude, delivery_longitude, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, quantity FROM transactions WHERE transaction_id = ? AND user_id = ? AND status = 'pending' LIMIT 1");
     if ($edit_stmt) {
         $edit_stmt->bind_param('ss', $edit_transaction_id, $user_id);
         $edit_stmt->execute();
@@ -1186,6 +1186,8 @@ $final_total = $item_total + $delivery_fee - $discount;
     </style>
     <script src="../js/ui-protection.js" defer></script>
 <script src="../js/customer-home.js?v=20260911" data-hide-home="true" defer></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>#delivery-pin-map{height:260px;margin:12px 0;z-index:0}#delivery-pin-locate{padding:10px 14px;border:1px solid #b7dcea;background:#eefaff;color:#12618c;border-radius:8px;cursor:pointer}#delivery-pin-status{font-size:12px;line-height:1.5;color:#49637a}</style>
 </head>
 <body class="public-ui">
     <nav class="navbar">
@@ -1234,6 +1236,12 @@ $final_total = $item_total + $delivery_fee - $discount;
                                 <?php endif; ?>
                             </div>
                             <i class="fas fa-check-circle" style="color: #0d9488; font-size: 16px; margin-left: 8px; flex-shrink: 0;"></i>
+                        </div>
+                        <div style="margin-top:16px">
+                            <strong>Delivery pin</strong>
+                            <p id="delivery-pin-status" role="status">Tap your delivery location on the map, or use your current location if you are at the delivery address.</p>
+                            <button type="button" id="delivery-pin-locate">Use my current location</button>
+                            <div id="delivery-pin-map" aria-label="Choose delivery location"></div>
                         </div>
                         <?php else: ?>
                         <div class="pickup-box"><i class="fas fa-location-dot"></i><div><strong>HydroMIS Water Refilling Station</strong><span>Your order will be prepared for collection. No delivery schedule is required.</span></div></div>
@@ -1324,6 +1332,8 @@ $final_total = $item_total + $delivery_fee - $discount;
             <input type="hidden" name="quantity" id="hiddenQuantity" value="<?php echo $quantity; ?>">
             <input type="hidden" name="amount_tendered" id="hiddenAmount" value="<?php echo number_format($final_total, 2); ?>">
             <input type="hidden" name="delivery_address" id="hiddenAddress" value="<?php echo htmlspecialchars($user_address); ?>">
+            <input type="hidden" name="delivery_latitude" id="deliveryLatitude" value="<?= htmlspecialchars((string)($edit_order['delivery_latitude'] ?? '')) ?>">
+            <input type="hidden" name="delivery_longitude" id="deliveryLongitude" value="<?= htmlspecialchars((string)($edit_order['delivery_longitude'] ?? '')) ?>">
             <input type="hidden" name="delivery_date" id="hiddenDate" value="">
             <input type="hidden" name="delivery_time" id="hiddenTime" value="">
             <input type="hidden" name="payment_method" id="hiddenPaymentMethod" value="">
@@ -1659,6 +1669,10 @@ $final_total = $item_total + $delivery_fee - $discount;
 
             let isValid = true;
             const errors = [];
+            if (isDelivery && (!document.getElementById('deliveryLatitude').value || !document.getElementById('deliveryLongitude').value)) {
+                errors.push('Choose your delivery pin on the map');
+                isValid = false;
+            }
 
             if (availableStock !== null && currentQuantity > availableStock) {
                 errors.push('Only ' + availableStock + ' of this gallon container are available');
@@ -1735,5 +1749,7 @@ $final_total = $item_total + $delivery_fee - $discount;
             document.getElementById('deliveryDate').setAttribute('min', minDate);
         });
     </script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../js/delivery-pin.js?v=1"></script>
 </body>
 </html>

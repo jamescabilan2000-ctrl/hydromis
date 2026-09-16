@@ -757,7 +757,9 @@ if ($db_initialized) {
 
         .step-item.active .step-num {
             background: linear-gradient(135deg, var(--blue-mid), var(--aqua));
-            border-color: transparent;
+            background-repeat: no-repeat;
+            background-origin: border-box;
+            border: 0;
             color: #fff;
             box-shadow: 0 8px 24px rgba(26,86,219,.3);
         }

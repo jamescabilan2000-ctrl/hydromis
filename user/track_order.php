@@ -960,6 +960,7 @@ function compactTransactionId(string $id): string {
                                 <a class="btn-map btn-map-link" href="delivery_map.php?transaction_id=<?php echo urlencode($txn['transaction_id']); ?>&amp;user_id=<?php echo urlencode($txn['user_id']); ?>"
                                     data-transaction-id="<?php echo htmlspecialchars($txn['transaction_id']); ?>"
                                     data-address="<?php echo htmlspecialchars($mcad); ?>"
+                    data-latitude="<?= htmlspecialchars((string)($txn['delivery_latitude'] ?? '')) ?>" data-longitude="<?= htmlspecialchars((string)($txn['delivery_longitude'] ?? '')) ?>"
                                     data-status="<?php echo htmlspecialchars($mcs); ?>"
                                     data-rider-name="<?php echo htmlspecialchars($mcrn); ?>"
                                     data-rider-contact="<?php echo htmlspecialchars($mcrc); ?>"
@@ -1065,8 +1066,8 @@ function compactTransactionId(string $id): string {
             <?php endif; ?>
             <div class="mob-div"></div>
             <a href="mailto:hydromis.support@gmail.com" class="mob-sub">Contact us</a>
-            <a href="../terms.php" class="mob-sub">Terms &amp; conditions</a>
-            <a href="../privacy.php" class="mob-sub">Privacy terms</a>
+            <a href="../terms.php?return=<?= rawurlencode('user/track_order.php?' . http_build_query(['search_value' => $search_value])) ?>" class="mob-sub">Terms &amp; conditions</a>
+            <a href="../privacy.php?return=<?= rawurlencode('user/track_order.php?' . http_build_query(['search_value' => $search_value])) ?>" class="mob-sub">Privacy terms</a>
         </nav>
     </aside>
 </div>
@@ -1155,11 +1156,12 @@ function compactTransactionId(string $id): string {
 
         <div class="tracking-map-wrap"><div id="tracking-map"
             data-address="<?php echo htmlspecialchars($iad); ?>"
+                    data-latitude="<?= htmlspecialchars((string)($init['delivery_latitude'] ?? '')) ?>" data-longitude="<?= htmlspecialchars((string)($init['delivery_longitude'] ?? '')) ?>"
             data-status="<?php echo htmlspecialchars($ids); ?>"
             data-rider-name="<?php echo htmlspecialchars($idr); ?>"
             data-rider-contact="<?php echo htmlspecialchars($irc); ?>"
             data-transaction-id="<?php echo htmlspecialchars($init['transaction_id']); ?>"></div>
-            <div class="tracking-legend"><span class="station-key"><i class="fas fa-circle"></i> HydroMIS · Guiwanon</span><span class="rider-key"><i class="fas fa-circle"></i> Live rider</span></div>
+            <div class="tracking-legend"><span class="station-key"><i class="fas fa-circle"></i><span id="destination-label">Your delivery location</span></span><span class="rider-key"><i class="fas fa-circle"></i> Live rider</span></div>
         </div>
 
         <div class="rider-bar">
@@ -1258,6 +1260,7 @@ function compactTransactionId(string $id): string {
                 <a class="btn-map btn-map-link" href="delivery_map.php?transaction_id=<?php echo urlencode($txn['transaction_id']); ?>&amp;user_id=<?php echo urlencode($txn['user_id']); ?>"
                     data-transaction-id="<?php echo htmlspecialchars($txn['transaction_id']); ?>"
                     data-address="<?php echo htmlspecialchars($cad); ?>"
+                    data-latitude="<?= htmlspecialchars((string)($txn['delivery_latitude'] ?? '')) ?>" data-longitude="<?= htmlspecialchars((string)($txn['delivery_longitude'] ?? '')) ?>"
                     data-status="<?php echo htmlspecialchars($cs); ?>"
                     data-rider-name="<?php echo htmlspecialchars($crn); ?>"
                     data-rider-contact="<?php echo htmlspecialchars($crc); ?>"
@@ -1510,10 +1513,8 @@ mobOrdersToggle?.addEventListener('click', () => toggleMobOrders());
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeMob(); });
 
 /* ─── Map ──────────────────────────── */
-let map=null, markers=[], poly=null, liveRiderMarker=null, riderMoveFrame=null, hasFittedLiveRoute=false;
+let map=null, markers=[], poly=null, liveRiderMarker=null, riderMoveFrame=null, hasFittedLiveRoute=false, deliveryPoint=null;
 const tubigon={lat:9.9509,lng:123.9622};
-// HydroMIS water refilling station — Barangay Guiwanon, Tubigon, Bohol.
-const station={lat:9.9403,lng:123.9517};
 
 function pillCls(s) {
     s=(s||'').toLowerCase();
@@ -1570,12 +1571,17 @@ function moveRiderSmoothly(marker,target,duration=1400) {
     };
     riderMoveFrame=requestAnimationFrame(animate);
 }
-function drawRoute() {
+function drawRoute(o) {
     if(!map||!window.L) return;
     clearMap();
-    const stationIcon=L.divIcon({className:'',html:'<div style="display:grid;place-items:center;width:30px;height:30px;border:3px solid white;border-radius:50%;background:#f97316;color:white;box-shadow:0 5px 14px rgba(0,0,0,.25)"><i class="fas fa-droplet"></i></div>',iconSize:[30,30],iconAnchor:[15,15]});
-    markers.push(L.marker([station.lat,station.lng],{icon:stationIcon,title:'HydroMIS station — Guiwanon'}).addTo(map).bindTooltip('HydroMIS Water Station · Guiwanon',{direction:'top',offset:[0,-15]}));
-    map.setView([station.lat,station.lng],14);
+    const lat=Number(o.latitude), lng=Number(o.longitude);
+    deliveryPoint=o.latitude !== '' && o.longitude !== '' && o.latitude != null && o.longitude != null && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat)<=90 && Math.abs(lng)<=180 ? [lat,lng] : null;
+    document.getElementById('destination-label').textContent=deliveryPoint ? 'Your delivery location' : 'Delivery pin unavailable for this order';
+    if(deliveryPoint){
+        const icon=L.divIcon({className:'',html:'<div style="display:grid;place-items:center;width:30px;height:30px;border:3px solid white;border-radius:50%;background:#f97316;color:white;box-shadow:0 5px 14px rgba(0,0,0,.25)"><i class="fas fa-house"></i></div>',iconSize:[30,30],iconAnchor:[15,15]});
+        markers.push(L.marker(deliveryPoint,{icon,title:'Your delivery location'}).addTo(map).bindTooltip('Your delivery location'));
+        map.setView(deliveryPoint,16);
+    } else map.setView([tubigon.lat,tubigon.lng],12);
 }
 function updateRiderMarker(location) {
     if(!map || !window.L || !location) return;
@@ -1588,16 +1594,16 @@ function updateRiderMarker(location) {
         moveRiderSmoothly(liveRiderMarker,[lat,lng]);
     }
     if(poly) map.removeLayer(poly);
-    poly=L.polyline([[station.lat,station.lng],[lat,lng]],{color:'#1d6fd8',weight:3,dashArray:'8 9',opacity:.8}).addTo(map);
+    if(deliveryPoint) poly=L.polyline([deliveryPoint,[lat,lng]],{color:'#1d6fd8',weight:3,dashArray:'8 9',opacity:.8}).addTo(map);
     if(!hasFittedLiveRoute){
-        map.fitBounds(L.latLngBounds([[station.lat,station.lng],[lat,lng]]),{padding:[42,42],maxZoom:16});
+        map.fitBounds(L.latLngBounds(deliveryPoint ? [deliveryPoint,[lat,lng]] : [[lat,lng],[lat,lng]]),{padding:[42,42],maxZoom:16});
         hasFittedLiveRoute=true;
     }
 }
 function renderOrder(o) {
     if(!map) return;
     updateHeader(o);
-    drawRoute();
+    drawRoute(o);
 }
 function setSel(id) {
     document.querySelectorAll('.txn[data-card-id]').forEach(c=>c.classList.toggle('sel',c.getAttribute('data-card-id')===id));
@@ -1622,6 +1628,8 @@ function initOrderMap() {
             const o={
                 transactionId:this.dataset.transactionId,
                 address:      this.dataset.address,
+                latitude: this.dataset.latitude,
+                longitude: this.dataset.longitude,
                 status:       (this.dataset.status||'pending').toLowerCase(),
                 statusText:   this.dataset.statusText||pillTxt(this.dataset.status),
                 riderName:    this.dataset.riderName    ||'Assigned Rider',

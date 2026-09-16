@@ -147,6 +147,11 @@ $sharedStaffSidebar = ob_get_clean();
     <link href="../css/staff-sidebar.css" rel="stylesheet">
     <link href="../css/staff-sidebar-size.css" rel="stylesheet">
     <link href="../css/staff-pages-unified.css" rel="stylesheet">
+    <style>
+        .main .hero, .main .card, .main .reward-search,
+        .main .reward-search input, .main .reward-search button,
+        .main .reward-search .clear-search { border-radius: 0 !important; }
+    </style>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const legacySidebar = document.querySelector('.shell > .sidebar');
@@ -210,7 +215,7 @@ $sharedStaffSidebar = ob_get_clean();
             }
             if (historyButton) {
                 historyButton.href = historyView ? 'rewards.php' : 'rewards.php?view=history';
-                historyButton.innerHTML = historyView ? '<i class="fas fa-gift"></i> Pending Claims' : '<i class="fas fa-clock-rotate-left"></i> Conversion History';
+                historyButton.innerHTML = historyView ? '<i class="fas fa-gift"></i> Pending Claims' : '<i class="fas fa-clock-rotate-left"></i> Reward History';
             }
             if (historyView) {
                 const heroLabel = document.querySelector('.hero small');
