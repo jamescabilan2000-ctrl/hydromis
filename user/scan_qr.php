@@ -2740,14 +2740,15 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 const submit = mobileForm.querySelector('.btn-toggle');
                 let submitting = false;
                 const updateLoginButton = () => {
-                    mobileInput.value = mobileInput.value.replace(/[^0-9]/g, '').slice(0, 10);
+                    mobileInput.value = mobileInput.value.replace(/[^0-9]/g, '').replace(/^[0-8]+/, '').slice(0, 10);
                     submit.disabled = submitting || !/^9[0-9]{9}$/.test(mobileInput.value);
                 };
                 mobileInput.addEventListener('paste', function(event) {
                     event.preventDefault();
-                    const digits = event.clipboardData.getData('text').replace(/[^0-9]/g, '');
+                    let digits = event.clipboardData.getData('text').replace(/[^0-9]/g, '');
                     const start = mobileInput.selectionStart ?? mobileInput.value.length;
                     const end = mobileInput.selectionEnd ?? start;
+                    if (start === 0) digits = digits.replace(/^[0-8]+/, '');
                     const available = 10 - (mobileInput.value.length - (end - start));
                     mobileInput.setRangeText(digits.slice(0, Math.max(0, available)), start, end, 'end');
                     updateLoginButton();

@@ -292,10 +292,10 @@ if (
                 $tracking_info[] = $row;
             }
         } elseif ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $error = 'No transactions found for this mobile number or User ID.';
+            $error = 'No transactions found for this mobile number.';
         }
     } elseif ($_SERVER['REQUEST_METHOD'] == 'POST') {
-        $error = 'Please enter a mobile number or User ID.';
+        $error = 'Please enter a mobile number.';
     }
 }
 
@@ -771,7 +771,7 @@ function compactTransactionId(string $id): string {
     .feedback-title i{color:var(--amber)}
     .feedback-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--t2)}
     .feedback-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:rgba(245,158,11,.10);color:#92400e;font-weight:800}
-    .feedback-stars{display:flex;gap:5px;margin:10px 0 12px}.feedback-stars label{position:relative;display:grid;place-items:center;width:42px;height:42px;border:1px solid var(--border);border-radius:50%;background:#fff;color:#cbd5e1;font-size:20px;cursor:pointer;transition:transform .18s,background .18s,border-color .18s,color .18s}.feedback-stars label:hover{transform:translateY(-2px);border-color:var(--amber);background:#fff8e8;color:var(--amber)}.feedback-stars input{position:absolute;opacity:0;pointer-events:none}.feedback-stars label:has(input:checked),.feedback-stars:has(input[value="2"]:checked) label:nth-child(-n+2),.feedback-stars:has(input[value="3"]:checked) label:nth-child(-n+3),.feedback-stars:has(input[value="4"]:checked) label:nth-child(-n+4),.feedback-stars:has(input[value="5"]:checked) label:nth-child(-n+5){border-color:var(--amber);background:#fff8e8;color:var(--amber);box-shadow:0 3px 10px rgba(245,158,11,.18)}.feedback-stars span{line-height:1}.feedback-stars .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.feedback-stars::after{content:'Select a star rating';align-self:center;margin-left:7px;color:var(--t3);font-size:12px;font-weight:600}
+    .feedback-stars{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 12px}.feedback-stars label{position:relative;display:grid;place-items:center;flex:0 0 32px;width:32px;height:36px;border:0;border-radius:8px;background:transparent;color:#cbd5e1;font-size:24px;cursor:pointer;transition:transform .18s,background .18s,border-color .18s,color .18s}.feedback-stars label:hover{transform:translateY(-2px);border-color:var(--amber);background:#fff8e8;color:var(--amber)}.feedback-stars input{position:absolute;opacity:0;pointer-events:none}.feedback-stars label:has(input:checked),.feedback-stars:has(input[value="2"]:checked) label:nth-child(-n+2),.feedback-stars:has(input[value="3"]:checked) label:nth-child(-n+3),.feedback-stars:has(input[value="4"]:checked) label:nth-child(-n+4),.feedback-stars:has(input[value="5"]:checked) label:nth-child(-n+5){border-color:var(--amber);background:#fff8e8;color:var(--amber);box-shadow:none}.feedback-stars label:has(input:focus-visible){outline:2px solid var(--blue);outline-offset:2px}.feedback-stars span{line-height:1}.feedback-stars .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.feedback-stars::after{content:'Select a star rating';flex-basis:100%;margin-top:4px;color:var(--t3);font-size:12px;font-weight:600}
     .feedback-text{width:100%;min-height:96px;padding:12px 14px;border:1.5px solid var(--border);border-radius:14px;font-family:inherit;font-size:14px;color:var(--t1);background:#fff;resize:vertical;outline:none}
     .feedback-text:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-glow)}
     .feedback-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px}
@@ -1079,7 +1079,7 @@ function compactTransactionId(string $id): string {
             <div class="s-ico"><i class="fas fa-magnifying-glass-location"></i></div>
             <div class="s-kicker"><i class="fas fa-circle"></i> Live delivery access</div>
             <h1>Track Your <span>Order</span></h1>
-            <p>Enter your mobile number or User ID to find and track your water deliveries.</p>
+            <p>Enter your mobile number to find and track your water deliveries.</p>
         </div>
         <div class="s-card">
             <?php if($error && $view==='search'): ?>
@@ -1090,9 +1090,9 @@ function compactTransactionId(string $id): string {
             <?php endif; ?>
             <form method="POST">
                 <div style="margin-bottom:20px;">
-                    <label class="f-label" for="search_value"><i class="fas fa-phone"></i> Mobile Number or User ID</label>
+                    <label class="f-label" for="search_value"><i class="fas fa-phone"></i> Mobile Number</label>
                     <div class="f-wrap">
-                        <input type="text" class="f-inp" id="search_value" name="search_value"
+                        <input type="tel" inputmode="numeric" class="f-inp" id="search_value" name="search_value"
                             placeholder=""
                             value="<?php echo htmlspecialchars($search_value); ?>"
                             autocomplete="off">

@@ -1182,6 +1182,7 @@ $final_total = $item_total + $delivery_fee - $discount;
         @media(max-width:560px){.checkout-wrap{padding:20px 12px 55px}.checkout-step{display:none}.panel-body{padding:18px}.delivery-icon{width:42px;height:42px}.payment-method-section,.comment-section{border-radius:17px}.checkout-intro h1{font-size:19px}}
         .checkout-summary-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:12px}.checkout-product{display:flex;align-items:center;gap:12px;min-width:0;flex:1}.checkout-product-copy{min-width:0}.checkout-product-name{font-size:14px;font-weight:700;color:#1f2937;line-height:1.35}.checkout-product-price{margin-top:4px;font-size:13px;color:#6b7280}.checkout-product-image{display:grid;place-items:center;flex:0 0 62px;width:62px;height:62px;padding:6px;border:1px solid #e0e9ef;border-radius:14px;background:radial-gradient(circle,#fff,#f0f5f8);overflow:hidden}.checkout-product-image img{display:block;width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply}.checkout-summary-price{flex:0 0 auto;text-align:right}
         @media(max-width:390px){.checkout-summary-row{gap:10px}.checkout-product{gap:9px}.checkout-product-image{flex-basis:52px;width:52px;height:52px}.checkout-product-name{font-size:13px}.checkout-product-price{font-size:11px}}
+        .checkout-brand-logo{position:relative;isolation:isolate;display:grid;place-items:center;width:43px;height:43px;border:0;border-radius:50%;background:transparent;box-shadow:none;animation:checkoutLogoFloat 4.5s ease-in-out infinite}.checkout-brand-logo::after{content:'';position:absolute;inset:0;z-index:-1;border-radius:50%;padding:1.5px;background:conic-gradient(from 20deg,transparent 0 24%,#35d9eb 35%,#2389ec 49%,transparent 61% 81%,#49e6cd 92%,transparent);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:checkoutLogoOrbit 5.5s linear infinite;filter:drop-shadow(0 0 4px rgba(31,177,224,.55))}.checkout-brand-logo img{display:block;width:38px!important;height:38px!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;outline:0!important;animation:none!important;object-fit:contain;filter:drop-shadow(0 5px 7px rgba(6,78,139,.22));transition:transform .4s ease,filter .4s ease}.navbar-brand:hover .checkout-brand-logo img{transform:rotate(4deg) scale(1.07);filter:drop-shadow(0 8px 10px rgba(6,78,139,.32))}@keyframes checkoutLogoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}@keyframes checkoutLogoOrbit{to{transform:rotate(360deg)}}
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
     </style>
     <script src="../js/ui-protection.js" defer></script>
@@ -1193,13 +1194,13 @@ $final_total = $item_total + $delivery_fee - $discount;
     <nav class="navbar">
         <div class="container-fluid">
             <a href="../home.php" class="navbar-brand">
-                <img src="<?php echo htmlspecialchars(hydromis_asset_url($systemLogo, '../')); ?>" alt="HydroMIS logo"> HydroMIS
+                <span class="checkout-brand-logo"><img src="<?php echo htmlspecialchars(hydromis_asset_url($systemLogo, '../')); ?>" alt="HydroMIS logo"></span> HydroMIS
             </a>
         </div>
     </nav>
 
     <div class="checkout-wrap">
-        <div class="checkout-intro"><div class="checkout-intro-main"><div class="checkout-intro-icon"><i class="fas fa-lock"></i></div><div><h1>Secure checkout</h1><p>Confirm fulfillment and choose how you want to pay.</p></div></div><span class="checkout-step">Final step</span></div>
+        <div class="checkout-intro"><div class="checkout-intro-main"><div><h1>Checkout</h1><p>Confirm fulfillment and choose how you want to pay.</p></div></div><span class="checkout-step">Final step</span></div>
         <!-- Error Box -->
         <div class="error-box" id="errorBox">
             <div class="error-box-title">
@@ -1467,7 +1468,7 @@ $final_total = $item_total + $delivery_fee - $discount;
 
             <div style="padding: 0 16px 16px;">
                 <button type="submit" class="checkout-btn" id="checkoutBtn" <?php echo $stock_blocked ? 'disabled aria-disabled="true"' : ''; ?>>
-                    <i class="fas fa-lock" style="margin-right: 6px;"></i> <?php echo $fulfillment_method === 'delivery' ? 'Place delivery order' : 'Place pickup order'; ?>
+                    <?php echo $fulfillment_method === 'delivery' ? 'Place delivery order' : 'Place pickup order'; ?>
                 </button>
             </div>
         </form>
