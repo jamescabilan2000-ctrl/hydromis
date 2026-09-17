@@ -1348,7 +1348,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                             $selected_container_size = $editing_order['container_size'] ?? '2.5gal-slim';
                             $selected_container_status = $editing_order['container_status'] ?? 'new';
                             $selected_fulfillment = $editing_order['fulfillment_method'] ?? 'delivery';
-                            $selected_quantity = max(1, (int)($editing_order['quantity'] ?? 2));
+                            $selected_quantity = max(1, (int)($editing_order['quantity'] ?? 1));
                         ?>
                         <div class="purchase-heading"><div class="purchase-heading-main"><div class="purchase-heading-icon"><i class="fas fa-bag-shopping"></i></div><div><h6><?php echo $editing_order ? 'Edit your order' : 'Build your order'; ?></h6><p>Choose a container and delivery option.</p></div></div><span class="purchase-step">Step 1 of 2</span></div>
                         <?php if ($error): ?>

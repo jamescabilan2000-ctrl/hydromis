@@ -38,7 +38,7 @@ $allowed_fulfillment = ['delivery', 'pickup'];
 $container_size = isset($_POST['container_size']) ? sanitize($_POST['container_size']) : (isset($_GET['container_size']) ? sanitize($_GET['container_size']) : '2.5gal-slim');
 $container_status = isset($_POST['container_status']) ? sanitize($_POST['container_status']) : (isset($_GET['container_status']) ? sanitize($_GET['container_status']) : 'new');
 $fulfillment_method = isset($_POST['fulfillment_method']) ? sanitize($_POST['fulfillment_method']) : (isset($_GET['fulfillment_method']) ? sanitize($_GET['fulfillment_method']) : 'delivery');
-$quantity = isset($_POST['quantity']) ? max(1, (int)$_POST['quantity']) : (isset($_GET['quantity']) ? max(1, (int)$_GET['quantity']) : 2);
+$quantity = isset($_POST['quantity']) ? max(1, (int)$_POST['quantity']) : (isset($_GET['quantity']) ? max(1, (int)$_GET['quantity']) : 1);
 $edit_transaction_id = trim((string)($_POST['edit_transaction_id'] ?? $_GET['edit_transaction_id'] ?? ''));
 
 if (!in_array($container_size, $allowed_sizes, true)) {
@@ -550,7 +550,7 @@ $container_image_map = [
                     </div>
                     <div class="qty-box">
                         <button type="button" class="qty-btn" id="minusBtn">-</button>
-                        <div class="qty-value" id="qtyDisplay">2</div>
+                        <div class="qty-value" id="qtyDisplay"><?php echo $quantity; ?></div>
                         <button type="button" class="qty-btn" id="plusBtn">+</button>
                     </div>
                 </div>
@@ -594,7 +594,7 @@ $container_image_map = [
                     <input type="hidden" name="fulfillment_method" id="finalFulfillment" value="<?php echo htmlspecialchars($fulfillment_method); ?>">
                     <input type="hidden" name="quantity" id="finalQuantity" value="<?php echo $quantity; ?>">
                     <?php if ($edit_transaction_id !== ''): ?><input type="hidden" name="edit_transaction_id" value="<?php echo htmlspecialchars($edit_transaction_id); ?>"><?php endif; ?>
-                    <button class="continue-btn" type="submit" id="continueBtn"><i class="fas fa-lock"></i> Continue securely</button>
+                    <button class="continue-btn" type="submit" id="continueBtn">Continue</button>
                 </form>
                 <div class="sub-actions">
                     <a href="purchase.php?user_id=<?php echo urlencode($user_id); ?><?php echo $edit_transaction_id !== '' ? '&edit_transaction_id=' . urlencode($edit_transaction_id) : ''; ?>" class="back-link"><i class="fas fa-arrow-left"></i> Back to container selection</a>
