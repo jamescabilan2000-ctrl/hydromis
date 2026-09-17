@@ -154,7 +154,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'messages') {
     $message = trim((string)($input['message'] ?? ''));
 
     $rider_expr = $transactions_has_assigned_rider ? 'COALESCE(rider_id, assigned_rider)' : 'rider_id';
-    $stmt = $conn->prepare("SELECT {$rider_expr} AS rider_id, fulfillment_method FROM transactions WHERE transaction_id = ? AND user_id = ? AND (status = 'approved' OR (status = 'pending' AND fulfillment_method = 'pickup')) LIMIT 1");
+    $stmt = $conn->prepare("SELECT {$rider_expr} AS rider_id, fulfillment_method FROM transactions WHERE transaction_id = ? AND user_id = ? AND (status = 'approved' OR (status = 'pending' AND fulfillment_method = 'pickup')) AND LOWER(TRIM(COALESCE(delivery_status, 'pending'))) NOT IN ('delivered', 'cancelled', 'canceled', 'completed') AND (fulfillment_method = 'pickup' OR NULLIF({$rider_expr}, '') IS NOT NULL) LIMIT 1");
     $stmt->bind_param('ss', $transaction_id, $user_id);
     $stmt->execute();
     $order = $stmt->get_result()->fetch_assoc();
@@ -1217,7 +1217,13 @@ function compactTransactionId(string $id): string {
         </div>
     </div>
 
-    <?php $chat_is_pickup = ($init['fulfillment_method'] ?? 'delivery') === 'pickup'; ?>
+    <?php
+        $chat_is_pickup = ($init['fulfillment_method'] ?? 'delivery') === 'pickup';
+        $chat_available = !in_array($ids, ['delivered', 'cancelled', 'canceled', 'completed'], true)
+            && ($init['status'] === 'approved' || ($init['status'] === 'pending' && $chat_is_pickup))
+            && ($chat_is_pickup || !empty($init['effective_rider_id']));
+    ?>
+    <?php if ($chat_available): ?>
     <section class="customer-chat is-collapsed" id="customer-chat" aria-labelledby="customer-chat-title">
         <div class="customer-chat-head">
             <div class="customer-chat-title" id="customer-chat-title"><i class="fas fa-message"></i> Message <?php echo $chat_is_pickup ? 'the station' : 'your rider'; ?></div>
@@ -1231,6 +1237,7 @@ function compactTransactionId(string $id): string {
         </form>
     </section>
 
+    <?php endif; ?>
     <!-- TXN CARDS -->
     <div class="page-orders <?php echo in_array($init['status'], ['pending', 'approved'], true) && $ids !== 'delivered' ? 'is-active-delivery' : ''; ?>" id="active-order-panel">
     <div class="customer-delay-alert" id="customer-delay-alert" hidden><i class="fas fa-triangle-exclamation"></i><div><strong>Delivery delayed</strong><span id="customer-delay-message"></span></div></div>
@@ -1663,7 +1670,7 @@ let activeMessageTransaction = '';
 let orderStatusRefreshInterval = null;
 
 function selectCustomerConversation(transactionId) {
-    if(!transactionId) return;
+    if(!transactionId || !document.getElementById('customer-chat')) return;
     activeMessageTransaction = transactionId;
     const list=document.getElementById('customer-message-list');
     if(list) list.innerHTML='<div class="customer-chat-empty">Loading this order\'s conversation…</div>';
@@ -1729,6 +1736,13 @@ function renderCustomerMessages(messages) {
     list.scrollTop=list.scrollHeight;
 }
 
+function closeCustomerConversation() {
+    activeMessageTransaction = '';
+    if(messageRefreshInterval) clearInterval(messageRefreshInterval);
+    messageRefreshInterval = null;
+    document.getElementById('customer-chat')?.remove();
+}
+
 function loadCustomerMessages(transactionId) {
     if(!transactionId || !TRACKING_USER_ID) return;
     fetch(`?ajax=messages&transaction_id=${encodeURIComponent(transactionId)}&user_id=${encodeURIComponent(TRACKING_USER_ID)}`)
@@ -1737,8 +1751,7 @@ function loadCustomerMessages(transactionId) {
             if(transactionId!==activeMessageTransaction) return;
             if(data.ok) renderCustomerMessages(data.messages||[]);
             else {
-                const list=document.getElementById('customer-message-list');
-                if(list) list.innerHTML='<div class="customer-chat-empty">This order conversation is unavailable. Delivery messaging requires approval and an assigned rider.</div>';
+                closeCustomerConversation();
             }
         })
         .catch(()=>{});
@@ -1810,6 +1823,7 @@ function updateLiveGPSLocation(transactionId) {
                 const order = data.data;
                 const location = order.rider_location;
                 const liveStatus = (order.delivery_status || 'pending').toLowerCase();
+                if(['delivered', 'cancelled', 'canceled', 'completed'].includes(liveStatus)) closeCustomerConversation();
                 const activePanel = document.getElementById('active-order-panel');
                 const isOnWay = liveStatus === 'on_way' || liveStatus === 'on_the_way';
                 activePanel?.classList.toggle('is-active-delivery', liveStatus !== 'delivered');
