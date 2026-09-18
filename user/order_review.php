@@ -66,13 +66,13 @@ $type_map = [
 $price_map = [
     '5gal-round' => ['new' => 20, 'pickup' => 20],
     '2.5gal-slim' => ['new' => 35, 'pickup' => 15],
-    '5gal-slim' => ['new' => 50, 'pickup' => 40]
+    '5gal-slim' => ['new' => 40, 'pickup' => 20]
 ];
 
 $pickup_base_map = [
     '5gal-round' => 20,
     '2.5gal-slim' => 15,
-    '5gal-slim' => 40
+    '5gal-slim' => 20
 ];
 
 $container_image_map = [

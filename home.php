@@ -1473,7 +1473,7 @@ if ($db_initialized) {
             </div>
             <div class="mobile-nav-label">Accounts</div>
             <a href="user/scan_qr.php" class="mobile-nav-item primary-account"><i class="fas fa-qrcode"></i> Customer login</a>
-            <a href="login.php?role=admin" class="mobile-nav-item"><i class="fas fa-user-shield"></i> Admin login</a>
+            <a href="login.php?role=admin" class="mobile-nav-item"><i class="fas fa-user-shield"></i> Personnel login</a>
             <div class="mobile-nav-label">Explore</div>
             <a href="#features"            class="mobile-nav-item"><i class="fas fa-star"></i> Features</a>
             <a href="#how"                 class="mobile-nav-item"><i class="fas fa-route"></i> How it works</a>
@@ -1502,7 +1502,7 @@ if ($db_initialized) {
                     Smarter way to run your <span class="accent">water refilling</span> business
                 </h1>
                 <p class="hero-desc">
-                    HydroMIS streamlines every drop — from order placement to delivery confirmation — with real-time tracking, QR-based login, and powerful admin tools.
+                    HydroMIS streamlines every drop - from order placement to delivery confirmation - with real-time tracking, QR-based login, and powerful admin tools.
                 </p>
                 <div class="hero-actions">
                     <a href="create_account.php" class="hero-btn-primary">Create Account <i class="fas fa-arrow-right" style="margin-left:6px;font-size:.85em;"></i></a>

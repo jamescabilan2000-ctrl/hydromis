@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         }
     }
     
-    $water_price_map = ['5gal-round' => 20, '2.5gal-slim' => 15, '5gal-slim' => 40];
+    $water_price_map = ['5gal-round' => 20, '2.5gal-slim' => 15, '5gal-slim' => 20];
     if (!isset($water_price_map[$container_size]) || !in_array($container_status, ['new', 'existing'], true) || !in_array($fulfillment_method, ['delivery', 'pickup'], true)) {
         $error = 'Please select a valid container and order type.';
         $price_per_unit = 0;
@@ -1391,7 +1391,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">5 Gallon</div>
                                             <div class="container-type">slim</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip">Water: ₱40</span>
+                                                <span class="price-chip">Water: ₱20</span>
                                                 <span class="price-chip">New container: +₱20</span>
                                             </div>
                                         </div>
@@ -1466,7 +1466,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             const quantity = parseFloat(quantityEl.value) || 0;
             
             // Price mapping based on container size and status
-            const waterPriceMap = {'5gal-round':20,'2.5gal-slim':15,'5gal-slim':40};
+            const waterPriceMap = {'5gal-round':20,'2.5gal-slim':15,'5gal-slim':20};
             const price = waterPriceMap[containerSize] + (containerStatus === 'new' ? 20 : 0);
             const subtotal = quantity * price;
             
