@@ -4,6 +4,8 @@ require_once '../config/system_settings.php';
 require_once '../config/inventory_service.php';
 ensure_inventory_schema($conn);
 $systemLogo = system_logo_path($conn);
+$containerPrices = system_container_prices($conn);
+$container_price_map = array_map(static fn($price) => $price['container'], $containerPrices);
 
 $user_id = null;
 if (isset($_POST['user_id'])) {
@@ -124,17 +126,7 @@ $type_map = [
     '5gal-slim' => 'slim'
 ];
 
-$price_map = [
-    '5gal-round' => ['new' => 20, 'pickup' => 20],
-    '2.5gal-slim' => ['new' => 35, 'pickup' => 15],
-    '5gal-slim' => ['new' => 40, 'pickup' => 20]
-];
-
-$pickup_base_map = [
-    '5gal-round' => 20,
-    '2.5gal-slim' => 15,
-    '5gal-slim' => 20
-];
+$pickup_base_map = array_map(static fn($price) => $price['water'], $containerPrices);
 
 $container_image_map = [
     '5gal-round' => '../imagess/water5.webp',
@@ -147,9 +139,9 @@ $user_address = isset($scanned_data['address']) ? $scanned_data['address'] : 'No
 $user_contact = isset($scanned_data['contact_number']) ? $scanned_data['contact_number'] : '';
 
 $pickup_base = $pickup_base_map[$container_size];
-$new_container = $container_status === 'new' ? 20 * $quantity : 0;
+$new_container = $container_status === 'new' ? $container_price_map[$container_size] * $quantity : 0;
 $water_total = $pickup_base * $quantity;
-$price_per_unit = $pickup_base + ($container_status === 'new' ? 20 : 0);
+$price_per_unit = $pickup_base + ($container_status === 'new' ? $container_price_map[$container_size] : 0);
 $item_total = $price_per_unit * $quantity;
 
 $discount_count = floor($quantity / 5);
@@ -1642,7 +1634,7 @@ $final_total = $item_total + $delivery_fee - $discount;
             }
 
             <?php if ($container_status === 'new'): ?>
-            const newContainerCost = 20 * currentQuantity;
+            const newContainerCost = <?php echo json_encode($container_price_map[$container_size]); ?> * currentQuantity;
             document.getElementById('newContainerCost').textContent = '₱' + newContainerCost.toFixed(2);
             <?php endif; ?>
         }

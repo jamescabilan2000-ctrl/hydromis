@@ -2,6 +2,8 @@
 require_once '../config/database.php';
 require_once '../config/system_settings.php';
 $systemLogo = system_logo_path($conn);
+$containerPrices = system_container_prices($conn);
+$container_price_map = array_map(static fn($price) => $price['container'], $containerPrices);
 
 $user_id = null;
 if (isset($_POST['user_id'])) {
@@ -63,17 +65,7 @@ $type_map = [
     '5gal-slim' => 'slim'
 ];
 
-$price_map = [
-    '5gal-round' => ['new' => 20, 'pickup' => 20],
-    '2.5gal-slim' => ['new' => 35, 'pickup' => 15],
-    '5gal-slim' => ['new' => 40, 'pickup' => 20]
-];
-
-$pickup_base_map = [
-    '5gal-round' => 20,
-    '2.5gal-slim' => 15,
-    '5gal-slim' => 20
-];
+$pickup_base_map = array_map(static fn($price) => $price['water'], $containerPrices);
 
 $container_image_map = [
     '5gal-round' => '../imagess/water5.webp',
@@ -614,7 +606,7 @@ $container_image_map = [
 
     <script>
         (function() {
-            const priceMap = <?php echo json_encode($price_map); ?>;
+            const containerPriceMap = <?php echo json_encode($container_price_map); ?>;
             const pickupBaseMap = <?php echo json_encode($pickup_base_map); ?>;
             const sizeMap = <?php echo json_encode($size_map); ?>;
             const typeMap = <?php echo json_encode($type_map); ?>;
@@ -665,7 +657,7 @@ $container_image_map = [
 
             function updateSummary() {
                 const pickupBase = pickupBaseMap[containerSize];
-                const newContainer = containerStatus === 'new' ? 20 * quantity : 0;
+                const newContainer = containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : 0;
                 const water = pickupBase * quantity;
 
                 const discountCount = Math.floor(quantity / 5);

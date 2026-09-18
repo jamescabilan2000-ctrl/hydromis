@@ -5,6 +5,7 @@ require_once '../config/system_settings.php';
 require_once '../config/storage_service.php';
 
 $systemLogo = system_logo_path($conn);
+$containerPrices = system_container_prices($conn);
 $pointsPerGallon = system_int_setting($conn, 'points_per_gallon', 1, 0, 100);
 $staffLoginEnabled = system_int_setting($conn, 'staff_login_enabled', 1, 0, 1) === 1;
 $riderLoginEnabled = system_int_setting($conn, 'rider_login_enabled', 1, 0, 1) === 1;
@@ -114,6 +115,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         exit;
     }
 
+    if (!hash_equals($_SESSION['system_logo_csrf'], (string)($_POST['csrf_token'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Refresh the page before saving settings.']);
+        exit;
+    }
+    try {
+        $validatedPrices = validate_container_prices($settings['containerPrices'] ?? null);
+    } catch (InvalidArgumentException $e) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit;
+    }
+
     // Save settings
     // The settings object contains profile PII too, so protect the JSON blob.
     $settings_json = $conn->real_escape_string(encrypt_sensitive(json_encode($settings)));
@@ -177,7 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $saved = set_system_setting($conn, 'reward_enabled_' . $rewardCode, !empty($postedRewardStates[$rewardCode]) ? '1' : '0', (string)($_SESSION['admin_id'] ?? 'admin'));
         $rewardRedemptionsSaved = $rewardRedemptionsSaved && $saved;
     }
-    if ($pointsSaved && $staffLoginSaved && $riderLoginSaved && $rewardRedemptionsSaved && $conn->query($sql)) {
+    $pricesSaved = set_system_setting($conn, 'container_prices', json_encode($validatedPrices), (string)$_SESSION['admin_id']);
+    if ($pricesSaved && $pointsSaved && $staffLoginSaved && $riderLoginSaved && $rewardRedemptionsSaved && $conn->query($sql)) {
         echo json_encode(['success' => true, 'message' => 'Settings saved.' . $passwordMessage]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Error saving settings']);
@@ -871,6 +886,21 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
 
         <!-- ── General Tab ── -->
         <div class="tab-panel active" id="tab-general">
+            <div class="settings-section">
+                <div class="settings-section-title">Container pricing</div>
+                <p class="settings-row-desc">Prices in pesos per container. Existing containers pay only the refill price. New containers add the surcharge. Changes apply to orders placed after saving.</p>
+                <?php foreach (['2.5gal-slim' => '2.5 Gallon Slim', '5gal-slim' => '5 Gallon Slim', '5gal-round' => '5 Gallon Round'] as $size => $label): ?>
+                    <?php foreach (['water' => 'Water refill', 'container' => 'New container surcharge'] as $kind => $priceLabel): ?>
+                    <div class="settings-row">
+                        <label class="settings-row-info" for="price-<?php echo $size . '-' . $kind; ?>">
+                            <span class="settings-row-label"><?php echo $label; ?></span>
+                            <span class="settings-row-desc" style="display:block"><?php echo $priceLabel; ?> (PHP)</span>
+                        </label>
+                        <input class="settings-select container-price-input" id="price-<?php echo $size . '-' . $kind; ?>" data-size="<?php echo $size; ?>" data-kind="<?php echo $kind; ?>" type="number" min="0" max="99999.99" step="0.01" required value="<?php echo number_format($containerPrices[$size][$kind], 2, '.', ''); ?>" style="width:112px">
+                    </div>
+                    <?php endforeach; ?>
+                <?php endforeach; ?>
+            </div>
             <div class="settings-section">
                 <div class="settings-section-title">Portal Access</div>
                 <div class="settings-row">
@@ -1767,6 +1797,11 @@ function applyThemeColor(color) {
 }
 
 function saveSettings() {
+    const containerPrices = {};
+    for (const input of document.querySelectorAll('.container-price-input')) {
+        if (!input.reportValidity()) return;
+        (containerPrices[input.dataset.size] ??= {})[input.dataset.kind] = input.value;
+    }
     // Collect all settings from the form
     const passwordInputs = document.querySelectorAll('#tab-account .settings-section:nth-of-type(3) input[type="password"]');
     
@@ -1802,6 +1837,7 @@ function saveSettings() {
         confirmPassword: passwordInputs[2]?.value || '',
         twoFactor: document.getElementById('tog-two-factor')?.checked ?? false,
         sessionTimeout: document.getElementById('sel-session-timeout')?.value || '1 hour',
+        containerPrices,
         pointsPerGallon: Math.max(0, Math.min(100, parseInt(document.getElementById('pointsPerGallon')?.value || '1', 10))),
         staffLoginEnabled: document.getElementById('tog-staff-login')?.checked ?? true,
         riderLoginEnabled: document.getElementById('tog-rider-login')?.checked ?? true,
@@ -1818,6 +1854,7 @@ function saveSettings() {
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: new URLSearchParams({
             action: 'save_settings',
+            csrf_token: <?php echo json_encode($_SESSION['system_logo_csrf']); ?>,
             settings: JSON.stringify(settings)
         })
     })

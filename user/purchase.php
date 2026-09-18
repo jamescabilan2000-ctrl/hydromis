@@ -8,6 +8,8 @@ require_once '../config/inventory_service.php';
 require_once '../config/system_settings.php';
 ensure_inventory_schema($conn);
 $systemLogo = system_logo_path($conn);
+$containerPrices = system_container_prices($conn);
+$container_price_map = array_map(static fn($price) => $price['container'], $containerPrices);
 
 function savePurchasePaymentProof($fieldName, $paymentId) {
     if (!isset($_FILES[$fieldName]) || $_FILES[$fieldName]['error'] === UPLOAD_ERR_NO_FILE) {
@@ -157,12 +159,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         }
     }
     
-    $water_price_map = ['5gal-round' => 20, '2.5gal-slim' => 15, '5gal-slim' => 20];
+    $water_price_map = array_map(static fn($price) => $price['water'], $containerPrices);
     if (!isset($water_price_map[$container_size]) || !in_array($container_status, ['new', 'existing'], true) || !in_array($fulfillment_method, ['delivery', 'pickup'], true)) {
         $error = 'Please select a valid container and order type.';
         $price_per_unit = 0;
     } else {
-        $price_per_unit = $water_price_map[$container_size] + ($container_status === 'new' ? 20 : 0);
+        $price_per_unit = $water_price_map[$container_size] + ($container_status === 'new' ? $container_price_map[$container_size] : 0);
     }
     $total_amount = $quantity * $price_per_unit;
     $discount = 0;
@@ -1375,8 +1377,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">2.5 Gallon</div>
                                             <div class="container-type">slim</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip">Water: ₱15</span>
-                                                <span class="price-chip">New container: +₱20</span>
+                                                <span class="price-chip">Water: ₱<?php echo number_format($containerPrices['2.5gal-slim']['water'], 2); ?></span>
+                                                <span class="price-chip">New container: +₱<?php echo number_format($containerPrices['2.5gal-slim']['container'], 2); ?></span>
                                             </div>
                                         </div>
                                         <div class="radio-circle"></div>
@@ -1391,8 +1393,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">5 Gallon</div>
                                             <div class="container-type">slim</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip">Water: ₱20</span>
-                                                <span class="price-chip">New container: +₱20</span>
+                                                <span class="price-chip">Water: ₱<?php echo number_format($containerPrices['5gal-slim']['water'], 2); ?></span>
+                                                <span class="price-chip">New container: +₱<?php echo number_format($containerPrices['5gal-slim']['container'], 2); ?></span>
                                             </div>
                                         </div>
                                         <div class="radio-circle"></div>
@@ -1407,8 +1409,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">5 Gallon</div>
                                             <div class="container-type">round</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip">Water: ₱20</span>
-                                                <span class="price-chip">New container: +₱20</span>
+                                                <span class="price-chip">Water: ₱<?php echo number_format($containerPrices['5gal-round']['water'], 2); ?></span>
+                                                <span class="price-chip">New container: +₱<?php echo number_format($containerPrices['5gal-round']['container'], 2); ?></span>
                                             </div>
                                         </div>
                                         <div class="radio-circle"></div>
@@ -1466,8 +1468,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             const quantity = parseFloat(quantityEl.value) || 0;
             
             // Price mapping based on container size and status
-            const waterPriceMap = {'5gal-round':20,'2.5gal-slim':15,'5gal-slim':20};
-            const price = waterPriceMap[containerSize] + (containerStatus === 'new' ? 20 : 0);
+            const waterPriceMap = <?php echo json_encode(array_map(static fn($price) => $price['water'], $containerPrices)); ?>;
+            const containerPriceMap = <?php echo json_encode($container_price_map); ?>;
+            const price = waterPriceMap[containerSize] + (containerStatus === 'new' ? containerPriceMap[containerSize] : 0);
             const subtotal = quantity * price;
             
             // Calculate discount (per 5 containers)

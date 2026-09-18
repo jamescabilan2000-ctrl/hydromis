@@ -10,6 +10,44 @@ function ensure_system_settings_schema($conn): void {
     )");
 }
 
+function container_price_defaults(): array {
+    return [
+        '2.5gal-slim' => ['water' => 15.00, 'container' => 20.00],
+        '5gal-slim' => ['water' => 20.00, 'container' => 20.00],
+        '5gal-round' => ['water' => 20.00, 'container' => 20.00],
+    ];
+}
+
+function validate_container_prices($prices): array {
+    if (!is_array($prices)) throw new InvalidArgumentException('Enter all container prices.');
+    $validated = [];
+    foreach (container_price_defaults() as $size => $defaults) {
+        foreach ($defaults as $kind => $default) {
+            $value = $prices[$size][$kind] ?? null;
+            if ((!is_string($value) && !is_int($value) && !is_float($value))
+                || !preg_match('/\A\d{1,6}(?:\.\d{1,2})?\z/', (string)$value)
+                || (float)$value > 99999.99) {
+                throw new InvalidArgumentException('Prices must be between 0 and 99,999.99 pesos, with up to two decimal places.');
+            }
+            $validated[$size][$kind] = round((float)$value, 2);
+        }
+    }
+    return $validated;
+}
+
+function system_container_prices($conn): array {
+    ensure_system_settings_schema($conn);
+    $result = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='container_prices' LIMIT 1");
+    if ($result && ($row = $result->fetch_assoc())) {
+        try {
+            return validate_container_prices(json_decode($row['setting_value'], true));
+        } catch (InvalidArgumentException $e) {
+            // Keep ordering available if a stored setting is invalid.
+        }
+    }
+    return container_price_defaults();
+}
+
 function system_logo_path($conn): string {
     ensure_system_settings_schema($conn);
     $result = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='system_logo' LIMIT 1");
