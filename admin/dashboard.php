@@ -7,8 +7,6 @@ require_once '../config/storage_service.php';
 $systemLogo = system_logo_path($conn);
 $containerPrices = system_container_prices($conn);
 $pointsPerGallon = system_int_setting($conn, 'points_per_gallon', 1, 0, 100);
-$staffLoginEnabled = system_int_setting($conn, 'staff_login_enabled', 1, 0, 1) === 1;
-$riderLoginEnabled = system_int_setting($conn, 'rider_login_enabled', 1, 0, 1) === 1;
 $rewardRedemptionOptions = [
     'free_1_gallon' => 'Free 1 Gallon Regular Water',
     'voucher_20' => 'Discount Voucher',
@@ -136,18 +134,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     // Save profile info if provided
     if (!empty($settings['profileFirstName']) || !empty($settings['profileLastName']) || 
-        !empty($settings['profileEmail']) || !empty($settings['profilePhone'])) {
+        !empty($settings['profilePhone'])) {
         
         $plainFirstName = (string)($settings['profileFirstName'] ?? '');
         $plainLastName = (string)($settings['profileLastName'] ?? '');
         $firstName = $conn->real_escape_string(encrypt_sensitive($plainFirstName));
         $lastName = $conn->real_escape_string(encrypt_sensitive($plainLastName));
-        $email = $conn->real_escape_string(encrypt_sensitive((string)($settings['profileEmail'] ?? '')));
         $phone = $conn->real_escape_string(encrypt_sensitive((string)($settings['profilePhone'] ?? '')));
         
-        $profile_sql = "INSERT INTO admin_profiles (admin_id, first_name, last_name, email, phone) 
-                        VALUES ('$admin_id', '$firstName', '$lastName', '$email', '$phone')
-                        ON DUPLICATE KEY UPDATE first_name='$firstName', last_name='$lastName', email='$email', phone='$phone'";
+        $profile_sql = "INSERT INTO admin_profiles (admin_id, first_name, last_name, phone)
+                        VALUES ('$admin_id', '$firstName', '$lastName', '$phone')
+                        ON DUPLICATE KEY UPDATE first_name='$firstName', last_name='$lastName', phone='$phone'";
         
         $conn->query($profile_sql);
 
@@ -183,8 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     $pointsPerGallon = max(0, min(100, (int)($settings['pointsPerGallon'] ?? 1)));
     $pointsSaved = set_system_setting($conn, 'points_per_gallon', (string)$pointsPerGallon, (string)($_SESSION['admin_id'] ?? 'admin'));
-    $staffLoginSaved = set_system_setting($conn, 'staff_login_enabled', !empty($settings['staffLoginEnabled']) ? '1' : '0', (string)($_SESSION['admin_id'] ?? 'admin'));
-    $riderLoginSaved = set_system_setting($conn, 'rider_login_enabled', !empty($settings['riderLoginEnabled']) ? '1' : '0', (string)($_SESSION['admin_id'] ?? 'admin'));
     $rewardRedemptionsSaved = true;
     $postedRewardStates = is_array($settings['rewardRedemptions'] ?? null) ? $settings['rewardRedemptions'] : [];
     foreach ($rewardRedemptionOptions as $rewardCode => $rewardLabel) {
@@ -192,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $rewardRedemptionsSaved = $rewardRedemptionsSaved && $saved;
     }
     $pricesSaved = set_system_setting($conn, 'container_prices', json_encode($validatedPrices), (string)$_SESSION['admin_id']);
-    if ($pricesSaved && $pointsSaved && $staffLoginSaved && $riderLoginSaved && $rewardRedemptionsSaved && $conn->query($sql)) {
+    if ($pricesSaved && $pointsSaved && $rewardRedemptionsSaved && $conn->query($sql)) {
         echo json_encode(['success' => true, 'message' => 'Settings saved.' . $passwordMessage]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Error saving settings']);
@@ -730,8 +725,6 @@ body[data-color-mode="light"]{color-scheme:light;--bg:#f4f7fb;--bg2:#fff;--bg3:#
 @media (max-width: 900px)  { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; } .page-content { padding: 16px; } .stats-grid { grid-template-columns: 1fr; } .quick-row { grid-template-columns: 1fr; } .settings-drawer { width: 100%; } }
 
 /* ── Settings-based styles ── */
-body.compact-tables table tbody td { padding: 8px 12px !important; }
-body.compact-tables table thead th { padding: 8px 12px !important; }
 
 body.reduce-motion * { animation: none !important; transition: none !important; }
 
@@ -867,7 +860,6 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
     <div class="drawer-tabs">
         <div class="drawer-tab active" onclick="switchDrawerTab(this,'tab-general')"><i class="fas fa-sliders"></i> General</div>
         <div class="drawer-tab" onclick="switchDrawerTab(this,'tab-appearance')"><i class="fas fa-palette"></i> Appearance</div>
-        <div class="drawer-tab" onclick="switchDrawerTab(this,'tab-notifications')"><i class="fas fa-bell"></i> Notifications</div>
         <div class="drawer-tab" onclick="switchDrawerTab(this,'tab-payment-qr')"><i class="fas fa-qrcode"></i> Payment QR</div>
         <div class="drawer-tab" onclick="switchDrawerTab(this,'tab-account')"><i class="fas fa-user"></i> Account</div>
     </div>
@@ -893,53 +885,6 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                 <?php endforeach; ?>
             </div>
             <div class="settings-section">
-                <div class="settings-section-title">Portal Access</div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Allow staff login</div>
-                        <div class="settings-row-desc">Permit staff accounts to sign in to the staff portal</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" id="tog-staff-login" <?php echo $staffLoginEnabled ? 'checked' : ''; ?>><span class="toggle-track"></span></label>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Allow rider login</div>
-                        <div class="settings-row-desc">Permit rider accounts to sign in to the rider portal</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" id="tog-rider-login" <?php echo $riderLoginEnabled ? 'checked' : ''; ?>><span class="toggle-track"></span></label>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <div class="settings-section-title">Dashboard Behavior</div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Compact table rows</div>
-                        <div class="settings-row-desc">Show more rows by reducing padding in data tables</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" id="tog-compact"><span class="toggle-track"></span></label>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Show sparklines</div>
-                        <div class="settings-row-desc">Display mini trend charts on stat cards</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" checked id="tog-sparklines"><span class="toggle-track"></span></label>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Revenue chart period</div>
-                        <div class="settings-row-desc">Default time range shown on the revenue chart</div>
-                    </div>
-                    <select class="settings-select" id="sel-revenue-period">
-                        <option>Last 7 days</option>
-                        <option selected>Last 30 days</option>
-                        <option>Last 12 months</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="settings-section">
                 <div class="settings-section-title">Loyalty Points</div>
                 <div class="settings-row">
                     <div class="settings-row-info">
@@ -959,56 +904,6 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                 <?php endforeach; ?>
             </div>
 
-            <div class="settings-section">
-                <div class="settings-section-title">Region &amp; Format</div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Currency display</div>
-                        <div class="settings-row-desc">How monetary values are formatted across the dashboard</div>
-                    </div>
-                    <select class="settings-select" id="sel-currency">
-                        <option selected>PHP — Philippine Peso</option>
-                        <option>USD — US Dollar</option>
-                    </select>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Date format</div>
-                    </div>
-                    <select class="settings-select" id="sel-date-format">
-                        <option selected>MMM DD, YYYY</option>
-                        <option>DD/MM/YYYY</option>
-                        <option>YYYY-MM-DD</option>
-                    </select>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Time format</div>
-                    </div>
-                    <select class="settings-select" id="sel-time-format">
-                        <option selected>12-hour (AM/PM)</option>
-                        <option>24-hour</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <div class="settings-section-title">Sidebar</div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Show pending badges</div>
-                        <div class="settings-row-desc">Display red count badges on sidebar nav items</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" checked id="tog-pending-badges"><span class="toggle-track"></span></label>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Collapsed by default</div>
-                        <div class="settings-row-desc">Start with sidebar minimized on smaller screens</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" id="tog-collapsed-sidebar"><span class="toggle-track"></span></label>
-                </div>
-            </div>
         </div>
 
         <!-- ── Appearance Tab ── -->
@@ -1061,138 +956,6 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                 </div>
             </div>
 
-            <div class="settings-section">
-                <div class="settings-section-title">Interface Density</div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Layout spacing</div>
-                        <div class="settings-row-desc">Controls padding and gaps throughout the UI</div>
-                    </div>
-                    <select class="settings-select" id="sel-layout-spacing">
-                        <option>Compact</option>
-                        <option selected>Comfortable</option>
-                        <option>Spacious</option>
-                    </select>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Border radius</div>
-                        <div class="settings-row-desc">Corner rounding on cards and panels</div>
-                    </div>
-                    <select class="settings-select" id="sel-border-radius">
-                        <option>Sharp</option>
-                        <option selected>Rounded</option>
-                        <option>Pill</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <div class="settings-section-title">Animations</div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Page transitions</div>
-                        <div class="settings-row-desc">Animate cards sliding in on page load</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" checked id="tog-page-transitions"><span class="toggle-track"></span></label>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Chart animations</div>
-                        <div class="settings-row-desc">Animate chart drawing on load and data change</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" checked id="tog-chart-animations"><span class="toggle-track"></span></label>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Reduce motion</div>
-                        <div class="settings-row-desc">Disable all non-essential animations for accessibility</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" id="tog-reduce-motion"><span class="toggle-track"></span></label>
-                </div>
-            </div>
-        </div>
-
-        <!-- ── Notifications Tab ── -->
-        <div class="tab-panel" id="tab-notifications">
-            <div class="settings-section">
-                <div class="settings-section-title">Alert Channels</div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">In-app notifications</div>
-                        <div class="settings-row-desc">Show alerts inside the dashboard interface</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" checked id="tog-in-app-notifications"><span class="toggle-track"></span></label>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Email notifications</div>
-                        <div class="settings-row-desc">Send email alerts to your admin address</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" checked id="tog-email-notifications"><span class="toggle-track"></span></label>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">SMS alerts</div>
-                        <div class="settings-row-desc">Send critical alerts via SMS (requires phone number)</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" id="tog-sms-alerts"><span class="toggle-track"></span></label>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <div class="settings-section-title">Notify Me When</div>
-                <div class="notif-list">
-                    <?php
-                    $notifs = [
-                        ['fas fa-user-plus',       'icon-blue',  'New user registration',   'A new customer account is submitted for review'],
-                        ['fas fa-receipt',          'icon-aqua',  'New transaction',          'A customer submits a new water refill order'],
-                        ['fas fa-triangle-exclamation','icon-amber','Pending limit reached',  'Pending items exceed your threshold (default: 10)'],
-                        ['fas fa-circle-xmark',    'icon-red',   'Transaction denied',       'An order is denied and may require follow-up'],
-                        ['fas fa-motorcycle',       'icon-purple','Rider goes offline',       'An assigned rider becomes unavailable'],
-                        ['fas fa-chart-line',       'icon-green', 'Daily revenue summary',   'Receive a daily report of total revenue at 6 PM'],
-                    ];
-                    foreach($notifs as $i => $n): ?>
-                    <div class="notif-item">
-                        <div class="notif-item-icon <?= $n[1] ?>"><i class="<?= $n[0] ?>"></i></div>
-                        <div class="notif-item-text">
-                            <div class="notif-item-title"><?= $n[2] ?></div>
-                            <div class="notif-item-desc"><?= $n[3] ?></div>
-                        </div>
-                        <label class="toggle" style="margin-left:12px;flex-shrink:0;">
-                            <input type="checkbox" <?= $i < 3 ? 'checked' : '' ?>>
-                            <span class="toggle-track"></span>
-                        </label>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <div class="settings-section-title">Thresholds</div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Pending alert threshold</div>
-                        <div class="settings-row-desc">Trigger an alert when pending items exceed this count</div>
-                    </div>
-                    <select class="settings-select" id="sel-pending-threshold">
-                        <option>5</option>
-                        <option selected>10</option>
-                        <option>20</option>
-                        <option>50</option>
-                    </select>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Notification frequency</div>
-                    </div>
-                    <select class="settings-select" id="sel-notification-frequency">
-                        <option>Immediately</option>
-                        <option selected>Every 15 min</option>
-                        <option>Hourly digest</option>
-                    </select>
-                </div>
-            </div>
         </div>
 
         <!-- ── Payment QR Tab ── -->
@@ -1332,10 +1095,6 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                             <div class="field-label">Last name</div>
                             <input class="field-input" id="profileLastName" type="text" value="<?= htmlspecialchars($profile_data['last_name'] ?? (explode(' ', $_SESSION['full_name'] ?? 'Admin')[1] ?? '')) ?>">
                         </div>
-                    </div>
-                    <div class="field-group">
-                        <div class="field-label">Email address</div>
-                        <input class="field-input" id="profileEmail" type="email" value="<?= htmlspecialchars($profile_data['email'] ?? 'admin@hydromis.com') ?>">
                     </div>
                     <div class="field-group">
                         <div class="field-label">Phone number</div>
@@ -1647,8 +1406,6 @@ function setCheckboxValue(id, value) {
 }
 
 function applyDashboardPreferences() {
-    document.body.classList.toggle('compact-tables', document.getElementById('tog-compact')?.checked || false);
-    document.body.classList.toggle('reduce-motion', document.getElementById('tog-reduce-motion')?.checked || false);
     const colorMode = document.getElementById('sel-color-mode')?.value || 'dark';
     if (typeof window.applyAdminColorMode === 'function') {
         window.applyAdminColorMode(colorMode);
@@ -1657,14 +1414,6 @@ function applyDashboardPreferences() {
         document.body.setAttribute('data-color-mode', colorMode);
         localStorage.setItem('hydromis-admin-color-mode', colorMode);
     }
-    document.body.setAttribute('data-layout-spacing', (document.getElementById('sel-layout-spacing')?.value || 'Comfortable').toLowerCase());
-    document.body.setAttribute('data-border-radius', (document.getElementById('sel-border-radius')?.value || 'Rounded').toLowerCase());
-    document.querySelectorAll('.sparkline-wrap').forEach(el => {
-        el.style.display = document.getElementById('tog-sparklines')?.checked === false ? 'none' : '';
-    });
-    document.querySelectorAll('.nav-badge').forEach(el => {
-        el.style.display = document.getElementById('tog-pending-badges')?.checked === false ? 'none' : '';
-    });
 }
 
 // Load settings on page load
@@ -1675,16 +1424,8 @@ function loadSettings() {
         return;
     }
     
-    // Dashboard Behavior
+    // General preferences
     setCheckboxValue('tog-autorefresh', userSettings.autorefresh);
-    setCheckboxValue('tog-compact', userSettings.compact);
-    setCheckboxValue('tog-sparklines', userSettings.sparklines);
-    setCheckboxValue('tog-pending-badges', userSettings.showPendingBadges);
-    setCheckboxValue('tog-collapsed-sidebar', userSettings.collapsedByDefault);
-    setSelectValue('sel-revenue-period', userSettings.revenuePeriod);
-    setSelectValue('sel-currency', userSettings.currency);
-    setSelectValue('sel-date-format', userSettings.dateFormat);
-    setSelectValue('sel-time-format', userSettings.timeFormat);
     setSelectValue('sel-color-mode', (userSettings.colorMode || localStorage.getItem('hydromis-admin-color-mode') || 'dark').toLowerCase());
     
     // Theme Color
@@ -1699,25 +1440,8 @@ function loadSettings() {
         });
     }
     
-    setSelectValue('sel-layout-spacing', userSettings.layoutSpacing);
-    setSelectValue('sel-border-radius', userSettings.borderRadius);
-    setCheckboxValue('tog-page-transitions', userSettings.pageTransitions);
-    setCheckboxValue('tog-chart-animations', userSettings.chartAnimations);
-    setCheckboxValue('tog-reduce-motion', userSettings.reduceMotion);
-    setCheckboxValue('tog-in-app-notifications', userSettings.inAppNotifications);
-    setCheckboxValue('tog-email-notifications', userSettings.emailNotifications);
-    setCheckboxValue('tog-sms-alerts', userSettings.smsAlerts);
-    setSelectValue('sel-pending-threshold', userSettings.pendingThreshold);
-    setSelectValue('sel-notification-frequency', userSettings.notificationFreq);
     setCheckboxValue('tog-two-factor', userSettings.twoFactor);
     setSelectValue('sel-session-timeout', userSettings.sessionTimeout);
-    
-    // Notifications
-    document.querySelectorAll('.notif-item input[type="checkbox"]').forEach((cb, idx) => {
-        if (userSettings.notifications && userSettings.notifications[idx] !== undefined) {
-            cb.checked = userSettings.notifications[idx];
-        }
-    });
     
     // Profile Info
     if (userSettings.profileFirstName) {
@@ -1727,10 +1451,6 @@ function loadSettings() {
     if (userSettings.profileLastName) {
         const lastNameInput = document.getElementById('profileLastName');
         if (lastNameInput) lastNameInput.value = userSettings.profileLastName;
-    }
-    if (userSettings.profileEmail) {
-        const emailInput = document.getElementById('profileEmail');
-        if (emailInput) emailInput.value = userSettings.profileEmail;
     }
     if (userSettings.profilePhone) {
         const phoneInput = document.getElementById('profilePhone');
@@ -1768,30 +1488,10 @@ function saveSettings() {
     
     const settings = {
         autorefresh: false,
-        compact: document.getElementById('tog-compact').checked,
-        sparklines: document.getElementById('tog-sparklines').checked,
         themeColor: document.querySelector('.theme-swatch.selected')?.dataset.color || 'aqua',
         colorMode: document.getElementById('sel-color-mode')?.value || 'dark',
-        revenuePeriod: document.getElementById('sel-revenue-period')?.value || 'Last 30 days',
-        currency: document.getElementById('sel-currency')?.value || 'PHP - Philippine Peso',
-        dateFormat: document.getElementById('sel-date-format')?.value || 'MMM DD, YYYY',
-        timeFormat: document.getElementById('sel-time-format')?.value || '12-hour (AM/PM)',
-        layoutSpacing: document.getElementById('sel-layout-spacing')?.value || 'Comfortable',
-        borderRadius: document.getElementById('sel-border-radius')?.value || 'Rounded',
-        showPendingBadges: document.getElementById('tog-pending-badges')?.checked ?? true,
-        collapsedByDefault: document.getElementById('tog-collapsed-sidebar')?.checked ?? false,
-        pageTransitions: document.getElementById('tog-page-transitions')?.checked ?? true,
-        chartAnimations: document.getElementById('tog-chart-animations')?.checked ?? true,
-        reduceMotion: document.getElementById('tog-reduce-motion')?.checked ?? false,
-        inAppNotifications: document.getElementById('tog-in-app-notifications')?.checked ?? true,
-        emailNotifications: document.getElementById('tog-email-notifications')?.checked ?? true,
-        smsAlerts: document.getElementById('tog-sms-alerts')?.checked ?? false,
-        notifications: Array.from(document.querySelectorAll('.notif-item input[type="checkbox"]')).map(cb => cb.checked),
-        pendingThreshold: document.getElementById('sel-pending-threshold')?.value || '10',
-        notificationFreq: document.getElementById('sel-notification-frequency')?.value || 'Every 15 min',
         profileFirstName: document.getElementById('profileFirstName')?.value || '',
         profileLastName: document.getElementById('profileLastName')?.value || '',
-        profileEmail: document.getElementById('profileEmail')?.value || '',
         profilePhone: document.getElementById('profilePhone')?.value || '',
         currentPassword: passwordInputs[0]?.value || '',
         newPassword: passwordInputs[1]?.value || '',
@@ -1800,8 +1500,6 @@ function saveSettings() {
         sessionTimeout: document.getElementById('sel-session-timeout')?.value || '1 hour',
         containerPrices,
         pointsPerGallon: Math.max(0, Math.min(100, parseInt(document.getElementById('pointsPerGallon')?.value || '1', 10))),
-        staffLoginEnabled: document.getElementById('tog-staff-login')?.checked ?? true,
-        riderLoginEnabled: document.getElementById('tog-rider-login')?.checked ?? true,
         rewardRedemptions: Object.fromEntries(Array.from(document.querySelectorAll('.reward-redemption-toggle')).map(toggle => [toggle.dataset.rewardCode, toggle.checked]))
     };
     
@@ -1995,7 +1693,7 @@ document.querySelectorAll('.theme-swatch').forEach(sw=>{
     });
 });
 
-['tog-compact','tog-sparklines','tog-pending-badges','tog-reduce-motion','sel-color-mode','sel-layout-spacing','sel-border-radius'].forEach(id => {
+['sel-color-mode'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', applyDashboardPreferences);
 });
 
