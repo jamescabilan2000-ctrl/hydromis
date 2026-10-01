@@ -72,3 +72,9 @@ function set_system_setting($conn, string $key, string $value, string $updatedBy
     $safeUpdatedBy = $conn->real_escape_string($updatedBy);
     return (bool)$conn->query("INSERT INTO system_settings (setting_key,setting_value,updated_by) VALUES ('$safeKey','$safeValue','$safeUpdatedBy') ON DUPLICATE KEY UPDATE setting_value='$safeValue',updated_by='$safeUpdatedBy'");
 }
+
+// Quantity is the number of gallon containers ordered.
+function water_order_total(int $quantity): float {
+    if ($quantity < 1) return 0.0;
+    return $quantity <= 4 ? 80.0 : 15.0 * $quantity;
+}

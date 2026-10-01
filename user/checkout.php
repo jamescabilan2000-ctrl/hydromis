@@ -126,7 +126,6 @@ $type_map = [
     '5gal-slim' => 'slim'
 ];
 
-$pickup_base_map = array_map(static fn($price) => $price['water'], $containerPrices);
 
 $container_image_map = [
     '5gal-round' => '../imagess/water5.webp',
@@ -138,14 +137,12 @@ $container_image_map = [
 $user_address = isset($scanned_data['address']) ? $scanned_data['address'] : 'No address on file';
 $user_contact = isset($scanned_data['contact_number']) ? $scanned_data['contact_number'] : '';
 
-$pickup_base = $pickup_base_map[$container_size];
 $new_container = $container_status === 'new' ? $container_price_map[$container_size] * $quantity : 0;
-$water_total = $pickup_base * $quantity;
-$price_per_unit = $pickup_base + ($container_status === 'new' ? $container_price_map[$container_size] : 0);
-$item_total = $price_per_unit * $quantity;
+$water_total = water_order_total($quantity);
+$price_per_unit = $water_total / max(1, $quantity) + ($container_status === 'new' ? $container_price_map[$container_size] : 0);
+$item_total = $water_total + $new_container;
 
-$discount_count = floor($quantity / 5);
-$discount = $discount_count > 0 ? ($discount_count * 5) : 0;
+$discount = 0;
 $delivery_fee = $fulfillment_method === 'delivery' && !$free_delivery_reward ? 10 * $quantity : 0;
 $final_total = $item_total + $delivery_fee - $discount;
 ?>
@@ -1201,6 +1198,7 @@ $final_total = $item_total + $delivery_fee - $discount;
     </style>
     <script src="../js/ui-protection.js" defer></script>
 <script src="../js/customer-home.js?v=20260911" data-hide-home="true" defer></script>
+<script src="../js/water-pricing.js"></script>
 </head>
 <body class="public-ui">
     <nav class="navbar">
@@ -1509,8 +1507,6 @@ $final_total = $item_total + $delivery_fee - $discount;
     </div>
 
     <script>
-        const pricePerUnit = <?php echo $price_per_unit; ?>;
-        const pickupBase = <?php echo $pickup_base_map[$container_size]; ?>;
         const isDelivery = <?php echo $fulfillment_method === 'delivery' ? 'true' : 'false'; ?>;
         let currentQuantity = <?php echo $quantity; ?>;
         let selectedDate = '';
@@ -1605,11 +1601,11 @@ $final_total = $item_total + $delivery_fee - $discount;
             document.getElementById('qtyDisplay').textContent = currentQuantity;
             document.getElementById('hiddenQuantity').value = currentQuantity;
 
-            const newTotal = currentQuantity * pricePerUnit;
-            const discountCount = Math.floor(currentQuantity / 5);
-            const discount = discountCount > 0 ? (discountCount * 5) : 0;
+            const newTotal = waterOrderTotal(currentQuantity) + (<?php echo $container_status === 'new' ? json_encode($container_price_map[$container_size]) : '0'; ?> * currentQuantity);
+            const discount = 0;
             const deliveryFee = isDelivery && !<?php echo $free_delivery_reward ? 'true' : 'false'; ?> ? 10 * currentQuantity : 0;
             const finalAmount = newTotal + deliveryFee - discount;
+            document.getElementById('summaryDeliveryFee').textContent = deliveryFee > 0 ? '\u20b1' + deliveryFee.toFixed(2) : 'Free';
 
             document.getElementById('itemTotalDisplay').textContent = '₱' + newTotal.toFixed(2);
             document.getElementById('summaryItemTotal').textContent = '₱' + newTotal.toFixed(2);

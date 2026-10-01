@@ -850,9 +850,9 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
         <div class="tab-panel active" id="tab-pricing">
             <div class="settings-section">
                 <div class="settings-section-title">Container pricing</div>
-                <p class="settings-row-desc">Prices in pesos per container. Existing containers pay only the refill price. New containers add the surcharge. Changes apply to orders placed after saving.</p>
+                <p class="settings-row-desc">Water costs PHP 80 total for 1&ndash;4 gallons and PHP 15 per gallon for 5 or more. Set the additional price per new container below. Changes apply to new orders.</p>
                 <?php foreach (['2.5gal-slim' => '2.5 Gallon Slim', '5gal-slim' => '5 Gallon Slim', '5gal-round' => '5 Gallon Round'] as $size => $label): ?>
-                    <?php foreach (['water' => 'Water refill', 'container' => 'New container surcharge'] as $kind => $priceLabel): ?>
+                    <?php foreach (['container' => 'New container surcharge'] as $kind => $priceLabel): ?>
                     <div class="settings-row">
                         <label class="settings-row-info" for="price-<?php echo $size . '-' . $kind; ?>">
                             <span class="settings-row-label"><?php echo $label; ?></span>
@@ -1439,7 +1439,7 @@ function applyThemeColor(color) {
 }
 
 function saveSettings() {
-    const containerPrices = {};
+    const containerPrices = <?php echo json_encode($containerPrices); ?>;
     for (const input of document.querySelectorAll('.container-price-input')) {
         if (!input.reportValidity()) return;
         (containerPrices[input.dataset.size] ??= {})[input.dataset.kind] = input.value;

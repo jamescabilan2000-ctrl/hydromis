@@ -161,18 +161,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         $error = 'Please select a valid container and order type.';
         $price_per_unit = 0;
     } else {
-        $price_per_unit = $water_price_map[$container_size] + ($container_status === 'new' ? $container_price_map[$container_size] : 0);
+        $price_per_unit = water_order_total($quantity) / max(1, $quantity) + ($container_status === 'new' ? $container_price_map[$container_size] : 0);
     }
-    $total_amount = $quantity * $price_per_unit;
+    $total_amount = water_order_total($quantity) + ($container_status === 'new' && isset($container_price_map[$container_size]) ? $container_price_map[$container_size] * $quantity : 0);
     $discount = 0;
     // Points are awarded only after staff approves the pending order.
     $loyalty_points = 0;
-    
-    // Apply discount for every 5 containers
-    $discount_count = floor($quantity / 5);
-    if ($discount_count > 0) {
-        $discount = $discount_count * 5;
-    }
     
     $free_delivery_claim_id = 0;
     $free_delivery_redemption_id = '';
@@ -1215,6 +1209,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
     </style>
 <script src="../js/ui-protection.js" defer></script>
+<script src="../js/water-pricing.js"></script>
 </head>
 <body class="public-ui">
     <div class="container-main">
@@ -1374,7 +1369,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">2.5 Gallon</div>
                                             <div class="container-type">slim</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip">Water: ₱<?php echo number_format($containerPrices['2.5gal-slim']['water'], 2); ?></span>
+                                                <span class="price-chip">Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each</span>
                                                 <span class="price-chip">New container: +₱<?php echo number_format($containerPrices['2.5gal-slim']['container'], 2); ?></span>
                                             </div>
                                         </div>
@@ -1390,7 +1385,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">5 Gallon</div>
                                             <div class="container-type">slim</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip">Water: ₱<?php echo number_format($containerPrices['5gal-slim']['water'], 2); ?></span>
+                                                <span class="price-chip">Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each</span>
                                                 <span class="price-chip">New container: +₱<?php echo number_format($containerPrices['5gal-slim']['container'], 2); ?></span>
                                             </div>
                                         </div>
@@ -1406,7 +1401,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">5 Gallon</div>
                                             <div class="container-type">round</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip">Water: ₱<?php echo number_format($containerPrices['5gal-round']['water'], 2); ?></span>
+                                                <span class="price-chip">Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each</span>
                                                 <span class="price-chip">New container: +₱<?php echo number_format($containerPrices['5gal-round']['container'], 2); ?></span>
                                             </div>
                                         </div>
@@ -1465,18 +1460,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             const quantity = parseFloat(quantityEl.value) || 0;
             
             // Price mapping based on container size and status
-            const waterPriceMap = <?php echo json_encode(array_map(static fn($price) => $price['water'], $containerPrices)); ?>;
             const containerPriceMap = <?php echo json_encode($container_price_map); ?>;
-            const price = waterPriceMap[containerSize] + (containerStatus === 'new' ? containerPriceMap[containerSize] : 0);
-            const subtotal = quantity * price;
+            const price = waterOrderTotal(quantity) / Math.max(1, quantity) + (containerStatus === 'new' ? containerPriceMap[containerSize] : 0);
+            const subtotal = waterOrderTotal(quantity) + (containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : 0);
             
-            // Calculate discount (per 5 containers)
+            // The quantity-based water price already includes volume pricing.
             let discount = 0;
             let loyaltyPoints = quantity;
-            const discountCount = Math.floor(quantity / 5);
-            if (discountCount > 0) {
-                discount = discountCount * 5;
-            }
             
             const deliveryFee = fulfillmentMethod === 'delivery' ? 10 * quantity : 0;
             const finalAmount = subtotal + deliveryFee - discount;
