@@ -2,50 +2,8 @@
 require_once '../config/database.php';
 require_once '../config/system_settings.php';
 
-$reward_catalog = [
-    [
-        'code' => 'free_1_gallon',
-        'title' => 'Free 1 Gallon Regular Water',
-        'description' => 'Instantly redeem at cashier after purchase.',
-        'points' => 50,
-        'tag' => 'Water Reward'
-    ],
-    [
-        'code' => 'voucher_20',
-        'title' => 'Discount Voucher',
-        'description' => 'Get P20 off on your next refill order.',
-        'points' => 100,
-        'tag' => 'Voucher'
-    ],
-    [
-        'code' => 'delivery_discount',
-        'title' => 'Delivery Fee Discount',
-        'description' => 'Get P20 off the delivery fee on your next order.',
-        'points' => 125,
-        'tag' => 'Delivery Perk'
-    ],
-    [
-        'code' => 'bundle_fast_lane',
-        'title' => 'Free 1 Gallons Bundle',
-        'description' => 'Fast-lane service on your next visit.',
-        'points' => 150,
-        'tag' => 'Service Perk'
-    ],
-    [
-        'code' => 'free_delivery',
-        'title' => 'Free Delivery',
-        'description' => 'Enjoy free delivery on your next eligible water order.',
-        'points' => 200,
-        'tag' => 'Delivery Reward'
-    ],
-    [
-        'code' => 'bundle_2_gallons',
-        'title' => 'Free 2 Gallons Bundle',
-        'description' => 'Best value bundle for loyal customers.',
-        'points' => 250,
-        'tag' => 'Premium Reward'
-    ],
-];
+require_once '../config/reward_catalog.php';
+$reward_catalog = system_reward_catalog($conn);
 
 $reward_by_code = [];
 $reward_enabled = [];

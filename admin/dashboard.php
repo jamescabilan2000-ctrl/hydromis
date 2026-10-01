@@ -6,19 +6,6 @@ require_once '../config/storage_service.php';
 
 $systemLogo = system_logo_path($conn);
 $containerPrices = system_container_prices($conn);
-$pointsPerGallon = system_int_setting($conn, 'points_per_gallon', 1, 0, 100);
-$rewardRedemptionOptions = [
-    'free_1_gallon' => 'Free 1 Gallon Regular Water',
-    'voucher_20' => 'Discount Voucher',
-    'delivery_discount' => 'Delivery Fee Discount',
-    'bundle_fast_lane' => 'Free 1 Gallons Bundle',
-    'free_delivery' => 'Free Delivery',
-    'bundle_2_gallons' => 'Free 2 Gallons Bundle',
-];
-$rewardRedemptionStates = [];
-foreach ($rewardRedemptionOptions as $rewardCode => $rewardLabel) {
-    $rewardRedemptionStates[$rewardCode] = system_int_setting($conn, 'reward_enabled_' . $rewardCode, 1, 0, 1) === 1;
-}
 if (empty($_SESSION['system_logo_csrf'])) $_SESSION['system_logo_csrf'] = bin2hex(random_bytes(32));
 
 function format_currency($amount) {
@@ -178,16 +165,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $passwordMessage = ' Password updated.';
     }
     
-    $pointsPerGallon = max(0, min(100, (int)($settings['pointsPerGallon'] ?? 1)));
-    $pointsSaved = set_system_setting($conn, 'points_per_gallon', (string)$pointsPerGallon, (string)($_SESSION['admin_id'] ?? 'admin'));
-    $rewardRedemptionsSaved = true;
-    $postedRewardStates = is_array($settings['rewardRedemptions'] ?? null) ? $settings['rewardRedemptions'] : [];
-    foreach ($rewardRedemptionOptions as $rewardCode => $rewardLabel) {
-        $saved = set_system_setting($conn, 'reward_enabled_' . $rewardCode, !empty($postedRewardStates[$rewardCode]) ? '1' : '0', (string)($_SESSION['admin_id'] ?? 'admin'));
-        $rewardRedemptionsSaved = $rewardRedemptionsSaved && $saved;
-    }
     $pricesSaved = set_system_setting($conn, 'container_prices', json_encode($validatedPrices), (string)$_SESSION['admin_id']);
-    if ($pricesSaved && $pointsSaved && $rewardRedemptionsSaved && $conn->query($sql)) {
+    if ($pricesSaved && $conn->query($sql)) {
         echo json_encode(['success' => true, 'message' => 'Settings saved.' . $passwordMessage]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Error saving settings']);
@@ -858,7 +837,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
 
     <!-- Tabs -->
     <div class="drawer-tabs">
-        <div class="drawer-tab active" onclick="switchDrawerTab(this,'tab-general')"><i class="fas fa-sliders"></i> General</div>
+        <div class="drawer-tab active" onclick="switchDrawerTab(this,'tab-pricing')"><i class="fas fa-sliders"></i> Container Pricing</div>
         <div class="drawer-tab" onclick="switchDrawerTab(this,'tab-appearance')"><i class="fas fa-palette"></i> Appearance</div>
         <div class="drawer-tab" onclick="switchDrawerTab(this,'tab-payment-qr')"><i class="fas fa-qrcode"></i> Payment QR</div>
         <div class="drawer-tab" onclick="switchDrawerTab(this,'tab-account')"><i class="fas fa-user"></i> Account</div>
@@ -867,8 +846,8 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
     <!-- Body -->
     <div class="drawer-body">
 
-        <!-- ── General Tab ── -->
-        <div class="tab-panel active" id="tab-general">
+        <!-- ── Container Pricing Tab ── -->
+        <div class="tab-panel active" id="tab-pricing">
             <div class="settings-section">
                 <div class="settings-section-title">Container pricing</div>
                 <p class="settings-row-desc">Prices in pesos per container. Existing containers pay only the refill price. New containers add the surcharge. Changes apply to orders placed after saving.</p>
@@ -882,25 +861,6 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                         <input class="settings-select container-price-input" id="price-<?php echo $size . '-' . $kind; ?>" data-size="<?php echo $size; ?>" data-kind="<?php echo $kind; ?>" type="number" min="0" max="99999.99" step="0.01" required value="<?php echo number_format($containerPrices[$size][$kind], 2, '.', ''); ?>" style="width:112px">
                     </div>
                     <?php endforeach; ?>
-                <?php endforeach; ?>
-            </div>
-            <div class="settings-section">
-                <div class="settings-section-title">Loyalty Points</div>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label">Points earned per gallon</div>
-                        <div class="settings-row-desc">Multiplied by the ordered quantity. Existing transaction points are not changed.</div>
-                    </div>
-                    <input class="settings-select" id="pointsPerGallon" type="number" min="0" max="100" step="1" value="<?php echo (int)$pointsPerGallon; ?>" style="width:92px;">
-                </div>
-                <?php foreach ($rewardRedemptionOptions as $rewardCode => $rewardLabel): ?>
-                <div class="settings-row">
-                    <div class="settings-row-info">
-                        <div class="settings-row-label"><?php echo htmlspecialchars($rewardLabel); ?></div>
-                        <div class="settings-row-desc">Allow customers to redeem this reward.</div>
-                    </div>
-                    <label class="toggle"><input type="checkbox" class="reward-redemption-toggle" data-reward-code="<?php echo htmlspecialchars($rewardCode); ?>" <?php echo $rewardRedemptionStates[$rewardCode] ? 'checked' : ''; ?>><span class="toggle-track"></span></label>
-                </div>
                 <?php endforeach; ?>
             </div>
 
@@ -1190,6 +1150,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                     <a href="reports.php" class="nav-item"><i class="fas fa-chart-bar"></i> Reports</a>
                     <a href="feedback.php" class="nav-item"><i class="fas fa-comments"></i> Customer Feedback</a>
                     <a href="inventory.php" class="nav-item"><i class="fas fa-boxes-stacked"></i> Inventory</a>
+<a href="rewards.php" class="nav-item"><i class="fas fa-gift"></i> Rewards &amp; Loyalty</a>
                 </div>
             </div>
             <div>
@@ -1499,8 +1460,6 @@ function saveSettings() {
         twoFactor: document.getElementById('tog-two-factor')?.checked ?? false,
         sessionTimeout: document.getElementById('sel-session-timeout')?.value || '1 hour',
         containerPrices,
-        pointsPerGallon: Math.max(0, Math.min(100, parseInt(document.getElementById('pointsPerGallon')?.value || '1', 10))),
-        rewardRedemptions: Object.fromEntries(Array.from(document.querySelectorAll('.reward-redemption-toggle')).map(toggle => [toggle.dataset.rewardCode, toggle.checked]))
     };
     
     const btn = document.querySelector('.btn-save');

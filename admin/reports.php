@@ -388,6 +388,7 @@ html, body {
                     <a href="reports.php" class="nav-item active" style="position:relative;"><i class="fas fa-chart-bar"></i> Reports</a>
                     <a href="feedback.php" class="nav-item"><i class="fas fa-comments"></i> Customer Feedback</a>
                     <a href="inventory.php" class="nav-item"><i class="fas fa-boxes-stacked"></i> Inventory</a>
+<a href="rewards.php" class="nav-item"><i class="fas fa-gift"></i> Rewards &amp; Loyalty</a>
                 </div>
             </div>
             <div>

@@ -2,6 +2,8 @@
 require_once 'check_auth.php';
 require_once '../config/database.php';
 require_once '../config/inventory_service.php';
+require_once '../config/reward_catalog.php';
+ensure_reward_catalog_schema($conn);
 
 ensure_inventory_schema($conn);
 
@@ -72,7 +74,7 @@ $pendingCount = $pendingCountResult ? (int)($pendingCountResult->fetch_assoc()['
 $historyView = (($_GET['view'] ?? '') === 'history');
 $rewardSearch = trim((string)($_GET['q'] ?? ''));
 $claimViewWhere = $historyView ? '' : "WHERE rc.claim_status = 'pending'";
-$claims = $conn->query("SELECT rc.id, rc.transaction_id, rc.user_id, rc.reward_code, CONCAT(rc.reward_title, ' — ', CASE rc.reward_code WHEN 'free_1_gallon' THEN 'Give 1 gallon of regular water' WHEN 'voucher_20' THEN 'Apply a ₱20 discount to the next refill order' WHEN 'delivery_discount' THEN 'Apply a ₱20 discount to the delivery fee' WHEN 'bundle_fast_lane' THEN 'Provide fast-lane service on the next visit' WHEN 'free_delivery' THEN 'Waive the delivery fee on the next eligible order' WHEN 'bundle_2_gallons' THEN 'Give 2 gallons of regular water' ELSE 'Release the listed reward' END) AS reward_title, rc.points_used, rc.claim_status, rc.claimed_by, rc.claimed_at, rc.created_at, u.full_name, u.contact_number FROM reward_claims rc LEFT JOIN users u ON u.user_id = rc.user_id $claimViewWhere ORDER BY FIELD(rc.claim_status, 'pending', 'claimed'), rc.created_at DESC");
+$claims = $conn->query("SELECT rc.id, rc.transaction_id, rc.user_id, rc.reward_code, CONCAT(rc.reward_title, ' — ', CASE rc.reward_code WHEN 'free_1_gallon' THEN 'Give 1 gallon of regular water' WHEN 'voucher_20' THEN 'Apply a ₱20 discount to the next refill order' WHEN 'delivery_discount' THEN 'Apply a ₱20 discount to the delivery fee' WHEN 'bundle_fast_lane' THEN 'Provide fast-lane service on the next visit' WHEN 'free_delivery' THEN 'Waive the delivery fee on the next eligible order' WHEN 'bundle_2_gallons' THEN 'Give 2 gallons of regular water' ELSE COALESCE(cr.description, 'Release the listed reward') END) AS reward_title, rc.points_used, rc.claim_status, rc.claimed_by, rc.claimed_at, rc.created_at, u.full_name, u.contact_number FROM reward_claims rc LEFT JOIN users u ON u.user_id = rc.user_id LEFT JOIN custom_rewards cr ON cr.code = rc.reward_code $claimViewWhere ORDER BY FIELD(rc.claim_status, 'pending', 'claimed'), rc.created_at DESC");
 $claimsData = [];
 if ($claims) {
     while ($claimRow = $claims->fetch_assoc()) $claimsData[] = $claimRow;
