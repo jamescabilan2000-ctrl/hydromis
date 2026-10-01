@@ -722,7 +722,7 @@ html, body {
         <div class="page-content">
             <!-- Heading -->
             <div style="margin-bottom: 24px;">
-                <div class="page-title">🏍️ Rider Management</div>
+                <div class="page-title">Rider Management</div>
                 <div class="page-subtitle">Create and manage delivery rider accounts</div>
             </div>
 
