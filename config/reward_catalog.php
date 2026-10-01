@@ -64,14 +64,14 @@ function ensure_reward_catalog_schema($conn): void {
 
 function system_reward_catalog($conn): array {
     ensure_reward_catalog_schema($conn);
-    $catalog = default_reward_catalog();
+    $catalog = array_column(default_reward_catalog(), null, 'code');
     $result = $conn->query('SELECT code, title, description, points, tag FROM custom_rewards ORDER BY created_at, code');
     if (!$result) throw new RuntimeException('Unable to load rewards.');
     while ($row = $result->fetch_assoc()) {
         $row['points'] = (int)$row['points'];
-        $catalog[] = $row;
+        $catalog[$row['code']] = $row;
     }
-    return $catalog;
+    return array_values($catalog);
 }
 
 function validate_new_reward(array $input): array {

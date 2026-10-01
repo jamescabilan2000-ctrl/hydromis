@@ -1201,8 +1201,6 @@ $final_total = $item_total + $delivery_fee - $discount;
     </style>
     <script src="../js/ui-protection.js" defer></script>
 <script src="../js/customer-home.js?v=20260911" data-hide-home="true" defer></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<style>#delivery-pin-map{height:260px;margin:12px 0;z-index:0}#delivery-pin-locate{padding:10px 14px;border:1px solid #b7dcea;background:#eefaff;color:#12618c;border-radius:8px;cursor:pointer}#delivery-pin-status{font-size:12px;line-height:1.5;color:#49637a}</style>
 </head>
 <body class="public-ui">
     <nav class="navbar">
@@ -1251,12 +1249,6 @@ $final_total = $item_total + $delivery_fee - $discount;
                                 <?php endif; ?>
                             </div>
                             <i class="fas fa-check-circle" style="color: #0d9488; font-size: 16px; margin-left: 8px; flex-shrink: 0;"></i>
-                        </div>
-                        <div style="margin-top:16px">
-                            <strong>Delivery pin</strong>
-                            <p id="delivery-pin-status" role="status">Tap your delivery location on the map, or use your current location if you are at the delivery address.</p>
-                            <button type="button" id="delivery-pin-locate">Use my current location</button>
-                            <div id="delivery-pin-map" aria-label="Choose delivery location"></div>
                         </div>
                         <?php else: ?>
                         <div class="pickup-box"><i class="fas fa-location-dot"></i><div><strong>HydroMIS Water Refilling Station</strong><span>Your order will be prepared for collection. No delivery schedule is required.</span></div></div>
@@ -1684,10 +1676,6 @@ $final_total = $item_total + $delivery_fee - $discount;
 
             let isValid = true;
             const errors = [];
-            if (isDelivery && (!document.getElementById('deliveryLatitude').value || !document.getElementById('deliveryLongitude').value)) {
-                errors.push('Choose your delivery pin on the map');
-                isValid = false;
-            }
 
             if (availableStock !== null && currentQuantity > availableStock) {
                 errors.push('Only ' + availableStock + ' of this gallon container are available');
@@ -1764,7 +1752,5 @@ $final_total = $item_total + $delivery_fee - $discount;
             document.getElementById('deliveryDate').setAttribute('min', minDate);
         });
     </script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="../js/delivery-pin.js?v=1"></script>
 </body>
 </html>

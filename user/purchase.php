@@ -119,10 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     $fulfillment_method = sanitize($_POST['fulfillment_method'] ?? 'delivery');
     $destination = $fulfillment_method === 'delivery'
         ? delivery_destination($_POST['delivery_latitude'] ?? null, $_POST['delivery_longitude'] ?? null) : null;
-    if ($fulfillment_method === 'delivery' && $destination === null) {
-        $error = 'Please return to checkout and select your delivery pin on the map.';
-    }
-    // Validated numeric values only; pickup orders deliberately have no delivery pin.
+    // Coordinates are optional; deliveries without a pin use the saved address.
     $delivery_lat_sql = $destination === null ? 'NULL' : sprintf('%.8F', $destination[0]);
     $delivery_lng_sql = $destination === null ? 'NULL' : sprintf('%.8F', $destination[1]);
     $amount_tendered = floatval($_POST['amount_tendered']);
