@@ -391,7 +391,6 @@ body[data-color-mode="light"]{color-scheme:light;--bg:#f4f7fb;--bg2:#fff;--bg3:#
 
 /* Notif badge on icon button */
 .icon-btn-wrap { position: relative; }
-.notif-dot { position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--red); border: 2px solid var(--bg); }
 .notification-menu {
     display: none;
     position: absolute;
@@ -1494,7 +1493,6 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                 <!-- Notification button -->
                 <div class="icon-btn-wrap">
                     <a href="#" class="icon-btn" id="notificationBtn" title="Notifications" onclick="toggleNotifications(event)"><i class="fas fa-bell"></i></a>
-                    <?php if(($pending + $pending_users) > 0): ?><div class="notif-dot"></div><?php endif; ?>
                     <div class="notification-menu" id="notificationMenu">
                         <div class="notification-menu-header">
                             <div class="notification-menu-title">Notifications</div>
@@ -1701,7 +1699,7 @@ function applyDashboardPreferences() {
     document.querySelectorAll('.sparkline-wrap').forEach(el => {
         el.style.display = document.getElementById('tog-sparklines')?.checked === false ? 'none' : '';
     });
-    document.querySelectorAll('.nav-badge, .notif-dot').forEach(el => {
+    document.querySelectorAll('.nav-badge').forEach(el => {
         el.style.display = document.getElementById('tog-pending-badges')?.checked === false ? 'none' : '';
     });
 }
