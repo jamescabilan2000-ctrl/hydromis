@@ -573,6 +573,8 @@ html, body {
                 <div class="page-subtitle">View and manage all customer transactions</div>
             </div>
 
+            <?php include __DIR__ . '/export_buttons.php'; ?>
+
             <!-- Filter Bar -->
             <div class="filter-bar">
                 <div class="filter-group">

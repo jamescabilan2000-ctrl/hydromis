@@ -447,6 +447,8 @@ html, body {
                 <div class="page-subtitle">Comprehensive statistics and analysis</div>
             </div>
 
+            <?php include __DIR__ . '/export_buttons.php'; ?>
+
             <!-- User Statistics -->
             <div style="margin-bottom: 32px;">
                 <h3 style="margin: 0 0 16px; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;"><i class="fas fa-users"></i> User Statistics</h3>

@@ -1,0 +1,184 @@
+Republic of the Philippines
+BOHOL ISLAND STATE UNIVERSITY
+Calape Campus, Calape, Bohol
+
+
+
+
+
+
+
+
+
+HydroMIS: A Web-Based Management Information System for Water Refilling Station Operations
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Jorge Manuel M. Soriano
+James F. Cabilan
+BSCS 3A
+
+
+
+
+Chapter I
+INTRODUCTION
+Background of the Study
+Access to safe and clean drinking water is a fundamental necessity for communities, making water refilling stations a vital service, particularly in Tubigon. As demand continues to increase, these businesses must efficiently manage operations such as order processing, inventory monitoring, delivery coordination, and customer communication. However, many water refilling stations still rely on traditional manual methods, including paper-based recording and informal communication, which often result in delays, data inaccuracies, and inefficient service delivery.
+With the advancement of information technology, web-based management information systems have been widely adopted to improve business operations. These systems enable automation, real-time data access, and better coordination. However, existing systems and studies often focus only on individual functions such as inventory, ordering, payment, or delivery, rather than providing a fully integrated solution. Moreover, many systems are not tailored to the specific needs of water refilling stations in local contexts, creating a clear research gap for a comprehensive and user-centered platform.
+Based on the survey conducted by the researchers in Tubigon, the majority of respondents preferred an online ordering system, and nearly all agreed that a web-based system like HydroMIS would improve service efficiency compared to manual processes. Additionally, many reported experiencing delays in current ordering or delivery methods, and a significant portion believed that manual systems are inefficient. These findings from Lucky 12 water refilling station operators and customers indicate not only the existing operational challenges but also a strong readiness and willingness among users to adopt a digital solution. However, ensuring that the system is easy to use, accessible, and aligned with user needs remains essential to achieving high acceptance and successful implementation.
+Given these gaps and challenges, there is a need for a unified and integrated system that can streamline operations while ensuring usability and user satisfaction. This study addresses these needs through the development of HydroMIS, a web-based management information system that integrates ordering, delivery tracking, inventory monitoring, payment recording, and customer interaction into a centralized platform. The study is significant as it provides a practical solution to improve operational efficiency, reduce errors and delays, and enhance customer satisfaction. Furthermore, by incorporating user acceptance into its design, the system aims to ensure effective adoption and long-term usability, contributing to the digital transformation of water refilling station operations.
+Objectives of the Study
+	The main objective of this study is to design and develop HydroMIS: A Web-Based Management Information System for Water Refilling Station Operations that improves the efficiency of managing station services and operations.
+Specifically, this study aims to:
+Determine the processes involved in the traditional methods of managing water refilling station operations, including ordering, delivery, sales recording, and inventory monitoring, as well as their limitations and challenges.
+Design and develop a web-based management information system that enables efficient online ordering, secure transaction handling, delivery tracking, inventory monitoring, and customer communication.
+Evaluate the system’s usability, accessibility, and effectiveness based on user experience and system performance metrics.
+ Create a user manual, to ensure proper system implementation and utilization. 
+Significance of the Study 
+This research focuses on HydroMIS, a web-based management information system designed to transform how water refilling stations manage their daily operations. By replacing inefficient manual processes, HydroMIS introduces a centralized, organized, and user-friendly digital solution. 
+The system provides significant benefits to water refilling station owners by improving operational control and productivity. It enables them to manage orders accurately, monitor inventory levels in real time, and generate organized sales reports for better decision-making. Through a centralized digital dashboard, owners gain full visibility over daily transactions, revenue trends, and stock movement, allowing them to make informed business decisions with confidence. The automated inventory monitoring feature alerts owners when supplies run low, preventing shortages and ensuring consistent service delivery. Moreover, the integration of loyalty program management allows owners to design reward schemes that encourage repeat purchases and strengthen long-term customer retention.
+Customers of water refilling stations equally benefit from the improved service quality that HydroMIS enables. With a streamlined order management system in place, customers can expect faster and more accurate order processing, reducing delays and minimizing service errors. The customer feedback feature provides clients with a direct channel to voice concerns, suggestions, and commendations, ensuring they feel heard and valued. Customers also benefit from the loyalty program integrated into the system, which rewards frequent purchases with points or incentives, giving them a sense of appreciation for their continued patronage. The messaging feature further enhances convenience by allowing customers to place orders or raise inquiries without the need for in-person visits, making every transaction more accessible and efficient. By working within a structured digital system, businesses can reduce errors, improve coordination, and maintain reliable service operations.
+This study is also valuable for developers and researchers as it demonstrates the application of modern web technologies in building efficient management information systems for small and medium enterprises. HydroMIS highlights the importance of automation, system integration, and user-centered design in improving business processes. It provides a foundation for future studies related to digital transformation, system scalability, and the development of similar platforms in other service-based industries. Ultimately, HydroMIS serves as a tool to modernize water refilling station operations, improve service quality, reduce operational challenges, and support the long-term growth of businesses in an increasingly digital environment.
+Scope and Limitations of the Study
+	This study centers on the development of HydroMIS, a web-based management information system designed to improve the operations of water refilling stations. The system includes a multi-user platform consisting of Administrator, Station Staff, Delivery Personnel, and Customer interfaces. It features online ordering, delivery scheduling and tracking, payment recording, inventory management, sales monitoring, customer feedback and rating system, messaging and notification system, loyalty points program, and reporting and analytics dashboard. The system also supports user management, role-based access control, and real-time transaction updates to ensure efficient coordination among users. It evaluates system usability, functionality, and user acceptability to address challenges in traditional manual operations such as delays, inaccurate records, and inefficient service management.
+The system focuses only on water refilling station operations and does not cover water purification processes or water quality monitoring. Payment features are limited to basic transaction recording and do not include integration with online payment gateways or digital wallets. The system does not support advanced financial management functions such as payroll processing or full accounting systems. Real-time features such as ordering, tracking, and messaging require stable internet connectivity, which may affect usability in areas with limited network access. The implementation and testing of the system are confined to selected users and water refilling stations, limiting the generalization of the results. Despite these limitations, the study aims to improve operational efficiency, enhance customer service, and support the digital transformation of water refilling station businesses.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Chapter II
+REVIEW OF RELATED LITERATURE
+Related Literature
+The development of HydroMIS: A Web-Based Management Information System for Water Refilling Station Operations is grounded in a growing body of literature that examines the convergence of information technology, operational management, and water services. Management Information Systems (MIS) have evolved into essential infrastructure for modern organizations, enabling data-driven decision-making and operational efficiency across all levels of management. 
+According to a study published in the International Journal of Creative Research Thoughts (2023), MIS consists of interconnected personnel, equipment, protocols, and software designed to execute business functions at operational, middle, and top management levels, where information flows from the bottom to the top of the organizational hierarchy. The research further underscores that all organizations are under significant pressure to improve their operational, tactical, and strategic processes as a consequence of an increasingly competitive global environment. This reflects the foundational rationale behind developing HydroMIS, as water refilling stations despite being small enterprises require structured data flows and systematic information management to sustain daily operations.
+Complementing this view, Taherdoost (2023) argued that information systems equip businesses to extract value from data by providing timely and easy access through the storing and processing of inputs from numerous resources. Taherdoost further noted that the disconnect between static information systems and evolving organizational structures constitutes a primary driver of information vulnerability, emphasizing the need for flexible and adaptable systems. For water refilling stations where customer accounts, container tracking, billing, and delivery scheduling are among the daily operational demands a purpose-built MIS directly addresses this vulnerability by aligning the information system with the unique structure of the enterprise.
+A cross-sectional survey conducted among 210 business professionals in the United States across technology, finance, manufacturing, services, healthcare, and retail sectors revealed that MIS adoption resulted in measurable improvements in operational effectiveness and strategic decision-making (Publishing.EmanResearch, 2023). The survey employed a five-point Likert scale to measure perceived strategic benefits and operational challenges, finding that while advantages were widely acknowledged, organizations also encounter difficulties during implementation, including resistance to change and integration complexities. These findings have direct implications for HydroMIS, suggesting that successful deployment will require user-centered design and adequate training to maximize adoption among station staff and owners.
+Gupta, Ambashtha, and Kumar (2022) further examined the challenges and opportunities of MIS in business, concluding that MIS provides timely and accurate information to managers and supports appropriate decision-making, but faces obstacles such as implementation costs, employee resistance, server issues, and the need for continuous system updates. Their study reinforces the importance of designing HydroMIS with a user-friendly interface and minimal technical overhead, ensuring that even operators with limited technological experience can effectively utilize the system.
+Inventory management is among the most critical operational concerns for water refilling stations, as the continuous tracking of product containers, purification consumables, and delivery items directly affects business viability and customer satisfaction. Wei et al. (2023) developed a web-based inventory management system designed to improve the control and handling of product stock, customer orders, and order delivery information in small and medium enterprise retail stores in Malaysia. Their study demonstrated that transitioning from manual record-keeping to an online platform significantly enhanced inventory accuracy and reduced the risk of stockouts and order fulfillment errors. The system provided business owners with real-time visibility over their inventory operations, enabling more timely and informed decision-making. These findings underscore the operational advantages of web-based solutions for small enterprises managing multiple product lines and customer transactions, a context directly comparable to water refilling station operations.
+Similarly, a study published in the International Journal of Innovative Information Systems and Technology Research (2025) reviewed web-based inventory management designs for small and medium-sized enterprises and highlighted that traditional manual inventory systems are particularly susceptible to errors, financial losses, and stockout situations. The study advocated for cloud-enabled, real-time inventory tracking as the most effective approach to overcoming these limitations, supporting the rationale for integrating automated inventory features within HydroMIS. It further documented that organizations which adopted web-based inventory systems achieved significant reductions in operational costs and improvements in inventory accuracy, outcomes that align with the intended benefits of HydroMIS for water station operators.
+Agboola et al. (2022), writing in the FUDMA Journal of Sciences, developed a web-based platform for automating inventory management in a small and medium enterprise and found that manual record-keeping using spreadsheetscharacterized as labor-intensive, error-prone, and unable to guarantee currency of records was a pervasive challenge in their study context. Their system provided an interface for managing users, categories, products, and sales, with records of recent transactions accessible in real time. This design philosophy is directly applicable to HydroMIS, which similarly requires automated transaction logging, product tracking, and sales history as core functionalities.
+A study conducted in Bangladesh, cited in the same inventory systems review, examined inventory management practices among small and medium enterprises and concluded that the implementation of automated systems significantly enhanced inventory accuracy and reduced operational costs, suggesting that transitioning to web-based inventory management can provide a competitive advantage by streamlining operations (Otobo & Alegbe, 2024). These cross-contextual findings strengthen the case for HydroMIS as an instrument of operational modernization for water refilling stations that have historically depended on manual record-keeping.
+
+The water sector globally is undergoing a profound digital transformation, with information systems playing an increasingly central role in operational efficiency and service quality. Grigg (2024), writing in the journal Water, documented that digital transformation in water utilities occurs along two primary pathways: one serving business operations and the other supporting the operation and maintenance of water infrastructure through tools such as data-centric asset management, decision support systems, and process optimization platforms. Grigg's analysis highlighted that digital advances in the water sector are accelerating, but that many utilities particularly smaller ones remain constrained by basic operational challenges that impede full adoption of digital tools. This observation is especially pertinent to water refilling stations in developing countries, where the primary barrier to digitalization is not technology availability but operational complexity and resource constraints.
+A 2024 Gartner Research report cited by Locus Technologies noted that technologies such as cloud computing, the Internet of Things, and artificial intelligence show significant promise for reimagining water management and operations, helping utilities mitigate external pressures while supporting long-term goals of availability, affordability, quality, and sustainability. The same report acknowledged that while water and wastewater utility companies are eager for digital transformation, they are often hesitant about where to begin, and that the most effective pathway involves starting with incremental changes that ultimately unify all operational components into one integrated system. This incremental and integrated approach precisely describes the design philosophy of HydroMIS, which consolidates previously fragmented station functions customer management, inventory, billing, and reporting into a single web-based platform.
+Ramos et al. (2023), in a study published in the journal Water, explored the management of system efficiency in water distribution networks through smart water grids and emphasized the value of real-time data collection and cloud-based analytics for adaptive operational control. While their work focused on large-scale distribution infrastructure, the underlying principle that digitized, real-time data management leads to more responsive and efficient water service operations is equally applicable to the smaller but operationally complex context of water refilling stations. The contribution of HydroMIS to this paradigm lies in making data-driven operations accessible to small-scale water enterprises that lack the resources to implement industrial-grade systems.
+Water quality assurance is a regulatory and operational imperative for water refilling stations, and the integration of monitoring data into management systems is increasingly recognized as a best practice. Zulkifli et al. (2022) conducted a systematic review of IoT-based water monitoring systems published in the journal Water, cataloguing a broad range of sensor technologies and data management platforms used to ensure water safety. Their review confirmed that real-time water quality monitoring covering parameters such as pH, turbidity, total dissolved solids, and temperature is feasible through low-cost sensor arrays and wireless transmission systems, and that the availability of such data is critical for regulatory compliance and consumer trust. For HydroMIS, this literature underscores the potential to incorporate water quality logs as a feature module, enabling station owners to maintain compliance records and demonstrate product safety to customers and regulators.
+A study published in PMC (2024) examined real-time potable water quality monitoring systems and found that remote users can effectively test drinkable water supply by using online browsers or mobile messengers, with data processed through machine learning algorithms for predictive classification of water quality status. The study advocated for self-assembled, low-cost sensor configurations that perform well in potable water monitoring contexts, demonstrating that high-quality monitoring need not require costly commercial solutions. This finding supports the feasibility of integrating basic water quality tracking into HydroMIS as a supplementary feature, bridging the gap between operational management and quality assurance within a single system.
+Further supporting the importance of water quality management in small-scale water enterprises, the Philippine Statistics Authority's Annual Poverty Indicators Survey (2022) reported that more than 50 percent of Philippine households sourced their drinking water supply from commercial refilling stations, underscoring the significant public health role these businesses play in their communities. This statistic, cited across multiple Philippine business and public health publications, reinforces the necessity of building management tools like HydroMIS that enable station operators to uphold quality standards and maintain customer health records with accuracy and accountability. 
+Taken together, the literature reviewed establishes a strong theoretical and empirical foundation for HydroMIS. Collectively, these studies affirm that web-based management information systems improve operational efficiency, reduce manual errors, and support better decision-making in small enterprise contexts. The specific challenges of water refilling station operations including the need for real-time inventory tracking, customer account management, billing automation, and water quality monitoring are well-addressed by the systems and frameworks documented in the literature. HydroMIS is therefore positioned not merely as a digitalization exercise, but as a purposeful and evidence-based response to the operational limitations of manual management practices currently prevalent in water refilling station businesses in the Philippines and comparable contexts.
+Conceptual Framework
+
+
+
+
+
+
+
+
+
+
+
+Figure 1.1: Conceptual Framework
+
+Related Studies
+	The study by Domingo et al. (2021) proposes a new Water Refilling Station Management System (WRSMS) designed to replace the traditional manual pen-and-paper methods used by selected water refilling stations in managing sales, customer, employee, and inventory data. The research identifies a critical gap where the absence of a centralized digital system leads to slow, error-prone, and disorganized business operations. While the study successfully demonstrates that a digital system significantly outperforms manual methods in terms of functionality and usability, it remains limited to a single-module system that does not integrate ordering, delivery tracking, or customer communication features. This supports the development of HydroMIS as a more comprehensive and integrated web-based platform that addresses the full operational needs of water refilling stations.
+Building on the need for structured digital operations in water refilling businesses, the research by Basavaraddi et al. (2023) develops a Water Refilling Management System aimed at overcoming the difficulties caused by manual station operations. The study highlights a significant gap where the continued use of manual processes directly compromises service quality, staff efficiency, and data accuracy. However, the system focuses primarily on basic digital record-keeping and does not explore multi-user access, delivery coordination, or customer interaction modules. This reinforces the importance of developing HydroMIS with role-based access control and integrated operational modules that extend beyond basic record management.
+A significant contribution to water refilling station digitalization is presented in the study by Espinosa et al. (2022), which develops an information systems development and technology plan for a water refilling station. The research identifies a gap in structured digital planning for small water businesses, noting that the absence of a formal technology roadmap results in disorganized and inefficient data management. While the study provides a valuable framework for systems planning, it does not result in a fully functional and deployable web-based system accessible to multiple types of users. This provides the technical and contextual justification for implementing HydroMIS as a fully operational and multi-user web-based management information system.
+The study by Tanaman et al. (2023) developed a web-based inventory management system for a multi-branch small business enterprise in the Philippines, demonstrating that digital inventory platforms significantly improve accuracy and operational convenience compared to purely manual paper-based methods. The research identifies a recurring gap where businesses managing multiple stock items across different locations struggle to maintain accurate and updated records without a digital solution. However, the system is limited to inventory tracking and does not include order processing, delivery management, or customer interaction features. This limitation highlights the importance of developing HydroMIS as a more comprehensive platform that integrates inventory monitoring with other essential operational components.
+The study by Juanatas et al. (2024) presents a web and mobile-based ordering and inventory system with sales analytics, emphasizing that real-time data analytics are essential for responding to market demands and that integrated systems significantly reduce fragmented workflows. The research identifies a gap where ordering and inventory systems that operate independently result in inefficiencies and data inconsistencies across business operations. Despite demonstrating the value of combining ordering with analytics, the system does not fully address customer communication, delivery coordination, or loyalty features. This reinforces the need for HydroMIS to provide a fully unified platform that connects all operational functions, including customer engagement and delivery tracking, into a single system.
+Finally, the study by Villafuerte and Garcia-Vigonte (2022) explored the knowledge and practices of water refilling station owners and operators in the Philippines through a case study, revealing that while most operators follow sanitation standards, there remains a significant gap in the use of digital tools for managing customer service, inventory, and transactions efficiently. The research highlights that the day-to-day operational management of water refilling stations continues to rely heavily on informal and manual practices, limiting their ability to scale and improve service quality. While the study effectively documents existing practices, it does not propose a technological intervention to bridge the gap between current practices and digital best practices. This directly supports the development of HydroMIS as a targeted digital solution for water refilling station operators who need a practical and accessible web-based platform to modernize their operations.
+Collectively, these studies demonstrate that digital systems significantly improve efficiency, accuracy, and service quality in water refilling station operations and similar service-based businesses. However, a recurring limitation in existing research is the lack of comprehensive feature integration, where most systems address only isolated functions such as inventory, ordering, or delivery management without combining them into a unified platform. Furthermore, no existing study provides a fully developed and deployable web-based management information system tailored specifically to the operational context of water refilling stations in local Philippine settings. Therefore, there remains a clear need to develop HydroMIS as a comprehensive web-based management information system that integrates online ordering, delivery tracking, inventory monitoring, payment recording, and customer interaction into a single platform to enhance the overall efficiency and effectiveness of water refilling station operations in Tubigon, Bohol.
+
+
+
+
+
+
+Chapter III
+METHODOLOGY
+Research Design
+This study will employ a Developmental Research Design to guide the design, development, implementation, and evaluation of HydroMIS: A Web-Based Management Information System for Water Refilling Station Operations. Developmental research is appropriate for the study because it focuses on creating and systematically evaluating a technological solution intended to address an identified operational problem. In this study, the approach will be used to transform the existing manual processes of water refilling stations into a centralized web-based platform that supports more organized and efficient management of daily operations.
+The developmental process will begin with the identification and analysis of the existing practices and challenges encountered in water refilling station operations. Particular attention will be given to processes involving customer orders, delivery coordination, sales and payment recording, inventory monitoring, and customer communication. Information gathered during this stage will serve as the basis for determining the functional and user requirements of HydroMIS. These requirements will then guide the design and development of the system, including its interfaces for the Administrator, Station Staff, Delivery Personnel, and Customers.
+The development of HydroMIS will follow an iterative Software Development Life Cycle (SDLC) approach consisting of planning, requirements analysis, system design, development, testing, implementation, and evaluation. 
+Through this process, the researchers will progressively develop and test the system to ensure that its features correspond to the identified requirements of the water refilling station. The system will integrate functions such as online ordering, delivery scheduling and tracking, inventory management, payment recording, sales monitoring, customer feedback and ratings, messaging and notifications, loyalty points, user management, and reporting and analytics.
+Following the development and implementation of HydroMIS, the study will also employ a descriptive-evaluative approach to determine how the developed system performs from the perspective of its intended users. Selected users will be given an opportunity to use and evaluate the system based on established evaluation criteria. Their responses will be collected using a structured questionnaire and analyzed quantitatively to determine the overall assessment of the developed system.
+The evaluation will particularly examine the usability, accessibility, effectiveness, and user acceptability of HydroMIS. The results will be used to determine whether the developed system adequately addresses the operational difficulties associated with traditional water refilling station management, including delays, inaccurate records, fragmented information, and inefficient coordination. Feedback obtained from the respondents may also serve as a basis for identifying areas that require further improvement.
+Through the combination of developmental and descriptive-evaluative approaches, the research design enables the researchers not only to create a functional web-based management information system but also to systematically determine its suitability for actual water refilling station operations. This approach is consistent with the study's objective of providing a centralized and user-oriented digital solution that can improve operational efficiency, information management, service delivery, and overall user experience.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+References
+Basavaraddi, C. C. S., Basavaraddi, S. S., Shashidhara, M. S., Kashyap, P. P., & Sudeep, P. (2023). A project work on water refilling management system. International Journal of Advanced Research in Computer and Communication Engineering, 12(1). https://doi.org/10.17148/IJARCCE.2023.12134
+Domingo, K., Bautista, R., & Reyes, M. (2021). Proposing new system for handling business data systems with more functionality and usability. https://www.researchgate.net/publication/352298830_Proposing_new_system_for_handling_business_data_systems_with_more_functionality_and_usability
+Espinosa, H. L., & co-authors. (2022). Information systems development and technology plan for NADAP water refilling station. https://www.researchgate.net/publication/361961955_Information_Systems_Development_and_Technology_Plan_for_NADAP_Water_Refilling_Station
+Juanatas, R. A., Juanatas, I. C., Agbuya, J. C. L., Bonan, B. G. N., Bonrostro, J. B. M., & Gabutan, S. R. S. (2024). A web and mobile-based ordering and inventory system with sales analytics. In Proceedings of the 2024 15th International Conference on E-Education, E-Business, E-Management and E-Learning (IC4E '24). Association for Computing Machinery. https://doi.org/10.1145/3670013.3670077
+Tanaman, M. T., Tan, R., & Crisen, P. (2023). Web-based inventory management system. International Journal of Science and Advanced Information Technology, 12(5), 44–48. https://www.warse.org/IJSAIT/static/pdf/file/ijsait021252023.pdf
+Villafuerte, L. A. J., & Garcia-Vigonte, F. (2022). Knowledge and practices of water refilling stations owners and operators: A case study. SSRN Electronic Journal.
+https://doi.org/10.2139/ssrn.4029784
+Agboola, F. F., Mahmud, M. A., & Oguntoye, J. P. (2022). Development of a web-based platform for automating an inventory management of a small and medium enterprise. FUDMA Journal of Sciences, 6(5), 57–65. https://doi.org/10.33003/fjs-2022-0605-1007
+Grigg, N. S. (2024). Water distribution systems: Integrated approaches for effective utility management. Water, 16(4), 524. 
+https://doi.org/10.3390/w16040524
+Gupta, S. K., Ambashtha, K. L., & Kumar, R. (2022). Challenges and opportunities of management information systems in business. International Journal of Creative Research Thoughts, 11(1). https://ijcrt.org/papers/IJCRT2301192.pdf
+Locus Technologies. (2024). Top 10 capabilities of water management software in 2025. 
+https://www.locustec.com/top-10-capabilities-water-management-software-2025/
+Philippine Statistics Authority. (2022). Annual poverty indicators survey (APIS). https://psa.gov.ph/content/annual-poverty-indicators-survey-apis
+Publishing.EmanResearch. (2023). Management information systems in contemporary business: Prospects, strategic advantages, and future challenges. Journal of Business and Management Studies. https://doi.org/10.32996/jbms.2023.5.5.3
+Ramos, H. M., Kuriqi, A., Besharat, M., Creaco, E., Tasca, E., Coronado-Hernández, O. E., Pienika, R., & Iglesias-Rey, P. (2023). Smart water grids and digital twin for the management of system efficiency in water distribution networks. Water, 15(6), 1129. 
+https://doi.org/10.3390/w15061129	
+Taherdoost, H. (2023). The role of different types of management information system applications in business development: Concepts and limitations. Cloud Computing and Data Science.
+https://ssrn.com/abstract=4285861
+Zulkifli, C. Z., Garfan, S., Talal, M., Alamoodi, A. H., Alamleh, A., Ahmaro, I. Y. Y., Sulaiman, S., Ibrahim, A. B., Zaidan, B. B., Ismail, A. R., et al. (2022). IoT-based water monitoring systems: A systematic review. Water, 14(22), 3621. https://doi.org/10.3390/w14223621
+Wei, C.C., Ramiah, S.A., and Razali, N.F. (2023). Inventory Management Systems (IMS). Journal of Applied Technology and Innovation, 7(3), 13–20.
+	https://doi.org/10.65136/jati.v7i1.129

@@ -1,0 +1,3669 @@
+{
+  "review_date": "2026-09-19",
+  "scope": "Code-derived database, architecture, mechanisms and algorithms for Chapter 3; no runtime personal data consulted",
+  "table_count": 19,
+  "baseline_table_count": 14,
+  "tables": [
+    {
+      "name": "users",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "full_name",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "baseline_definition": "VARCHAR(255) NOT NULL",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "address",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "baseline_definition": "TEXT NOT NULL",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "username",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "baseline_definition": "VARCHAR(255)",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "password",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "contact_number",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "baseline_definition": "VARCHAR(20) NOT NULL",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": true,
+          "origin": "database/schema.sql",
+          "baseline_definition": "VARCHAR(255) UNIQUE",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "qr_code_path",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "status",
+          "type": "ENUM('pending', 'approved', 'denied')",
+          "definition": "ENUM('pending', 'approved', 'denied') DEFAULT 'pending'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "loyalty_points",
+          "type": "INT",
+          "definition": "INT DEFAULT 0",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "INT DEFAULT 0",
+              "source": "config/database.php:383"
+            }
+          ]
+        },
+        {
+          "name": "points_year",
+          "type": "INT",
+          "definition": "INT DEFAULT YEAR(CURDATE())",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "INT NULL",
+              "source": "config/database.php:384"
+            }
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "username_lookup",
+          "type": "CHAR(64)",
+          "definition": "CHAR(64) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:420",
+          "runtime_added": true
+        },
+        {
+          "name": "contact_lookup",
+          "type": "CHAR(64)",
+          "definition": "CHAR(64) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:421",
+          "runtime_added": true
+        }
+      ],
+      "declared_constraints": [],
+      "sources": [
+        "database/schema.sql:2",
+        "config/database.php:224",
+        "config/database.php:383",
+        "config/database.php:384",
+        "config/database.php:420",
+        "config/database.php:421"
+      ],
+      "runtime_create_columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "username",
+          "type": "VARCHAR(100)",
+          "definition": "VARCHAR(100) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "password",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "full_name",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "contact_number",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "qr_code_path",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) DEFAULT 'approved'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        }
+      ],
+      "runtime_create_constraints": [],
+      "baseline": true,
+      "purpose": "Customer profiles, QR references, registration status and loyalty balances."
+    },
+    {
+      "name": "transactions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "amount",
+          "type": "DECIMAL(10, 2)",
+          "definition": "DECIMAL(10, 2) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "definition": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "water_type",
+          "type": "ENUM('regular', 'nowater')",
+          "definition": "ENUM('regular', 'nowater') DEFAULT 'regular'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "quantity",
+          "type": "INT",
+          "definition": "INT DEFAULT 1",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "price_per_unit",
+          "type": "DECIMAL(10, 2)",
+          "definition": "DECIMAL(10, 2)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "discount",
+          "type": "DECIMAL(10, 2)",
+          "definition": "DECIMAL(10, 2) DEFAULT 0",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "loyalty_points_earned",
+          "type": "INT",
+          "definition": "INT DEFAULT 0",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "INT DEFAULT 0",
+              "source": "config/database.php:394"
+            }
+          ]
+        },
+        {
+          "name": "notes",
+          "type": "TEXT",
+          "definition": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "amount_tendered",
+          "type": "DECIMAL(10, 2)",
+          "definition": "DECIMAL(10, 2)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "DECIMAL(10,2) NULL",
+              "source": "config/database.php:395"
+            }
+          ]
+        },
+        {
+          "name": "change",
+          "type": "DECIMAL(10, 2)",
+          "definition": "DECIMAL(10, 2)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "DECIMAL(10,2) NULL",
+              "source": "config/database.php:396"
+            }
+          ]
+        },
+        {
+          "name": "container_size",
+          "type": "VARCHAR(30)",
+          "definition": "VARCHAR(30)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(30) NULL",
+              "source": "config/database.php:397"
+            },
+            {
+              "definition": "VARCHAR(30) NULL",
+              "source": "config/inventory_service.php:8"
+            }
+          ]
+        },
+        {
+          "name": "container_status",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(20) NULL",
+              "source": "config/database.php:398"
+            },
+            {
+              "definition": "VARCHAR(20) NULL",
+              "source": "config/inventory_service.php:9"
+            }
+          ]
+        },
+        {
+          "name": "fulfillment_method",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(20) NULL",
+              "source": "config/database.php:399"
+            },
+            {
+              "definition": "VARCHAR(20) NULL",
+              "source": "config/inventory_service.php:10"
+            }
+          ]
+        },
+        {
+          "name": "qr_priority",
+          "type": "TINYINT(1)",
+          "definition": "TINYINT(1) NOT NULL DEFAULT 0",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "TINYINT(1) NOT NULL DEFAULT 0",
+              "source": "config/database.php:402"
+            }
+          ]
+        },
+        {
+          "name": "inventory_item_id",
+          "type": "INT",
+          "definition": "INT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "INT NULL",
+              "source": "config/database.php:403"
+            },
+            {
+              "definition": "INT NULL",
+              "source": "config/inventory_service.php:11"
+            }
+          ]
+        },
+        {
+          "name": "inventory_reserved",
+          "type": "TINYINT(1)",
+          "definition": "TINYINT(1) NOT NULL DEFAULT 0",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "TINYINT(1) NOT NULL DEFAULT 0",
+              "source": "config/database.php:404"
+            },
+            {
+              "definition": "TINYINT(1) NOT NULL DEFAULT 0",
+              "source": "config/inventory_service.php:12"
+            }
+          ]
+        },
+        {
+          "name": "cancellation_reason",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(255) NULL",
+              "source": "config/database.php:405"
+            },
+            {
+              "definition": "VARCHAR(255) NULL",
+              "source": "config/inventory_service.php:15"
+            }
+          ]
+        },
+        {
+          "name": "payment_method",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) DEFAULT 'cash'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(20) DEFAULT \"cash\"",
+              "source": "config/database.php:385"
+            }
+          ]
+        },
+        {
+          "name": "payment_reference",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(255)",
+              "source": "config/database.php:386"
+            }
+          ]
+        },
+        {
+          "name": "payment_status",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) DEFAULT 'pending'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(20) DEFAULT \"pending\"",
+              "source": "config/database.php:387"
+            }
+          ]
+        },
+        {
+          "name": "payment_date",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "TIMESTAMP NULL",
+              "source": "config/database.php:388"
+            }
+          ]
+        },
+        {
+          "name": "payment_proof",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(255)",
+              "source": "config/database.php:389"
+            }
+          ]
+        },
+        {
+          "name": "rider_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(50) NULL",
+              "source": "config/database.php:392"
+            }
+          ]
+        },
+        {
+          "name": "status",
+          "type": "ENUM('pending', 'approved', 'denied')",
+          "definition": "ENUM('pending', 'approved', 'denied') DEFAULT 'pending'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "delivery_status",
+          "type": "ENUM('pending', 'preparing', 'on_way', 'delivered')",
+          "definition": "ENUM('pending', 'preparing', 'on_way', 'delivered') DEFAULT 'pending'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(30) DEFAULT \"pending\"",
+              "source": "config/database.php:390"
+            }
+          ]
+        },
+        {
+          "name": "approved_by",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(50) NULL",
+              "source": "config/database.php:393"
+            }
+          ]
+        },
+        {
+          "name": "assigned_rider",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(255) NULL",
+              "source": "config/database.php:391"
+            }
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "delivery_latitude",
+          "type": "DECIMAL(10,8)",
+          "definition": "DECIMAL(10,8) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:400",
+          "runtime_added": true
+        },
+        {
+          "name": "delivery_longitude",
+          "type": "DECIMAL(11,8)",
+          "definition": "DECIMAL(11,8) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:401",
+          "runtime_added": true
+        },
+        {
+          "name": "new_container_inventory_item_id",
+          "type": "INT",
+          "definition": "INT NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/inventory_service.php:13",
+          "runtime_added": true
+        },
+        {
+          "name": "new_container_inventory_reserved",
+          "type": "TINYINT(1)",
+          "definition": "TINYINT(1) NOT NULL DEFAULT 0",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/inventory_service.php:14",
+          "runtime_added": true
+        }
+      ],
+      "declared_constraints": [
+        "FOREIGN KEY (user_id) REFERENCES users(user_id)"
+      ],
+      "sources": [
+        "database/schema.sql:20",
+        "config/database.php:238",
+        "config/database.php:385",
+        "config/database.php:386",
+        "config/database.php:387",
+        "config/database.php:388",
+        "config/database.php:389",
+        "config/database.php:390",
+        "config/database.php:391",
+        "config/database.php:392",
+        "config/database.php:393",
+        "config/database.php:394",
+        "config/database.php:395",
+        "config/database.php:396",
+        "config/database.php:397",
+        "config/database.php:398",
+        "config/database.php:399",
+        "config/database.php:400",
+        "config/database.php:401",
+        "config/database.php:402",
+        "config/database.php:403",
+        "config/database.php:404",
+        "config/database.php:405",
+        "config/inventory_service.php:8",
+        "config/inventory_service.php:9",
+        "config/inventory_service.php:10",
+        "config/inventory_service.php:11",
+        "config/inventory_service.php:12",
+        "config/inventory_service.php:13",
+        "config/inventory_service.php:14",
+        "config/inventory_service.php:15"
+      ],
+      "runtime_create_columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "amount",
+          "type": "DECIMAL(10,2)",
+          "definition": "DECIMAL(10,2) DEFAULT 0",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) DEFAULT 'pending'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "definition": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "water_type",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) DEFAULT 'regular'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "quantity",
+          "type": "INT",
+          "definition": "INT DEFAULT 1",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "price_per_unit",
+          "type": "DECIMAL(10,2)",
+          "definition": "DECIMAL(10,2) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "discount",
+          "type": "DECIMAL(10,2)",
+          "definition": "DECIMAL(10,2) DEFAULT 0",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "notes",
+          "type": "TEXT",
+          "definition": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "delivery_status",
+          "type": "VARCHAR(30)",
+          "definition": "VARCHAR(30) DEFAULT 'pending'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "assigned_rider",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "approved_by",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        }
+      ],
+      "runtime_create_constraints": [],
+      "baseline": true,
+      "purpose": "Central purchase/order record with quantities, amounts, payment/fulfillment status, stock reservations, rider assignment and reward pseudo-transactions."
+    },
+    {
+      "name": "admin_users",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "admin_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "username",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": true,
+          "origin": "database/schema.sql",
+          "baseline_definition": "VARCHAR(255) UNIQUE NOT NULL",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "password",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "full_name",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "baseline_definition": "VARCHAR(255) NOT NULL",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "role",
+          "type": "ENUM('admin', 'staff')",
+          "definition": "ENUM('admin', 'staff') DEFAULT 'staff'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "profile_image",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:414",
+          "runtime_added": true
+        },
+        {
+          "name": "username_lookup",
+          "type": "CHAR(64)",
+          "definition": "CHAR(64) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:424",
+          "runtime_added": true
+        },
+        {
+          "name": "source_user_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:425",
+          "runtime_added": true
+        },
+        {
+          "name": "login_enabled",
+          "type": "TINYINT(1)",
+          "definition": "TINYINT(1) NOT NULL DEFAULT 1",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:426",
+          "runtime_added": true
+        }
+      ],
+      "declared_constraints": [],
+      "sources": [
+        "database/schema.sql:57",
+        "config/database.php:213",
+        "config/database.php:414",
+        "config/database.php:424",
+        "config/database.php:425",
+        "config/database.php:426"
+      ],
+      "runtime_create_columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "admin_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "username",
+          "type": "VARCHAR(100)",
+          "definition": "VARCHAR(100) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "password",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "full_name",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "role",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) DEFAULT 'admin'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        }
+      ],
+      "runtime_create_constraints": [],
+      "baseline": true,
+      "purpose": "Administrator and staff identities; role, login enablement and optional link from a customer account."
+    },
+    {
+      "name": "activity_logs",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "admin_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "action",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "definition": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "timestamp",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        }
+      ],
+      "declared_constraints": [],
+      "sources": [
+        "database/schema.sql:68"
+      ],
+      "baseline": true,
+      "purpose": "Legacy activity history and fallback logging; distinct from the current request audit table."
+    },
+    {
+      "name": "rider_users",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "rider_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "username",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": true,
+          "origin": "database/schema.sql",
+          "baseline_definition": "VARCHAR(100) UNIQUE NOT NULL",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "password",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "full_name",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "baseline_definition": "VARCHAR(255) NOT NULL",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "age",
+          "type": "INT",
+          "definition": "INT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "INT",
+              "source": "config/database.php:410"
+            }
+          ]
+        },
+        {
+          "name": "address",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "TEXT",
+              "source": "config/database.php:411"
+            }
+          ],
+          "baseline_definition": "TEXT",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "contact_number",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(20)",
+              "source": "config/database.php:412"
+            }
+          ],
+          "baseline_definition": "VARCHAR(20)",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) DEFAULT 'active'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "username_lookup",
+          "type": "CHAR(64)",
+          "definition": "CHAR(64) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:422",
+          "runtime_added": true
+        },
+        {
+          "name": "contact_lookup",
+          "type": "CHAR(64)",
+          "definition": "CHAR(64) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:423",
+          "runtime_added": true
+        },
+        {
+          "name": "source_user_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:427",
+          "runtime_added": true
+        },
+        {
+          "name": "login_enabled",
+          "type": "TINYINT(1)",
+          "definition": "TINYINT(1) NOT NULL DEFAULT 1",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:428",
+          "runtime_added": true
+        }
+      ],
+      "declared_constraints": [],
+      "sources": [
+        "database/schema.sql:77",
+        "config/database.php:266",
+        "config/database.php:410",
+        "config/database.php:411",
+        "config/database.php:412",
+        "config/database.php:422",
+        "config/database.php:423",
+        "config/database.php:427",
+        "config/database.php:428"
+      ],
+      "runtime_create_columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "rider_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "username",
+          "type": "VARCHAR(100)",
+          "definition": "VARCHAR(100) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "password",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "full_name",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "age",
+          "type": "INT",
+          "definition": "INT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "address",
+          "type": "TEXT",
+          "definition": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "contact_number",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) DEFAULT 'active'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        }
+      ],
+      "runtime_create_constraints": [],
+      "baseline": true,
+      "purpose": "Delivery rider accounts, profile information, account status and login enablement."
+    },
+    {
+      "name": "rider_locations",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "rider_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "VARCHAR(50) NULL",
+              "source": "config/database.php:406"
+            }
+          ]
+        },
+        {
+          "name": "rider_latitude",
+          "type": "DECIMAL(10,8)",
+          "definition": "DECIMAL(10,8) NOT NULL DEFAULT 12.8797",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "rider_longitude",
+          "type": "DECIMAL(11,8)",
+          "definition": "DECIMAL(11,8) NOT NULL DEFAULT 121.7740",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "accuracy",
+          "type": "FLOAT",
+          "definition": "FLOAT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "FLOAT NULL",
+              "source": "config/database.php:407"
+            }
+          ]
+        },
+        {
+          "name": "speed",
+          "type": "FLOAT",
+          "definition": "FLOAT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "FLOAT NULL",
+              "source": "config/database.php:408"
+            }
+          ]
+        },
+        {
+          "name": "heading",
+          "type": "FLOAT",
+          "definition": "FLOAT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql",
+          "runtime_add_if_missing_definitions": [
+            {
+              "definition": "FLOAT NULL",
+              "source": "config/database.php:409"
+            }
+          ]
+        },
+        {
+          "name": "last_update",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        }
+      ],
+      "declared_constraints": [
+        "INDEX idx_rider_location_transaction (transaction_id)",
+        "INDEX idx_rider_location_rider (rider_id)",
+        "INDEX idx_rider_location_update (last_update)"
+      ],
+      "sources": [
+        "database/schema.sql:91",
+        "config/database.php:280",
+        "config/database.php:406",
+        "config/database.php:407",
+        "config/database.php:408",
+        "config/database.php:409"
+      ],
+      "runtime_create_columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "rider_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "rider_latitude",
+          "type": "DECIMAL(10,8)",
+          "definition": "DECIMAL(10,8) NOT NULL DEFAULT 12.8797",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "rider_longitude",
+          "type": "DECIMAL(11,8)",
+          "definition": "DECIMAL(11,8) NOT NULL DEFAULT 121.7740",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "accuracy",
+          "type": "FLOAT",
+          "definition": "FLOAT NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "speed",
+          "type": "FLOAT",
+          "definition": "FLOAT NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "heading",
+          "type": "FLOAT",
+          "definition": "FLOAT NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "last_update",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        }
+      ],
+      "runtime_create_constraints": [
+        "INDEX idx_transaction_id (transaction_id)",
+        "INDEX idx_rider_id (rider_id)",
+        "INDEX idx_last_update (last_update)"
+      ],
+      "baseline": true,
+      "purpose": "Rider GPS records indexed by order/rider and last update; no universal uniqueness constraint per transaction."
+    },
+    {
+      "name": "rider_notifications",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "rider_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "message",
+          "type": "TEXT",
+          "definition": "TEXT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "is_read",
+          "type": "TINYINT(1)",
+          "definition": "TINYINT(1) DEFAULT 0",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        }
+      ],
+      "declared_constraints": [
+        "INDEX idx_rider_notification (rider_id, is_read)"
+      ],
+      "sources": [
+        "database/schema.sql:107",
+        "config/database.php:296"
+      ],
+      "runtime_create_columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "rider_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "message",
+          "type": "TEXT",
+          "definition": "TEXT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "is_read",
+          "type": "TINYINT(1)",
+          "definition": "TINYINT(1) DEFAULT 0",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        }
+      ],
+      "runtime_create_constraints": [
+        "INDEX idx_rider_id (rider_id)",
+        "INDEX idx_is_read (is_read)"
+      ],
+      "baseline": true,
+      "purpose": "Order assignment notifications and read status for riders."
+    },
+    {
+      "name": "rider_messages",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "sender",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "recipient",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "message",
+          "type": "TEXT",
+          "definition": "TEXT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        }
+      ],
+      "declared_constraints": [
+        "INDEX idx_rider_message_transaction (transaction_id)"
+      ],
+      "sources": [
+        "database/schema.sql:118",
+        "config/database.php:308"
+      ],
+      "runtime_create_columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "sender",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "recipient",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "message",
+          "type": "TEXT",
+          "definition": "TEXT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        }
+      ],
+      "runtime_create_constraints": [
+        "INDEX idx_transaction_id (transaction_id)",
+        "INDEX idx_sender (sender)",
+        "INDEX idx_recipient (recipient)"
+      ],
+      "baseline": true,
+      "purpose": "Order-related messages with sender/recipient identifiers."
+    },
+    {
+      "name": "payments",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "payment_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "amount",
+          "type": "DECIMAL(10,2)",
+          "definition": "DECIMAL(10,2) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "payment_method",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "payment_reference",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "payment_status",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) DEFAULT 'pending'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "payment_proof",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "gcash_number",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "maya_number",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "notes",
+          "type": "TEXT",
+          "definition": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        }
+      ],
+      "declared_constraints": [],
+      "sources": [
+        "database/schema.sql:128",
+        "config/database.php:330"
+      ],
+      "runtime_create_columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "payment_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "amount",
+          "type": "DECIMAL(10,2)",
+          "definition": "DECIMAL(10,2) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "payment_method",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "payment_reference",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "payment_status",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) DEFAULT 'pending'",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "payment_proof",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "gcash_number",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "maya_number",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "notes",
+          "type": "TEXT",
+          "definition": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        }
+      ],
+      "runtime_create_constraints": [],
+      "baseline": true,
+      "purpose": "Payment submissions and verification state tied logically to a customer and transaction."
+    },
+    {
+      "name": "feedback_ratings",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "rating",
+          "type": "INT",
+          "definition": "INT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "feedback_message",
+          "type": "TEXT",
+          "definition": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        }
+      ],
+      "declared_constraints": [
+        "UNIQUE KEY uniq_feedback_transaction_user (transaction_id, user_id)",
+        "FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id)",
+        "FOREIGN KEY (user_id) REFERENCES users(user_id)"
+      ],
+      "sources": [
+        "database/schema.sql:146",
+        "config/database.php:320"
+      ],
+      "runtime_create_columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "rating",
+          "type": "INT",
+          "definition": "INT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "feedback_message",
+          "type": "TEXT",
+          "definition": "TEXT",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        }
+      ],
+      "runtime_create_constraints": [],
+      "baseline": true,
+      "purpose": "Customer star rating and optional written feedback associated with a transaction."
+    },
+    {
+      "name": "reward_claims",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "reward_code",
+          "type": "VARCHAR(80)",
+          "definition": "VARCHAR(80) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "reward_title",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "points_used",
+          "type": "INT",
+          "definition": "INT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "claim_status",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) NOT NULL DEFAULT 'pending'",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "claimed_by",
+          "type": "VARCHAR(80)",
+          "definition": "VARCHAR(80)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "claimed_at",
+          "type": "DATETIME",
+          "definition": "DATETIME",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "definition": "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "customer_seen_at",
+          "type": "DATETIME",
+          "definition": "DATETIME NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "user/rewards.php:71",
+          "runtime_added": true
+        }
+      ],
+      "declared_constraints": [
+        "INDEX idx_reward_claim_status (claim_status)",
+        "INDEX idx_reward_claim_user (user_id)"
+      ],
+      "sources": [
+        "database/schema.sql:160",
+        "user/rewards.php:71"
+      ],
+      "baseline": true,
+      "purpose": "Reward redemptions, points consumed, staff approval/claim details and customer-seen marker."
+    },
+    {
+      "name": "inventory_items",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "item_code",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) UNIQUE NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "item_name",
+          "type": "VARCHAR(150)",
+          "definition": "VARCHAR(150) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "category",
+          "type": "VARCHAR(80)",
+          "definition": "VARCHAR(80) NOT NULL DEFAULT 'Container'",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "quantity",
+          "type": "INT",
+          "definition": "INT NOT NULL DEFAULT 0",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "minimum_stock",
+          "type": "INT",
+          "definition": "INT NOT NULL DEFAULT 10",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "unit_price",
+          "type": "DECIMAL(10,2)",
+          "definition": "DECIMAL(10,2) NOT NULL DEFAULT 0",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(80)",
+          "definition": "VARCHAR(80)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "definition": "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "definition": "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        }
+      ],
+      "declared_constraints": [],
+      "sources": [
+        "database/schema.sql:176"
+      ],
+      "baseline": true,
+      "purpose": "Container stock items, thresholds, unit prices and last updater."
+    },
+    {
+      "name": "inventory_movements",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "item_id",
+          "type": "INT",
+          "definition": "INT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "movement_type",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "quantity_change",
+          "type": "INT",
+          "definition": "INT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "previous_quantity",
+          "type": "INT",
+          "definition": "INT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "new_quantity",
+          "type": "INT",
+          "definition": "INT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "reason",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "staff_id",
+          "type": "VARCHAR(80)",
+          "definition": "VARCHAR(80) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "definition": "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        }
+      ],
+      "declared_constraints": [
+        "INDEX idx_inventory_item (item_id)",
+        "INDEX idx_inventory_created (created_at)"
+      ],
+      "sources": [
+        "database/schema.sql:189"
+      ],
+      "baseline": true,
+      "purpose": "Stock changes including reservation and release with previous/new quantities and responsible actor."
+    },
+    {
+      "name": "user_notifications",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT PRIMARY KEY AUTO_INCREMENT",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR(150)",
+          "definition": "VARCHAR(150) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "message",
+          "type": "VARCHAR(500)",
+          "definition": "VARCHAR(500) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "notification_type",
+          "type": "VARCHAR(30)",
+          "definition": "VARCHAR(30) NOT NULL DEFAULT 'info'",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "is_read",
+          "type": "TINYINT(1)",
+          "definition": "TINYINT(1) NOT NULL DEFAULT 0",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "definition": "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "database/schema.sql"
+        }
+      ],
+      "declared_constraints": [
+        "INDEX idx_user_notification (user_id, is_read, created_at)"
+      ],
+      "sources": [
+        "database/schema.sql:204"
+      ],
+      "baseline": true,
+      "purpose": "Customer order, stock and service notifications with read status."
+    },
+    {
+      "name": "admin_settings",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "admin_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL UNIQUE",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "settings",
+          "type": "LONGTEXT",
+          "definition": "LONGTEXT NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php",
+          "runtime_modified": "config/database.php:441",
+          "encrypted_target": true
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        }
+      ],
+      "declared_constraints": [],
+      "sources": [
+        "config/database.php:347"
+      ],
+      "baseline": false,
+      "purpose": "Per-administrator settings document; runtime changes JSON storage to LONGTEXT to hold encrypted content."
+    },
+    {
+      "name": "admin_profiles",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "admin_id",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL UNIQUE",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "first_name",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php",
+          "baseline_definition": "VARCHAR(100)",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "last_name",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php",
+          "baseline_definition": "VARCHAR(100)",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php",
+          "baseline_definition": "VARCHAR(255)",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "phone",
+          "type": "VARCHAR(512)",
+          "definition": "VARCHAR(512) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php",
+          "baseline_definition": "VARCHAR(20)",
+          "encrypted_target": true,
+          "runtime_modified": "config/database.php:434"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "avatar_path",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php:413",
+          "runtime_added": true
+        }
+      ],
+      "declared_constraints": [],
+      "sources": [
+        "config/database.php:354",
+        "config/database.php:413"
+      ],
+      "baseline": false,
+      "purpose": "Separate administrator profile and avatar details."
+    },
+    {
+      "name": "payment_qr_settings",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "definition": "INT AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "payment_method",
+          "type": "VARCHAR(20)",
+          "definition": "VARCHAR(20) NOT NULL UNIQUE",
+          "nullable": false,
+          "primary_key": false,
+          "unique": true,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "qr_image_path",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "account_number",
+          "type": "VARCHAR(50)",
+          "definition": "VARCHAR(50) NOT NULL DEFAULT ''",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "account_name",
+          "type": "VARCHAR(100)",
+          "definition": "VARCHAR(100) NOT NULL DEFAULT ''",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/database.php"
+        }
+      ],
+      "declared_constraints": [],
+      "sources": [
+        "config/database.php:364"
+      ],
+      "baseline": false,
+      "purpose": "Merchant QR image references and account details for supported e-wallet payment methods."
+    },
+    {
+      "name": "system_settings",
+      "columns": [
+        {
+          "name": "setting_key",
+          "type": "VARCHAR(80)",
+          "definition": "VARCHAR(80) PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/system_settings.php"
+        },
+        {
+          "name": "setting_value",
+          "type": "VARCHAR(500)",
+          "definition": "VARCHAR(500) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/system_settings.php"
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(80)",
+          "definition": "VARCHAR(80) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/system_settings.php"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "definition": "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/system_settings.php"
+        }
+      ],
+      "declared_constraints": [],
+      "sources": [
+        "config/system_settings.php:5"
+      ],
+      "baseline": false,
+      "purpose": "System-wide key/value settings including prices, loyalty cycle, points rate, logo and feature toggles."
+    },
+    {
+      "name": "system_activity_logs",
+      "columns": [
+        {
+          "name": "id",
+          "type": "BIGINT UNSIGNED",
+          "definition": "BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY",
+          "nullable": false,
+          "primary_key": true,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        },
+        {
+          "name": "actor_id",
+          "type": "VARCHAR(80)",
+          "definition": "VARCHAR(80) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        },
+        {
+          "name": "actor_name",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        },
+        {
+          "name": "actor_role",
+          "type": "VARCHAR(30)",
+          "definition": "VARCHAR(30) NOT NULL DEFAULT 'guest'",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        },
+        {
+          "name": "action",
+          "type": "VARCHAR(80)",
+          "definition": "VARCHAR(80) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR(500)",
+          "definition": "VARCHAR(500) NOT NULL",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        },
+        {
+          "name": "page",
+          "type": "VARCHAR(255)",
+          "definition": "VARCHAR(255) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        },
+        {
+          "name": "request_method",
+          "type": "VARCHAR(10)",
+          "definition": "VARCHAR(10) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        },
+        {
+          "name": "ip_address",
+          "type": "VARCHAR(45)",
+          "definition": "VARCHAR(45) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        },
+        {
+          "name": "user_agent",
+          "type": "VARCHAR(500)",
+          "definition": "VARCHAR(500) NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        },
+        {
+          "name": "metadata",
+          "type": "LONGTEXT",
+          "definition": "LONGTEXT NULL",
+          "nullable": true,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "definition": "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
+          "nullable": false,
+          "primary_key": false,
+          "unique": false,
+          "origin": "config/activity_logger.php"
+        }
+      ],
+      "declared_constraints": [
+        "INDEX idx_activity_created (created_at)",
+        "INDEX idx_activity_actor (actor_role, actor_id)",
+        "INDEX idx_activity_action (action)"
+      ],
+      "sources": [
+        "config/activity_logger.php:7"
+      ],
+      "baseline": false,
+      "purpose": "Current audit trail of actor, action, request, timestamp and selected metadata."
+    }
+  ],
+  "relationships": [
+    {
+      "parent": "users.user_id",
+      "child": "transactions.user_id",
+      "cardinality": "1 to many",
+      "enforcement": "SQL FK in database/schema.sql:53; absent in runtime CREATE",
+      "notes": ""
+    },
+    {
+      "parent": "transactions.transaction_id",
+      "child": "feedback_ratings.transaction_id",
+      "cardinality": "1 to many",
+      "enforcement": "SQL FK in database/schema.sql:155; absent in runtime CREATE",
+      "notes": "Baseline unique (transaction_id,user_id) allows one record per pair."
+    },
+    {
+      "parent": "users.user_id",
+      "child": "feedback_ratings.user_id",
+      "cardinality": "1 to many",
+      "enforcement": "SQL FK in database/schema.sql:156; absent in runtime CREATE",
+      "notes": ""
+    },
+    {
+      "parent": "users.user_id",
+      "child": "payments.user_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "transactions.transaction_id",
+      "child": "payments.transaction_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "users.user_id",
+      "child": "reward_claims.user_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "transactions.transaction_id",
+      "child": "reward_claims.transaction_id",
+      "cardinality": "1 to 0..1",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "rider_users.rider_id",
+      "child": "transactions.rider_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "rider_users.rider_id",
+      "child": "transactions.assigned_rider",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "admin_users.admin_id",
+      "child": "transactions.approved_by",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "inventory_items.id",
+      "child": "transactions.inventory_item_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "inventory_items.id",
+      "child": "transactions.new_container_inventory_item_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "inventory_items.id",
+      "child": "inventory_movements.item_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "users.user_id",
+      "child": "user_notifications.user_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "transactions.transaction_id",
+      "child": "user_notifications.transaction_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "rider_users.rider_id",
+      "child": "rider_locations.rider_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "transactions.transaction_id",
+      "child": "rider_locations.transaction_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "rider_users.rider_id",
+      "child": "rider_notifications.rider_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "transactions.transaction_id",
+      "child": "rider_notifications.transaction_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "transactions.transaction_id",
+      "child": "rider_messages.transaction_id",
+      "cardinality": "1 to many",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "admin_users.admin_id",
+      "child": "admin_profiles.admin_id",
+      "cardinality": "1 to 0..1",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "admin_users.admin_id",
+      "child": "admin_settings.admin_id",
+      "cardinality": "1 to 0..1",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "users.user_id",
+      "child": "admin_users.source_user_id",
+      "cardinality": "1 to zero or more",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "users.user_id",
+      "child": "rider_users.source_user_id",
+      "cardinality": "1 to zero or more",
+      "enforcement": "Application-level logical reference; no FK declaration found",
+      "notes": ""
+    },
+    {
+      "parent": "admin_users.admin_id or system actor",
+      "child": "inventory_movements.staff_id",
+      "cardinality": "1 to many",
+      "enforcement": "Polymorphic/application actor",
+      "notes": "May contain ONLINE-ORDER or SYSTEM; not a strict admin FK."
+    },
+    {
+      "parent": "role-specific identity",
+      "child": "system_activity_logs.actor_id",
+      "cardinality": "1 to many",
+      "enforcement": "Polymorphic/application actor",
+      "notes": "Interpret actor_id together with actor_role; guest actor may be null."
+    }
+  ],
+  "architecture": {
+    "style": "Server-rendered PHP web application with role-specific page modules, shared helper/service includes and JSON endpoints; a three-layer logical description is appropriate, but this is not a separated microservice or formal MVC deployment.",
+    "presentation": "HTML/CSS/JavaScript pages in root, user/, staff/, admin/ and rider/; browser camera/geolocation/notifications plus polling for updates.",
+    "application": "PHP page handlers coordinate validation, authentication, pricing, payment workflow and status updates; config helpers supply storage, encryption, inventory, loyalty, settings and audit behavior.",
+    "data": "mysqli-compatible DBCompatConnection/Statement/Result wrappers connect to a configured MySQL/MariaDB database; local upload and QR files live under application root.",
+    "sources": [
+      "config/database.php:91",
+      "config/storage_service.php:4",
+      "config/inventory_service.php:1",
+      "api/delivery_tracker.php:49"
+    ]
+  },
+  "security": [
+    {
+      "mechanism": "Password hashing and session handling",
+      "implementation": "PHP password_hash(PASSWORD_DEFAULT) and password_verify; successful privileged login regenerates session ID. Separate role-session identities allow admin, staff and rider portals in one browser.",
+      "sources": [
+        "login.php:34",
+        "login.php:45",
+        "login.php:88",
+        "admin/check_auth.php:36",
+        "staff/check_auth.php:36",
+        "rider/check_auth.php:6"
+      ]
+    },
+    {
+      "mechanism": "Field-level encryption",
+      "implementation": "AES-256-GCM uses 32-byte key, random 12-byte nonce and 16-byte authentication tag; encoded as enc:v1: plus Base64(nonce||tag||ciphertext). Selected personal fields and settings are encryption targets, not every database value.",
+      "sources": [
+        "config/data_security.php:43",
+        "config/database.php:434",
+        "database/migrate_aes256.php:9"
+      ]
+    },
+    {
+      "mechanism": "Encrypted-field search",
+      "implementation": "HMAC-SHA-256 of trimmed lowercase UTF-8 input creates CHAR(64) deterministic lookup values for username/contact matching. Decryption occurs in DBCompatResult.fetch_assoc, including prepared statement results.",
+      "sources": [
+        "config/data_security.php:73",
+        "config/database.php:54",
+        "config/database.php:73",
+        "config/database.php:420"
+      ]
+    },
+    {
+      "mechanism": "Input/output handling",
+      "implementation": "Prepared statements are used on selected paths, alongside real_escape_string and sanitize in legacy queries; HTML output frequently uses htmlspecialchars. This is evidence of controls, not blanket proof against injection or XSS.",
+      "sources": [
+        "config/database.php:14",
+        "config/database.php:154",
+        "config/activity_logger.php:64",
+        "create_account.php:40"
+      ]
+    },
+    {
+      "mechanism": "Upload validation",
+      "implementation": "Payment-proof handlers check upload status, a 5 MB size limit, getimagesize and allowlisted JPEG/PNG/WebP. Storage utility confines object paths to uploads/ or qrcodes/ and rejects traversal segments. Logo upload also checks CSRF token and file MIME.",
+      "sources": [
+        "user/payment.php:61",
+        "config/storage_service.php:4",
+        "admin/upload_logo.php:10",
+        "admin/upload_logo.php:26"
+      ]
+    },
+    {
+      "mechanism": "Audit logging",
+      "implementation": "Request logs record actor, action, page, method, IP, user agent and allowlisted request metadata; selected frequent polling and CLI requests are excluded.",
+      "sources": [
+        "config/activity_logger.php:51",
+        "config/activity_logger.php:78"
+      ]
+    },
+    {
+      "mechanism": "Database transactions and stock locks",
+      "implementation": "Order reservation, stock release, staff approval and annual reset use begin_transaction, FOR UPDATE, commit and rollback on relevant paths.",
+      "sources": [
+        "user/purchase.php:224",
+        "config/inventory_service.php:60",
+        "config/loyalty_service.php:28"
+      ]
+    }
+  ],
+  "algorithms": [
+    {
+      "name": "Order pricing",
+      "formula": "unit_price = configured_water_price[size] + (new_container ? configured_container_price[size] : 0); subtotal = quantity * unit_price; discount = 5 * floor(quantity / 5); delivery_fee = delivery and no approved free-delivery reward ? 10 * quantity : 0; total = subtotal + delivery_fee - discount.",
+      "notes": "Amounts in PHP. Formula from server purchase path; current configured prices may override defaults. Quantity counts ordered containers, although UI/settings sometimes say gallons.",
+      "sources": [
+        "user/purchase.php:161",
+        "user/purchase.php:174",
+        "user/purchase.php:191",
+        "config/system_settings.php:13"
+      ]
+    },
+    {
+      "name": "Stock reservation and release",
+      "steps": [
+        "Validate item size, quantity and fulfillment option.",
+        "Begin transaction and lock applicable inventory row; for a new container also lock the generic New Container item.",
+        "Reject insufficient stock; otherwise deduct quantity, record movement and reservation references, and save pending order.",
+        "Editing releases old stock before reserving replacement stock; denial releases reserved stock.",
+        "Staff approval locks pending order, performs legacy stock reservation when needed, and commits status and loyalty changes."
+      ],
+      "sources": [
+        "user/purchase.php:224",
+        "config/inventory_service.php:41",
+        "config/inventory_service.php:60",
+        "config/inventory_service.php:115"
+      ]
+    },
+    {
+      "name": "Queue priority",
+      "formula": "ORDER BY qr_priority DESC, created_at ASC, id ASC",
+      "notes": "QR-scanned orders have priority; within equal priority orders follow creation time then numeric ID. This is deterministic sorting, not an optimization or AI model.",
+      "sources": [
+        "staff/pending.php:30",
+        "user/scan_qr.php:38",
+        "user/purchase.php:291"
+      ]
+    },
+    {
+      "name": "Loyalty accrual",
+      "formula": "points_earned = max(0, quantity) * configured_points_per_gallon",
+      "notes": "Default rate is 1; setting is clamped to 0..100. Points are awarded on staff approval, not immediately on checkout. The calculation uses number of ordered containers; it does not multiply by the physical gallon capacity.",
+      "sources": [
+        "config/inventory_service.php:97",
+        "user/purchase.php:171"
+      ]
+    },
+    {
+      "name": "Annual loyalty reset",
+      "steps": [
+        "Read system_settings.loyalty_points_reset_at.",
+        "If missing/invalid, store one year from current server date.",
+        "When due, lock setting in a transaction, zero all customer points and set points_year to current year.",
+        "Advance scheduled date one year and repeat if multiple anniversaries passed."
+      ],
+      "notes": "System-wide anniversary, triggered by application requests; not a per-customer signup anniversary and not a scheduled cron job in reviewed implementation.",
+      "sources": [
+        "config/loyalty_service.php:8",
+        "config/database.php:535"
+      ]
+    },
+    {
+      "name": "Reward conversion",
+      "steps": [
+        "Check selected reward is enabled and customer has enough points.",
+        "Deduct required points.",
+        "Create zero-value reward transaction and pending reward_claim.",
+        "Staff approves claim; approved free-delivery reward is later locked and consumed during checkout."
+      ],
+      "notes": "General redemption deduction/logging is not enclosed in a DB transaction in user/rewards.php. Do not claim fully atomic redemption. Reward catalog currently contains six items with 50, 100, 125, 150, 200 and 250 point requirements.",
+      "sources": [
+        "user/rewards.php:5",
+        "user/rewards.php:180",
+        "user/rewards.php:207",
+        "user/purchase.php:241"
+      ]
+    },
+    {
+      "name": "GPS display and latest-location selection",
+      "steps": [
+        "Browser geolocation supplies rider coordinates to the application.",
+        "Store latitude, longitude and available accuracy/speed/heading; retrieve latest row by last_update then ID.",
+        "Customer map polls and redraws rider marker, destination pin and straight dashed connector."
+      ],
+      "notes": "Map connector is a visual straight line; no route optimization or guaranteed ETA algorithm was identified. Destination validation requires finite numeric latitude in [-90,90] and longitude in [-180,180].",
+      "sources": [
+        "api/delivery_tracker.php:117",
+        "user/delivery_map.php:55",
+        "config/delivery_destination.php:3"
+      ]
+    },
+    {
+      "name": "Random identifiers",
+      "implementation": "General IDs use a prefix plus 8 random bytes represented in uppercase hex. Customer and reward IDs use 4 random bytes with up to 10 database collision checks.",
+      "sources": [
+        "config/database.php:19",
+        "config/database.php:23",
+        "user/rewards.php:129"
+      ]
+    }
+  ],
+  "caveats": [
+    {
+      "topic": "Evidence boundary",
+      "detail": "Static code/schema review only. No runtime records, secrets, live schema introspection, migrations, benchmark or penetration test were used. Describe schema as code-defined and deployment-dependent."
+    },
+    {
+      "topic": "Baseline and runtime schema differ",
+      "detail": "19 distinct tables identified: 14 baseline and 5 runtime additions. CREATE TABLE IF NOT EXISTS does not reconcile existing column types, indexes, defaults or foreign keys. Effective schema depends on installation history. Baseline FK declarations must not be presented as universally enforced."
+    },
+    {
+      "topic": "Status type mismatch",
+      "detail": "Baseline transactions.delivery_status ENUM lacks ready_for_pickup and on_the_way values used by newer code. Runtime ADD IF NOT EXISTS does not change an existing ENUM. Verify/migrate deployment schema before treating pickup state persistence as confirmed.",
+      "sources": [
+        "database/schema.sql:48",
+        "config/database.php:262",
+        "config/inventory_service.php:96",
+        "staff/dashboard.php:280"
+      ]
+    },
+    {
+      "topic": "Fresh bootstrap mismatch",
+      "detail": "Runtime users CREATE omits address but later MODIFY assumes it exists; runtime password NOT NULL and username UNIQUE differ from baseline nullable credential columns. Customer registration inserts no password. Do not claim database.php alone is a validated fresh installation path.",
+      "sources": [
+        "config/database.php:224",
+        "config/database.php:434",
+        "create_account.php:40"
+      ]
+    },
+    {
+      "topic": "Security coverage",
+      "detail": "Hard-coded fallback credentials remain in rider login and administrator current-password checking. Do not repeat values in documentation or claim password verification is the only accepted credential path.",
+      "sources": [
+        "login.php:88",
+        "admin/dashboard.php:174"
+      ]
+    },
+    {
+      "topic": "Endpoint authorization",
+      "detail": "api/delivery_tracker.php dispatches read/write operations without a session/ownership gate and sends wildcard CORS. Several customer paths load records using supplied user_id or mobile lookup. Authorization and uniform CSRF coverage require review before deployment.",
+      "sources": [
+        "api/delivery_tracker.php:1",
+        "api/delivery_tracker.php:49",
+        "user/payment.php:41",
+        "user/rewards.php:145"
+      ]
+    },
+    {
+      "topic": "Encryption boundary",
+      "detail": "Only explicitly encrypted fields are protected at rest; notes, operational IDs, notification messages, audit actor names, payment fields and uploads are not universally encrypted. Lookup columns have no declared unique indexes; ciphertext uniqueness does not guarantee logical plaintext uniqueness. Legacy plaintext is accepted until migrated.",
+      "sources": [
+        "config/data_security.php:56",
+        "config/database.php:420",
+        "database/migrate_aes256.php:9"
+      ]
+    },
+    {
+      "topic": "Key management",
+      "detail": "Code supports environment injection and a local key-file fallback. No key content was read. Deployment should protect and back up the key with restricted access; key rotation was not implemented in reviewed helper.",
+      "sources": [
+        "config/data_security.php:13"
+      ]
+    },
+    {
+      "topic": "Reward consistency",
+      "detail": "Redemption balance check/deduction and logging are not transactional, unlike stock approval; simultaneous requests may require further safeguards. Cancellation path does not explicitly reverse previously awarded loyalty points.",
+      "sources": [
+        "user/rewards.php:196",
+        "config/inventory_service.php:115"
+      ]
+    },
+    {
+      "topic": "External payment boundary",
+      "detail": "E-wallet payment is implemented using account/QR presentation, reference and screenshot submission, followed by local verification state. No direct GCash/Maya payment-gateway settlement API was identified in reviewed payment paths.",
+      "sources": [
+        "user/payment.php:119",
+        "staff/payments.php:1",
+        "admin/payments.php:1"
+      ]
+    },
+    {
+      "topic": "Database normalization",
+      "detail": "Most core entities are separated, but payment attributes repeat in transactions/payments, display notes contain embedded business details, and rider sender/recipient and audit actors are polymorphic. Avoid an unsupported claim of fully normalized 3NF."
+    }
+  ],
+  "sources": [
+    "database/schema.sql",
+    "config/database.php",
+    "config/data_security.php",
+    "config/inventory_service.php",
+    "config/loyalty_service.php",
+    "config/system_settings.php",
+    "config/storage_service.php",
+    "config/activity_logger.php",
+    "database/migrate_aes256.php",
+    "login.php",
+    "admin/check_auth.php",
+    "staff/check_auth.php",
+    "rider/check_auth.php",
+    "admin/dashboard.php",
+    "user/purchase.php",
+    "user/rewards.php",
+    "user/payment.php",
+    "staff/pending.php",
+    "api/delivery_tracker.php",
+    "user/delivery_map.php"
+  ]
+}

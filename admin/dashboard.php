@@ -233,14 +233,6 @@ $pending_users      = $conn->query("SELECT COUNT(*) as count FROM users WHERE st
 $approved_users     = $conn->query("SELECT COUNT(*) as count FROM users WHERE status='approved'")->fetch_assoc()['count'];
 $denied_users       = $conn->query("SELECT COUNT(*) as count FROM users WHERE status='denied'")->fetch_assoc()['count'];
 
-$recent_sales = $conn->query("
-    SELECT t.*, u.full_name
-    FROM transactions t
-    JOIN users u ON t.user_id = u.user_id
-    ORDER BY t.created_at DESC
-    LIMIT 8
-");
-
 function revenue_series($conn, $days) {
     $series = [];
     for ($i = $days - 1; $i >= 0; $i--) {
@@ -486,7 +478,7 @@ body[data-color-mode="light"]{color-scheme:light;--bg:#f4f7fb;--bg2:#fff;--bg3:#
 .progress-bar    { height: 100%; border-radius: 99px; }
 
 /* Bottom row */
-.bottom-row { display: grid; grid-template-columns: 1fr 380px; gap: 16px; animation: fadeSlideUp 0.5s 0.35s both; }
+.bottom-row { display: grid; grid-template-columns: 1fr; gap: 16px; animation: fadeSlideUp 0.5s 0.35s both; }
 .table-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
 .data-table { width: 100%; border-collapse: collapse; }
 .data-table thead th { padding: 12px 20px; background: var(--bg3); color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--border); }
@@ -1600,35 +1592,6 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
 
             <!-- Bottom -->
             <div class="bottom-row">
-                <div class="table-panel">
-                    <div class="panel-header">
-                        <div><div class="panel-title">Recent Transactions</div><div class="panel-sub">Last 8 entries across all statuses</div></div>
-                        <a href="transactions.php" class="btn btn-ghost" style="font-size:12px;padding:6px 12px;">View all</a>
-                    </div>
-                    <div style="overflow-x:auto;">
-                        <table class="data-table">
-                            <thead><tr><th>Customer</th><th>Txn ID</th><th>Amount</th><th>Description</th><th>Status</th><th>Date</th></tr></thead>
-                            <tbody>
-                            <?php if($recent_sales && $recent_sales->num_rows>0):
-                                while($row=$recent_sales->fetch_assoc()):
-                                    $init=strtoupper(implode('',array_map(fn($w)=>$w[0],explode(' ',$row['full_name']))));
-                                    $init=substr($init,0,2); ?>
-                            <tr>
-                                <td><div class="user-cell"><div class="user-avatar"><?=htmlspecialchars($init)?></div><div class="user-name"><?=htmlspecialchars($row['full_name'])?></div></div></td>
-                                <td><div class="tx-id">#<?=htmlspecialchars($row['transaction_id'])?></div></td>
-                                <td><div class="amount-cell"><?=htmlspecialchars(format_currency($row['amount']))?></div></td>
-                                <td style="color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?=htmlspecialchars($row['description'])?></td>
-                                <td><span class="badge badge-<?=htmlspecialchars($row['status'])?>"><?=ucfirst(htmlspecialchars($row['status']))?></span></td>
-                                <td style="color:var(--muted);white-space:nowrap;"><?=date('M d, Y',strtotime($row['created_at']))?></td>
-                            </tr>
-                            <?php endwhile; else: ?>
-                            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px;">No transactions recorded yet.</td></tr>
-                            <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
                 <div class="snapshot-panel">
                     <div class="panel-header"><div><div class="panel-title">Approval Snapshot</div><div class="panel-sub">Live counts</div></div></div>
                     <?php
