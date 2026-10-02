@@ -573,6 +573,35 @@
             .chips { margin-top: 9px; }
             .stats { margin-top: 10px; }
         }
+        /* Readable pricing slide; only opacity changes, avoiding background repaints. */
+        .hero { min-height: 540px; }
+        .price-slide { position:absolute; inset:100px 20px auto; z-index:4; max-width:520px; margin:auto; padding:16px; border:1px solid #bceaf0; border-radius:18px; background:#f1fbff; color:#103e58; opacity:0; visibility:hidden; transition:opacity .45s ease,visibility .45s ease; }
+        .hero.show-prices .price-slide { opacity:1; visibility:visible; }
+        .price-slide h2 { font:800 20px 'Sora',sans-serif; margin-bottom:10px; }
+        .price-tiers { display:flex; gap:10px; }
+        .price-tier { flex:1; padding:10px; border-radius:10px; background:#fff; font-size:12px; }
+        .price-tier strong { display:block; margin-top:4px; font-size:21px; color:#087b9c; }
+        .price-slide p { margin-top:8px; font-size:11px; line-height:1.5; }
+        .price-list-link { min-height:44px; border:0; background:transparent; color:#08678d; font:700 12px 'DM Sans',sans-serif; cursor:pointer; text-decoration:underline; }
+        .hero.show-prices .actions { top:auto; bottom:126px; height:54px; }
+        .slide-controls { position:absolute; bottom:72px; left:0; right:0; z-index:7; display:flex; justify-content:center; gap:6px; }
+        .slide-controls button { min-height:44px; padding:8px 12px; border:1px solid #93cddd; border-radius:999px; background:#082e48; color:#fff; font:600 11px 'DM Sans',sans-serif; cursor:pointer; }
+        .slide-controls button[aria-pressed="true"] { background:#e7faff; color:#07597c; }
+        .price-dialog { width:min(92vw,460px); max-height:85vh; margin:auto; padding:22px; border:0; border-radius:18px; color:#103e58; background:#fff; }
+        .price-dialog::backdrop { background:rgba(3,20,40,.65); }
+        .price-dialog h2 { font-size:20px; margin-bottom:10px; }
+        .price-dialog table { width:100%; border-collapse:collapse; font-size:14px; }
+        .price-dialog th,.price-dialog td { padding:9px 12px; border-bottom:1px solid #dcebf1; text-align:left; }
+        .price-dialog thead { background:#eaf8fc; }
+        .price-dialog p { font-size:12px; line-height:1.6; margin:12px 0; }
+        .price-dialog button { min-height:44px; padding:10px 18px; border:0; border-radius:10px; background:#087b9c; color:#fff; cursor:pointer; }
+        @media(max-width:600px) {
+            .hero { flex-basis:540px; min-height:540px; animation:none; }
+            .hero::after { display:none; }
+            .hero:hover { filter:none; }
+            .price-slide { top:112px; }
+        }
+        @media(prefers-reduced-motion:reduce) { .price-slide { transition:none; } .hero,.hero::after { animation:none; } }
     </style>
     <script src="js/ui-protection.js" defer></script>
 <style>
@@ -594,7 +623,21 @@
 <main class="card">
 
     <!-- ── Hero ── -->
-    <section class="hero">
+    <section class="hero" id="welcomeHero" aria-label="Welcome and refill pricing">
+        <div class="price-slide" id="priceSlide" aria-hidden="true" inert>
+            <h2>Water refill prices</h2>
+            <div class="price-tiers">
+                <div class="price-tier">1–4 gallons<strong>₱80 total</strong></div>
+                <div class="price-tier">5+ gallons<strong>₱15 each</strong></div>
+            </div>
+            <p>Refill prices apply to customer-owned containers. New container + water: ₱160 each. Delivery: ₱10 per container.</p>
+            <button type="button" class="price-list-link" id="openPriceList">View full price list (1–30 gallons)</button>
+        </div>
+        <div class="slide-controls" aria-label="Banner controls">
+            <button type="button" id="sceneSlideButton" aria-pressed="true">Water station</button>
+            <button type="button" id="priceSlideButton" aria-pressed="false">Refill prices</button>
+            <button type="button" id="pauseSlides" aria-label="Pause automatic slides">Pause</button>
+        </div>
         <div class="ring ring-1"></div>
         <div class="ring ring-2"></div>
         <div class="ring ring-3"></div>
@@ -744,7 +787,48 @@
     </section>
 </main>
 
+<dialog class="price-dialog" id="priceDialog" aria-labelledby="priceDialogTitle">
+    <h2 id="priceDialogTitle">Water refill price list</h2>
+    <p>For customer-owned containers. 1–4 gallons cost ₱80 total; 5 or more cost ₱15 per gallon.</p>
+    <table><thead><tr><th scope="col">Gallons</th><th scope="col">Total price</th></tr></thead><tbody id="priceTableBody"></tbody></table>
+    <p>New container + water included: ₱160 each. Delivery adds ₱10 per container, unless a free-delivery reward applies.</p>
+    <form method="dialog"><button>Close price list</button></form>
+</dialog>
 <script>
+    const welcomeHero = document.getElementById('welcomeHero');
+    const priceSlide = document.getElementById('priceSlide');
+    const priceDialog = document.getElementById('priceDialog');
+    const pauseSlides = document.getElementById('pauseSlides');
+    let showingPrices = false;
+    let slidesPaused = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function showPricingSlide(show) {
+        showingPrices = show;
+        welcomeHero.classList.toggle('show-prices', show);
+        priceSlide.setAttribute('aria-hidden', String(!show));
+        priceSlide.inert = !show;
+        document.getElementById('sceneSlideButton').setAttribute('aria-pressed', String(!show));
+        document.getElementById('priceSlideButton').setAttribute('aria-pressed', String(show));
+    }
+    function syncSlidePause() {
+        pauseSlides.textContent = slidesPaused ? 'Play' : 'Pause';
+        pauseSlides.setAttribute('aria-label', slidesPaused ? 'Play automatic slides' : 'Pause automatic slides');
+    }
+    document.getElementById('sceneSlideButton').addEventListener('click', () => showPricingSlide(false));
+    document.getElementById('priceSlideButton').addEventListener('click', () => showPricingSlide(true));
+    pauseSlides.addEventListener('click', () => { slidesPaused = !slidesPaused; syncSlidePause(); });
+    syncSlidePause();
+    setInterval(() => {
+        const hovered = window.matchMedia('(hover: hover)').matches && welcomeHero.matches(':hover');
+        if (!slidesPaused && !document.hidden && !priceDialog.open && !hovered && !welcomeHero.contains(document.activeElement)) showPricingSlide(!showingPrices);
+    }, 7000);
+    const priceRows = [['1–4', 80]];
+    for (let gallons = 5; gallons <= 30; gallons++) priceRows.push([gallons, gallons * 15]);
+    priceRows.forEach(([gallons, price]) => {
+        const row = document.createElement('tr');
+        [String(gallons), '₱' + price.toFixed(2)].forEach(value => { const cell = document.createElement('td'); cell.textContent = value; row.appendChild(cell); });
+        document.getElementById('priceTableBody').appendChild(row);
+    });
+    document.getElementById('openPriceList').addEventListener('click', () => priceDialog.showModal());
     document.getElementById('ctaBtn').addEventListener('click', function(e) {
         const ripple = document.createElement('span');
         ripple.className = 'ripple';
