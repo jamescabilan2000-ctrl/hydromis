@@ -576,14 +576,16 @@
         /* Readable pricing slide; only opacity changes, avoiding background repaints. */
         .price-slide { position:absolute; inset:24px 20px auto; z-index:4; max-width:520px; margin:auto; padding:16px; border:1px solid #bceaf0; border-radius:18px; background:#f1fbff; color:#103e58; opacity:0; visibility:hidden; transition:opacity .45s ease,visibility .45s ease; }
         .hero.show-prices .price-slide { opacity:1; visibility:visible; }
-        .price-slide h2 { font:800 20px 'Sora',sans-serif; margin-bottom:10px; }
+        .price-slide h2 { font:800 20px 'Sora',sans-serif; margin-bottom:10px; text-align:center; }
         .price-tiers { display:flex; gap:10px; }
-        .price-tier { flex:1; padding:10px; border-radius:10px; background:#fff; font-size:12px; }
+        .price-tier { flex:1; min-width:0; padding:10px; border:1px solid #e0eff5; border-radius:10px; background:#fff; font-size:12px; text-align:center; }
         .price-tier strong { display:block; margin-top:4px; font-size:21px; color:#087b9c; }
-        .price-slide p { margin-top:8px; font-size:11px; line-height:1.5; }
+        .price-slide p { margin-top:8px; font-size:11px; line-height:1.5; text-align:center; }
         .price-list-link { min-height:44px; border:0; background:transparent; color:#08678d; font:700 12px 'DM Sans',sans-serif; cursor:pointer; text-decoration:underline; }
         .hero.show-prices .brand { visibility:hidden; }
-        .hero.show-prices .actions { top:auto; bottom:76px; height:54px; }
+        .hero .actions, .hero.show-prices .actions { top:auto; bottom:76px; height:54px; }
+        .hero .actions .btn-primary { animation:none; box-shadow:0 6px 16px rgba(2,31,85,.25); }
+        .hero .actions .btn-primary::after { display:none; }
         .price-dialog { width:min(92vw,460px); max-height:85vh; margin:auto; padding:22px; border:0; border-radius:18px; color:#103e58; background:#fff; }
         .price-dialog::backdrop { background:rgba(3,20,40,.65); }
         .price-dialog h2 { font-size:20px; margin-bottom:10px; }
@@ -597,14 +599,16 @@
             .hero::after { display:none; }
             .hero:hover { filter:none; }
             .brand { max-width:100%; gap:6px; padding:6px 10px; font-size:clamp(9px,2.6vw,12px); letter-spacing:.3px; }
-            .price-slide { top:16px; left:16px; right:16px; padding:12px; border-radius:14px; }
+            .price-slide { top:12px; left:16px; right:16px; padding:12px; border-radius:14px; }
             .price-slide h2 { font-size:17px; margin-bottom:8px; }
             .price-tiers { gap:8px; }
             .price-tier { padding:8px; font-size:11px; }
             .price-tier strong { font-size:19px; }
-            .price-slide p { display:none; }
+            .price-slide p { display:block; margin-top:6px; font-size:10px; }
             .price-list-link { display:block; width:100%; text-align:center; font-size:11px; }
-            .hero.show-prices .actions { bottom:30px; height:50px; }
+            .hero .actions, .hero.show-prices .actions { bottom:32px; height:50px; }
+            .hero .actions .btn-primary { width:min(224px,calc(100% - 48px)); }
+            .wave-wrap { height:24px; }
         }
         @media(prefers-reduced-motion:reduce) { .price-slide { transition:none; } .hero,.hero::after { animation:none; } }
     </style>
@@ -635,8 +639,8 @@
                 <div class="price-tier">1–4 gallons<strong>₱80 total</strong></div>
                 <div class="price-tier">5+ gallons<strong>₱15 each</strong></div>
             </div>
-            <p>Refill prices apply to customer-owned containers. New container + water: ₱160 each. Delivery: ₱10 per container.</p>
-            <button type="button" class="price-list-link" id="openPriceList">View full price list (1–30 gallons)</button>
+            <p>For your own containers · Delivery charged separately</p>
+            <button type="button" class="price-list-link" id="openPriceList">View all prices &amp; fees <span aria-hidden="true">→</span></button>
         </div>
         <div class="ring ring-1"></div>
         <div class="ring ring-2"></div>
