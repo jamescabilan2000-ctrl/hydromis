@@ -1415,6 +1415,33 @@ if ($db_initialized) {
         .hero-actions{align-items:center}.hero-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:52px;border-radius:999px;padding:12px 22px}.hero-btn-primary{min-width:210px}.hero-btn-secondary{min-width:260px}
         @media(max-width:640px){.hero-actions{align-items:center}.hero-actions a{width:min(85%,280px);min-height:52px;padding:12px 18px;border-radius:999px}.hero-btn-primary,.hero-btn-secondary{min-width:0}.hero-btn-secondary{font-size:.9rem!important}}
 
+        /* Keep touch scrolling light: static scenery and no live backdrop blur. */
+        @media (max-width: 760px), (hover: none) and (pointer: coarse) {
+            .hero-bg, .hero:hover .hero-bg {
+                animation: none;
+                transform: none;
+                filter: none;
+                transition: none;
+                will-change: auto;
+            }
+            .hero-bg::after, .hero::after { display: none; }
+            .water-ring, .drop, .app-mockup,
+            .hero-btn-primary, .hero-scroll-hint i { animation: none; }
+            nav, .hero-btn-secondary, .app-mockup, .floating-badge-2, .account-popover {
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+            nav, nav.nav-scrolled {
+                padding: 7px 9px;
+                background: #071e35;
+                transition: none;
+            }
+            .nav-inner, nav.nav-scrolled .nav-inner {
+                height: 58px;
+                transition: none;
+            }
+        }
+
         @media (prefers-reduced-motion:reduce) {
             html { scroll-behavior:auto; }
             *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; }
@@ -1763,11 +1790,23 @@ if ($db_initialized) {
         const siteNav       = document.querySelector('nav');
         const accountMenu   = document.querySelector('.account-menu');
 
+        let navScrolled = false;
+        let navFramePending = false;
         function syncNavDepth() {
-            siteNav?.classList.toggle('nav-scrolled', window.scrollY > 24);
+            const nextScrolled = window.scrollY > 24;
+            if (nextScrolled === navScrolled) return;
+            navScrolled = nextScrolled;
+            siteNav?.classList.toggle('nav-scrolled', navScrolled);
         }
         syncNavDepth();
-        window.addEventListener('scroll', syncNavDepth, { passive: true });
+        window.addEventListener('scroll', () => {
+            if (navFramePending) return;
+            navFramePending = true;
+            requestAnimationFrame(() => {
+                navFramePending = false;
+                syncNavDepth();
+            });
+        }, { passive: true });
         document.addEventListener('click', event => {
             if (accountMenu?.open && !accountMenu.contains(event.target)) accountMenu.open = false;
         });
