@@ -5,6 +5,9 @@ if (empty($_SESSION['logout_csrf'])) $_SESSION['logout_csrf'] = bin2hex(random_b
 $logoutDialogRole = str_contains(str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? ''), '/staff/') ? 'staff' : 'admin';
 $logoutDialogName = $_SESSION[$logoutDialogRole . '_auth_full_name'] ?? $_SESSION['full_name'] ?? ucfirst($logoutDialogRole);
 ?>
+<?php if ($logoutDialogRole === 'staff'): ?>
+<script src="../js/staff-pending-notifications.js" defer></script>
+<?php endif; ?>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const role = <?php echo json_encode($logoutDialogRole); ?>;

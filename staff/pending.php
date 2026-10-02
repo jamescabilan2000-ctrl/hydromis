@@ -763,7 +763,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                     <th>Action</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="pendingOrderRows">
                                 <?php if ($pending_trans && $pending_trans->num_rows > 0): ?>
                                     <?php while ($row = $pending_trans->fetch_assoc()): ?>
                                     <tr>
@@ -841,6 +841,43 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
             </section>
         </main>
     </div>
+<script>
+(() => {
+    let lastSignature = '';
+    let refreshInFlight = false;
+    let requestedSignature = '';
+    const status = document.createElement('p');
+    status.setAttribute('role', 'status');
+    status.style.cssText = 'margin:0;padding:10px 20px;color:var(--muted);font-size:12px;';
+    status.textContent = 'New orders update automatically. No refresh needed.';
+    document.getElementById('pendingOrderRows').closest('.table-wrap').before(status);
+    async function refreshOrders() {
+        if (refreshInFlight || requestedSignature === lastSignature || document.hidden) return;
+        if (document.activeElement?.closest('form') || document.querySelector('dialog[open]')) return;
+        refreshInFlight = true;
+        const signature = requestedSignature;
+        try {
+            const response = await fetch(location.href, {cache:'no-store',credentials:'same-origin'});
+            if (!response.ok || response.redirected) throw new Error('Unable to refresh orders');
+            const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+            const updatedRows = page.getElementById('pendingOrderRows');
+            if (!updatedRows) throw new Error('Order list unavailable');
+            if (document.activeElement?.closest('form') || document.querySelector('dialog[open]')) return;
+            document.getElementById('pendingOrderRows').replaceChildren(...updatedRows.childNodes);
+            lastSignature = signature;
+            status.textContent = 'Order list updated just now · Automatic updates every 6 seconds';
+        } catch {
+            status.textContent = 'Automatic update delayed. Retrying shortly…';
+        } finally { refreshInFlight = false; }
+    }
+    document.addEventListener('hydromis:pending-orders', event => {
+        const data = event.detail;
+        requestedSignature = JSON.stringify([data.pending_count, (data.pending_orders || []).map(order => order.transaction_id)]);
+        refreshOrders();
+    });
+    document.addEventListener('focusout', () => setTimeout(refreshOrders, 100));
+})();
+</script>
 <?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
 </body>
 </html>

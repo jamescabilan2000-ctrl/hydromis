@@ -29,6 +29,7 @@
 
     let seenIds = getSeenIds();
     let isFirstPoll = seenIds.size === 0;
+    let pollInFlight = false;
 
     // Web Audio API Sound Chime synthesizer
     function playNotificationSound() {
@@ -158,6 +159,14 @@
 
     // Update UI sidebar badges dynamically across pages
     function updateBadges(data) {
+        document.querySelectorAll('a[href*="pending.php"]').forEach(link => {
+            if (!link.querySelector('b, .nav-badge, .staff-nav-redmark')) {
+                const badge = document.createElement('b');
+                badge.className = 'nav-badge';
+                badge.setAttribute('aria-label', 'Pending orders');
+                link.appendChild(badge);
+            }
+        });
         // Pending Approvals navigation badges
         const pendingBadges = document.querySelectorAll('a[href*="pending.php"] b, a[href*="pending.php"] .nav-badge, a[href*="pending.php"] .staff-nav-redmark');
         pendingBadges.forEach(el => {
@@ -205,6 +214,8 @@
 
     // Poll the backend endpoint
     async function pollPendingOrders() {
+        if (pollInFlight) return;
+        pollInFlight = true;
         try {
             const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' });
             if (!res.ok) return;
@@ -214,6 +225,7 @@
 
             // Update UI badges
             updateBadges(data);
+            document.dispatchEvent(new CustomEvent('hydromis:pending-orders', { detail: data }));
 
             const pendingList = data.pending_orders || [];
             let newOrdersDetected = [];
@@ -245,6 +257,8 @@
             }
         } catch (err) {
             console.warn('Pending order check poll failed:', err);
+        } finally {
+            pollInFlight = false;
         }
     }
 
@@ -283,4 +297,7 @@
     // Initial poll & 6-second interval
     pollPendingOrders();
     setInterval(pollPendingOrders, 6000);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) pollPendingOrders();
+    });
 })();
