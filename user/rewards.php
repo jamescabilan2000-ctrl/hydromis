@@ -1420,7 +1420,23 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
         .claim-id-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;color:#526b7d;font-size:11px;overflow-wrap:anywhere}
         .copy-claim-id{min-height:44px;padding:8px 12px;border:1px solid #cce7ee;border-radius:9px;background:#eef9fc;color:#08678d;font:600 12px inherit;cursor:pointer}
         .copy-claim-id:focus-visible{outline:3px solid #1769aa;outline-offset:2px}
-        @media(max-width:480px){.history-item{flex-wrap:wrap}.history-main{flex-basis:100%}}
+        .history-dialog{min-width:0;overflow-x:hidden;overflow-y:auto}
+        .history-dialog .history-list{min-width:0;width:100%;padding:0;list-style:none}
+        .history-dialog .history-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;min-width:0;max-width:100%;height:auto}
+        .history-dialog .history-main{min-width:0;max-width:100%;flex:none;overflow-wrap:anywhere}
+        .history-dialog .history-meta{white-space:normal;overflow-wrap:anywhere;line-height:1.6}
+        .history-dialog .history-points{max-width:100%;justify-self:start;align-self:start}
+        .history-dialog-title{min-width:0;flex:1}
+        .history-dialog-title>div{min-width:0;overflow-wrap:anywhere}
+        .history-dialog-title>i,.history-close{flex-shrink:0}
+        .claim-id-row>span{min-width:0;overflow-wrap:anywhere}
+        .copy-claim-id{flex-shrink:0}
+        @media(max-width:600px){
+            .history-dialog .history-item{grid-template-columns:minmax(0,1fr);gap:10px}
+            .history-dialog-head{gap:10px;padding:16px 14px}
+            .history-dialog-title h3{font-size:16px;line-height:1.3}
+            .history-dialog-title p{line-height:1.5}
+        }
     </style>
     <script>
         document.addEventListener('click', async event => {
