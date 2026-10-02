@@ -193,11 +193,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'messages') {
     $list = $conn->prepare('SELECT id, transaction_id, sender, recipient, message, created_at FROM (
         SELECT id, transaction_id, sender, recipient, message, created_at
         FROM rider_messages
-        WHERE transaction_id = ?
+        WHERE (? <> \'station\' OR transaction_id = ?)
           AND ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?))
         ORDER BY id DESC LIMIT 100
     ) recent_messages ORDER BY id ASC');
-    $list->bind_param('sssss', $transaction_id, $user_id, $order['rider_id'], $order['rider_id'], $user_id);
+    $list->bind_param('ssssss', $order['rider_id'], $transaction_id, $user_id, $order['rider_id'], $order['rider_id'], $user_id);
     $list->execute();
     $result = $list->get_result();
     while ($row = $result->fetch_assoc()) $messages[] = $row;
@@ -1715,8 +1715,7 @@ function renderCustomerMessages(messages) {
     if(!list) return;
     const delayAlert=document.getElementById('customer-delay-alert');
     const delayText=document.getElementById('customer-delay-message');
-    messages=messages.filter(message=>message.transaction_id===activeMessageTransaction);
-    const latestDelay=[...messages].reverse().find(message=>message.sender!==TRACKING_USER_ID && String(message.message||'').startsWith('Delivery update:'));
+    const latestDelay=[...messages].reverse().find(message=>message.transaction_id===activeMessageTransaction && message.sender!==TRACKING_USER_ID && String(message.message||'').startsWith('Delivery update:'));
     if(delayAlert && delayText){
         delayAlert.hidden=!latestDelay;
         delayText.textContent=latestDelay ? latestDelay.message : '';
