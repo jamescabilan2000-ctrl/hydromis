@@ -266,12 +266,15 @@ if (
     || ($_SERVER['REQUEST_METHOD'] == 'GET' && $search_value !== '')
 ) {
     if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['search_submit'])) {
-        $search_value = sanitize($_POST['search_value']);
+        $search_value = sanitize(trim((string)($_POST['search_value'] ?? '')));
     }
 
     $search_contact_lookup = tracking_contact_lookup($search_value);
 
-    if (!empty($search_value)) {
+    $is_mobile_search = isset($_POST['search_submit']) || isset($_GET['search_value']) || isset($_GET['contact_number']);
+    if ($is_mobile_search && !preg_match('/\A09[0-9]{9}\z/', htmlspecialchars_decode($search_value))) {
+        $error = 'Enter a valid 11-digit mobile number starting with 09 (example: 09123456789).';
+    } elseif (!empty($search_value)) {
         $sql = "SELECT t.*, {$transaction_rider_expr} AS effective_rider_id, u.full_name, u.address, u.contact_number, u.loyalty_points, u.user_id,
                    ru.full_name AS rider_name, ru.contact_number AS rider_contact_number
                 FROM transactions t
@@ -1093,15 +1096,25 @@ function compactTransactionId(string $id): string {
                     <label class="f-label" for="search_value"><i class="fas fa-phone"></i> Mobile Number</label>
                     <div class="f-wrap">
                         <input type="tel" inputmode="numeric" class="f-inp" id="search_value" name="search_value"
-                            placeholder=""
+                            placeholder="09123456789" required minlength="11" maxlength="11" pattern="09[0-9]{9}"
+                            title="Enter an 11-digit mobile number starting with 09."
+                            aria-describedby="tracking-phone-help"
                             value="<?php echo htmlspecialchars($search_value); ?>"
-                            autocomplete="off">
+                            autocomplete="tel-national">
                     </div>
+                    <p id="tracking-phone-help" style="margin:8px 0 0;font-size:12px;color:#587083;">11 digits starting with 09. Numbers only.</p>
                 </div>
                 <button type="submit" name="search_submit" value="1" class="btn-primary">
                     <i class="fas fa-magnifying-glass" aria-hidden="true"></i><span>Search Orders</span>
                 </button>
             </form>
+            <script>
+                const trackingPhone = document.getElementById('search_value');
+                trackingPhone.addEventListener('invalid', function() {
+                    this.setCustomValidity('Enter a valid 11-digit mobile number starting with 09 (example: 09123456789).');
+                });
+                trackingPhone.addEventListener('input', function() { this.setCustomValidity(''); });
+            </script>
         </div>
     </div>
 </section>
