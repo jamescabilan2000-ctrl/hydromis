@@ -161,9 +161,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         $error = 'Please select a valid container and order type.';
         $price_per_unit = 0;
     } else {
-        $price_per_unit = water_order_total($quantity) / max(1, $quantity) + ($container_status === 'new' ? $container_price_map[$container_size] : 0);
+        $price_per_unit = $container_status === 'new' ? $container_price_map[$container_size] : water_order_total($quantity) / max(1, $quantity);
     }
-    $total_amount = water_order_total($quantity) + ($container_status === 'new' && isset($container_price_map[$container_size]) ? $container_price_map[$container_size] * $quantity : 0);
+    $total_amount = $container_status === 'new' ? ($container_price_map[$container_size] ?? 0) * $quantity : water_order_total($quantity);
     $discount = 0;
     // Points are awarded only after staff approves the pending order.
     $loyalty_points = 0;
@@ -1370,7 +1370,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-type">slim</div>
                                             <div class="container-pricing">
                                                 <span class="price-chip">Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each</span>
-                                                <span class="price-chip">New container: +₱<?php echo number_format($containerPrices['2.5gal-slim']['container'], 2); ?></span>
+                                                <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['2.5gal-slim']['container'], 2); ?></span>
                                             </div>
                                         </div>
                                         <div class="radio-circle"></div>
@@ -1386,7 +1386,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-type">slim</div>
                                             <div class="container-pricing">
                                                 <span class="price-chip">Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each</span>
-                                                <span class="price-chip">New container: +₱<?php echo number_format($containerPrices['5gal-slim']['container'], 2); ?></span>
+                                                <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['5gal-slim']['container'], 2); ?></span>
                                             </div>
                                         </div>
                                         <div class="radio-circle"></div>
@@ -1402,7 +1402,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-type">round</div>
                                             <div class="container-pricing">
                                                 <span class="price-chip">Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each</span>
-                                                <span class="price-chip">New container: +₱<?php echo number_format($containerPrices['5gal-round']['container'], 2); ?></span>
+                                                <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['5gal-round']['container'], 2); ?></span>
                                             </div>
                                         </div>
                                         <div class="radio-circle"></div>
@@ -1461,8 +1461,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             
             // Price mapping based on container size and status
             const containerPriceMap = <?php echo json_encode($container_price_map); ?>;
-            const price = waterOrderTotal(quantity) / Math.max(1, quantity) + (containerStatus === 'new' ? containerPriceMap[containerSize] : 0);
-            const subtotal = waterOrderTotal(quantity) + (containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : 0);
+            const subtotal = containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : waterOrderTotal(quantity);
+            const price = subtotal / Math.max(1, quantity);
             
             // The quantity-based water price already includes volume pricing.
             let discount = 0;

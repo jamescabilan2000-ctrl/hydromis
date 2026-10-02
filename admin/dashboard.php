@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $passwordMessage = ' Password updated.';
     }
     
-    $pricesSaved = set_system_setting($conn, 'container_prices', json_encode($validatedPrices), (string)$_SESSION['admin_id']);
+    $pricesSaved = set_system_setting($conn, 'container_bundle_prices', json_encode($validatedPrices), (string)$_SESSION['admin_id']);
     if ($pricesSaved && $conn->query($sql)) {
         echo json_encode(['success' => true, 'message' => 'Settings saved.' . $passwordMessage]);
     } else {
@@ -850,9 +850,9 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
         <div class="tab-panel active" id="tab-pricing">
             <div class="settings-section">
                 <div class="settings-section-title">Container pricing</div>
-                <p class="settings-row-desc">Water costs PHP 80 total for 1&ndash;4 gallons and PHP 15 per gallon for 5 or more. Set the additional price per new container below. Changes apply to new orders.</p>
+                <p class="settings-row-desc">Refills cost PHP 80 total for 1&ndash;4 gallons and PHP 15 per gallon for 5 or more. New containers cost PHP 160 each including water by default. Set the complete filled-container price below. Delivery is charged separately. Changes apply to new orders.</p>
                 <?php foreach (['2.5gal-slim' => '2.5 Gallon Slim', '5gal-slim' => '5 Gallon Slim', '5gal-round' => '5 Gallon Round'] as $size => $label): ?>
-                    <?php foreach (['container' => 'New container surcharge'] as $kind => $priceLabel): ?>
+                    <?php foreach (['container' => 'New container including water'] as $kind => $priceLabel): ?>
                     <div class="settings-row">
                         <label class="settings-row-info" for="price-<?php echo $size . '-' . $kind; ?>">
                             <span class="settings-row-label"><?php echo $label; ?></span>

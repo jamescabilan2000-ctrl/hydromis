@@ -559,7 +559,7 @@ $container_image_map = [
             <div class="shop-card">
                 <div class="totals">
                     <div class="total-line"><span>Water</span><strong>₱<span id="waterTotal">0.00</span></strong></div>
-                    <div class="total-line" id="containerLine"><span>New container surcharge</span><strong>₱<span id="containerTotal">0.00</span></strong></div>
+                    <div class="total-line" id="containerLine"><span>New container + water included</span><strong>₱<span id="containerTotal">0.00</span></strong></div>
                     <div class="total-line"><span>Delivery fee</span><strong id="deliveryFeeDisplay">₱0.00</strong></div>
                     <div class="total-line" id="discountLine" style="display:none;color:#059669;"><span>Quantity discount</span><strong style="color:#059669;">-₱<span id="discountTotal">0.00</span></strong></div>
                     <div class="total-line grand-total"><span>Order total</span><strong>₱<span id="reviewTotal">0.00</span></strong></div>
@@ -658,15 +658,16 @@ $container_image_map = [
             function updateSummary() {
                 const pickupBase = pickupBaseMap[containerSize];
                 const newContainer = containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : 0;
-                const water = pickupBase * quantity;
+                const water = containerStatus === 'new' ? 0 : (quantity <= 4 ? 80 : 15 * quantity);
 
                 const discountCount = Math.floor(quantity / 5);
-                const discount = discountCount > 0 ? (discountCount * 5) : 0;
+                const discount = 0;
                 const deliveryFee = fulfillmentMethod === 'delivery' && !hasFreeDeliveryReward ? 10 * quantity : 0;
                 const finalAmount = water + newContainer + deliveryFee - discount;
 
                 qtyDisplay.textContent = String(quantity);
                 waterTotal.textContent = water.toFixed(2);
+                waterTotal.closest('.total-line').style.display = containerStatus === 'new' ? 'none' : 'flex';
                 containerTotal.textContent = newContainer.toFixed(2);
                 containerLine.style.display = containerStatus === 'new' ? 'flex' : 'none';
                 reviewTotal.textContent = finalAmount.toFixed(2);

@@ -12,9 +12,9 @@ function ensure_system_settings_schema($conn): void {
 
 function container_price_defaults(): array {
     return [
-        '2.5gal-slim' => ['water' => 15.00, 'container' => 20.00],
-        '5gal-slim' => ['water' => 20.00, 'container' => 20.00],
-        '5gal-round' => ['water' => 20.00, 'container' => 20.00],
+        '2.5gal-slim' => ['water' => 15.00, 'container' => 160.00],
+        '5gal-slim' => ['water' => 20.00, 'container' => 160.00],
+        '5gal-round' => ['water' => 20.00, 'container' => 160.00],
     ];
 }
 
@@ -37,7 +37,8 @@ function validate_container_prices($prices): array {
 
 function system_container_prices($conn): array {
     ensure_system_settings_schema($conn);
-    $result = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='container_prices' LIMIT 1");
+    // Bundled prices include water; legacy surcharge settings must not be reused.
+    $result = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='container_bundle_prices' LIMIT 1");
     if ($result && ($row = $result->fetch_assoc())) {
         try {
             return validate_container_prices(json_decode($row['setting_value'], true));

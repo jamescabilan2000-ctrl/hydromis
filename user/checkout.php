@@ -138,8 +138,8 @@ $user_address = isset($scanned_data['address']) ? $scanned_data['address'] : 'No
 $user_contact = isset($scanned_data['contact_number']) ? $scanned_data['contact_number'] : '';
 
 $new_container = $container_status === 'new' ? $container_price_map[$container_size] * $quantity : 0;
-$water_total = water_order_total($quantity);
-$price_per_unit = $water_total / max(1, $quantity) + ($container_status === 'new' ? $container_price_map[$container_size] : 0);
+$water_total = $container_status === 'new' ? 0 : water_order_total($quantity);
+$price_per_unit = $container_status === 'new' ? $container_price_map[$container_size] : $water_total / max(1, $quantity);
 $item_total = $water_total + $new_container;
 
 $discount = 0;
@@ -1291,7 +1291,7 @@ $final_total = $item_total + $delivery_fee - $discount;
                 </div>
                 <?php if ($container_status === 'new'): ?>
                 <div style="display: flex; justify-content: space-between; font-size: 13px; color: #6b7280; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-                    <span>New container</span>
+                    <span>New container + water included</span>
                     <span style="color: #1f2937; font-weight: 600;" id="newContainerCost">₱<?php echo number_format($new_container, 2); ?></span>
                 </div>
                 <?php endif; ?>
@@ -1638,7 +1638,7 @@ $final_total = $item_total + $delivery_fee - $discount;
             document.getElementById('qtyDisplay').textContent = currentQuantity;
             document.getElementById('hiddenQuantity').value = currentQuantity;
 
-            const newTotal = waterOrderTotal(currentQuantity) + (<?php echo $container_status === 'new' ? json_encode($container_price_map[$container_size]) : '0'; ?> * currentQuantity);
+            const newTotal = <?php echo $container_status === 'new' ? json_encode($container_price_map[$container_size]) . ' * currentQuantity' : 'waterOrderTotal(currentQuantity)'; ?>;
             const discount = 0;
             const deliveryFee = isDelivery && !<?php echo $free_delivery_reward ? 'true' : 'false'; ?> ? 10 * currentQuantity : 0;
             const finalAmount = newTotal + deliveryFee - discount;
