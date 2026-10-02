@@ -782,6 +782,7 @@ html, body {
             <div class="table-panel">
                 <div style="padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
                     <h3 style="margin: 0; font-size: 16px; font-weight: 700;"><i class="fas fa-cart-shopping"></i> Buyer Accounts</h3>
+                    <span style="font-size:12px;color:var(--muted);">Points show each customer's current available balance.</span>
                 </div>
                 <div style="overflow-x: auto;">
                     <table class="data-table">
@@ -790,6 +791,7 @@ html, body {
                                 <th>User ID</th>
                                 <th>Full Name</th>
                                 <th>Contact</th>
+                                <th>Loyalty Points</th>
                                 <th>Status</th>
                                 <th>Date Created</th>
                                 <th>Action</th>
@@ -801,6 +803,12 @@ html, body {
                                 <td><strong><?php echo htmlspecialchars($row['user_id']); ?></strong></td>
                                 <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                 <td><?php echo htmlspecialchars($row['contact_number']); ?></td>
+                                <td>
+                                    <span style="display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:rgba(20,184,166,.12);color:#2dd4bf;font-size:13px;font-weight:700;white-space:nowrap;">
+                                        <i class="fas fa-coins" aria-hidden="true"></i>
+                                        <?php echo number_format((int)($row['loyalty_points'] ?? 0)); ?> pts
+                                    </span>
+                                </td>
                                 <td><span class="badge badge-<?php echo $row['status']; ?>"><?php echo ucfirst($row['status']); ?></span></td>
                                 <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
                                 <td>
