@@ -744,12 +744,11 @@ html, body {
                 </div>
                 <div style="overflow-x:auto;">
                     <table class="data-table">
-                        <thead><tr><th>User ID</th><th>Full Name</th><th>Role &amp; Login</th><th>Status</th><th>Action</th></tr></thead>
+                        <thead><tr><th>Full Name</th><th>Role &amp; Login</th><th>Status</th><th>Action</th></tr></thead>
                         <tbody>
                         <?php if ($standalonePortalUsers): ?>
                             <?php while ($portal = $standalonePortalUsers->fetch_assoc()): ?>
                             <tr>
-                                <td><strong><?php echo htmlspecialchars($portal['account_id']); ?></strong></td>
                                 <td><?php echo htmlspecialchars($portal['full_name']); ?></td>
                                 <td>
                                     <span class="badge badge-approved"><?php echo ucfirst(htmlspecialchars($portal['role'])); ?></span>
@@ -771,7 +770,7 @@ html, body {
                             <?php endwhile; ?>
                         <?php endif; ?>
                         <?php if (!$standalonePortalUsers || $standalonePortalUsers->num_rows === 0): ?>
-                            <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px;">No Admin, Staff or Rider accounts have been assigned from buyers.</td></tr>
+                            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:28px;">No Admin, Staff or Rider accounts have been assigned from buyers.</td></tr>
                         <?php endif; ?>
                         </tbody>
                     </table>
