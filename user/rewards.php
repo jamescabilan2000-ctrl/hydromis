@@ -68,7 +68,7 @@ function load_redemption_history($conn, $user_id, $limit = 5) {
     $history = [];
     $safe_user_id = sanitize($user_id);
     $safe_limit = max(1, intval($limit));
-    $sql = "SELECT t.transaction_id, t.description, t.notes, t.created_at, rc.reward_code, COALESCE(rc.claim_status,'pending') AS claim_status, rc.customer_seen_at
+    $sql = "SELECT t.transaction_id, t.description, t.notes, t.created_at, rc.reward_code, COALESCE(rc.claim_status,'pending') AS claim_status, rc.customer_seen_at, rc.claimed_at
         FROM transactions t
         LEFT JOIN reward_claims rc ON rc.transaction_id=t.transaction_id
         WHERE t.user_id = '$safe_user_id' AND t.description LIKE 'Reward Redemption - %'
@@ -1387,7 +1387,17 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
                                         <div class="history-meta">
                                             <span title="<?php echo htmlspecialchars($history_item['transaction_id'] ?? '-'); ?>"><?php echo htmlspecialchars(compact_reward_id((string)($history_item['transaction_id'] ?? '-'))); ?></span> | <?php echo htmlspecialchars($history_time); ?>
                                         </div>
-                                        <?php if (($history_item['claim_status'] ?? '') === 'approved'): ?><span class="history-status-approved"><i class="fas <?php echo ($history_item['reward_code'] ?? '') === 'free_delivery' ? 'fa-truck-fast' : 'fa-store'; ?>"></i> <?php echo ($history_item['reward_code'] ?? '') === 'free_delivery' ? 'Active — next delivery is free' : 'Approved — ready to claim'; ?></span><?php elseif (($history_item['claim_status'] ?? '') === 'claimed'): ?><span class="history-status-ready"><i class="fas fa-circle-check"></i> Already claimed</span><?php endif; ?>
+                                        <?php if (($history_item['claim_status'] ?? '') === 'approved'): ?>
+                                            <span class="history-status-ready"><i class="fas fa-circle-check" aria-hidden="true"></i> <?php echo ($history_item['reward_code'] ?? '') === 'free_delivery' ? 'Ready for your next delivery order' : 'Ready to claim'; ?></span>
+                                            <p class="claim-next-step"><?php echo ($history_item['reward_code'] ?? '') === 'free_delivery' ? 'Your next eligible delivery order will automatically use this free-delivery reward. No station visit is needed.' : 'Your reward is ready at the HydroMIS station. Show this redemption ID to staff when collecting.'; ?></p>
+                                        <?php elseif (($history_item['claim_status'] ?? '') === 'claimed'): ?>
+                                            <span class="history-status-approved"><i class="fas fa-circle-check" aria-hidden="true"></i> <?php echo ($history_item['reward_code'] ?? '') === 'free_delivery' ? 'Used' : 'Claimed'; ?></span>
+                                            <?php if (!empty($history_item['claimed_at'])): ?><p class="claim-next-step"><?php echo ($history_item['reward_code'] ?? '') === 'free_delivery' ? 'Used on ' : 'Collected on '; ?><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($history_item['claimed_at']))); ?></p><?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="history-status-pending"><i class="fas fa-clock" aria-hidden="true"></i> Awaiting approval</span>
+                                            <p class="claim-next-step">We'll notify you when your reward is ready.</p>
+                                        <?php endif; ?>
+                                        <div class="claim-id-row"><span>Redemption ID: <strong><?php echo htmlspecialchars($history_item['transaction_id']); ?></strong></span><button type="button" class="copy-claim-id" data-redemption-id="<?php echo htmlspecialchars($history_item['transaction_id'], ENT_QUOTES, 'UTF-8'); ?>" aria-label="Copy redemption ID">Copy</button></div>
                                     </div>
                                     <div class="history-points"><?php echo htmlspecialchars($history_points_label); ?></div>
                                 </li>
@@ -1403,6 +1413,28 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
         <?php endif; ?>
     </div>
 
+    <style>
+        .history-main{min-width:0;flex:1}.claim-next-step{margin:8px 0;color:#526b7d;font-size:12px;line-height:1.6}
+        .history-status-pending{display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:5px 9px;border-radius:99px;background:#fff4d6;color:#8a5b08;font-size:10px;font-weight:700}
+        .history-status-ready,.history-status-approved{font-size:10px;line-height:1.5}
+        .claim-id-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;color:#526b7d;font-size:11px;overflow-wrap:anywhere}
+        .copy-claim-id{min-height:44px;padding:8px 12px;border:1px solid #cce7ee;border-radius:9px;background:#eef9fc;color:#08678d;font:600 12px inherit;cursor:pointer}
+        .copy-claim-id:focus-visible{outline:3px solid #1769aa;outline-offset:2px}
+        @media(max-width:480px){.history-item{flex-wrap:wrap}.history-main{flex-basis:100%}}
+    </style>
+    <script>
+        document.addEventListener('click', async event => {
+            const button=event.target.closest('.copy-claim-id');
+            if(!button)return;
+            try{
+                await navigator.clipboard.writeText(button.dataset.redemptionId);
+                button.textContent='Copied!';
+                setTimeout(()=>button.textContent='Copy',2000);
+            }catch{
+                window.prompt('Copy your redemption ID:',button.dataset.redemptionId);
+            }
+        });
+    </script>
     <!-- Confirmation Modal -->
     <div id="confirmModal" class="conversion-modal" role="dialog" aria-modal="true" aria-labelledby="conversion-title" aria-describedby="confirmMessage">
         <div class="conversion-dialog">
