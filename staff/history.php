@@ -707,6 +707,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
             </section>
         </main>
     </div>
+<?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
 </body>
 <script>
 const periodSelect = document.getElementById('period');

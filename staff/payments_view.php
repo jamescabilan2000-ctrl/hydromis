@@ -799,5 +799,6 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
 <?php include 'payments_view.html'; ?>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
 </body>
 </html>

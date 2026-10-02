@@ -301,4 +301,5 @@ const addModal=document.getElementById('addItemModal'),openAdd=document.getEleme
 function setAddModal(show){addModal.classList.toggle('open',show);addModal.setAttribute('aria-hidden',show?'false':'true');document.body.classList.toggle('modal-open',show);if(show)setTimeout(()=>document.getElementById('item_name').focus(),120)}
 closeAdd.addEventListener('click',()=>setAddModal(false));cancelAdd.addEventListener('click',()=>setAddModal(false));addModal.addEventListener('click',e=>{if(e.target===addModal)setAddModal(false)});document.addEventListener('keydown',e=>{if(e.key==='Escape')setAddModal(false)});if(addModal.classList.contains('open')){document.body.classList.add('modal-open');addModal.setAttribute('aria-hidden','false')}
 </script>
+<?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
 </body></html>

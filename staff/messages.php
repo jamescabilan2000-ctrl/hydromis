@@ -45,4 +45,5 @@ function message_escape($value) { return htmlspecialchars((string)$value, ENT_QU
 <?php if ($error): ?><p class="error" role="alert"><?php echo message_escape($error); ?></p><?php endif; ?>
 <?php foreach ($messages as $message): ?><article class="<?php echo $message['sender'] === 'station' ? 'mine' : ''; ?>"><small><?php echo $message['sender'] === 'station' ? 'Station' : 'Customer'; ?> · <?php echo message_escape($message['created_at']); ?></small><?php echo message_escape($message['message']); ?></article><?php endforeach; ?>
 <?php if ($order): ?><form method="post"><input type="hidden" name="csrf" value="<?php echo message_escape($_SESSION['station_message_csrf']); ?>"><input type="hidden" name="transaction_id" value="<?php echo message_escape($transaction); ?>"><label for="message">Reply to customer</label><textarea id="message" name="message" maxlength="500" required></textarea><button type="submit">Send message</button></form><?php endif; ?>
-</section></main></body></html>
+</section></main><?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
+</body></html>
