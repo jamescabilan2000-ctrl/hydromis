@@ -141,5 +141,6 @@ html,body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans'
   </div>
 </main>
 </div>
+<?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
 </body>
 </html>

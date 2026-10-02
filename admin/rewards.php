@@ -100,4 +100,5 @@ function reward_html($value): string { return htmlspecialchars((string)$value, E
 <button class="reward-save" type="submit"><?= $editReward ? 'Save reward changes' : 'Add reward' ?></button>
 <?php if ($editReward): ?><a class="reward-edit" href="rewards.php">Cancel edit</a><?php endif; ?>
 </form></section>
-</div></section></main></div></body></html>
+</div></section></main></div><?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
+</body></html>

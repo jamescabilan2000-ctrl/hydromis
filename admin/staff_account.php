@@ -166,4 +166,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="actions"><button type="submit"><i class="fas fa-floppy-disk"></i> <?php echo $staff ? 'Save staff account' : 'Create staff account'; ?></button></div>
         </form>
     </section>
-</div></main></div><script>document.getElementById('staff-profile-image')?.addEventListener('change',function(){const file=this.files&&this.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>document.getElementById('staff-profile-preview').src=e.target.result;reader.readAsDataURL(file)});</script></body></html>
+</div></main></div><script>document.getElementById('staff-profile-image')?.addEventListener('change',function(){const file=this.files&&this.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>document.getElementById('staff-profile-preview').src=e.target.result;reader.readAsDataURL(file)});</script><?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
+</body></html>

@@ -1919,5 +1919,6 @@ new Chart(document.getElementById('donutChart'),{type:'doughnut',
     data:{labels:['Approved','Pending','Denied'],datasets:[{data:[<?=(int)$approved?>,<?=(int)$pending?>,<?=(int)$denied?>],backgroundColor:['#22c55e','#f59e0b','#f43f5e'],borderColor:'#161b24',borderWidth:3,hoverOffset:6}]},
     options:{cutout:'72%',responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e2533',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,padding:10}},animation:{animateRotate:true,duration:1400}}});
 </script>
+<?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
 </body>
 </html>

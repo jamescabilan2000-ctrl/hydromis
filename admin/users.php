@@ -840,5 +840,6 @@ html, body {
 </div>
 
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
 </body>
 </html>

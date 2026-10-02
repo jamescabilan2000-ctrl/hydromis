@@ -1488,5 +1488,6 @@ setTimeout(() => {
   setTimeout(() => f && f.remove(), 300);
 }, 5000);
 </script>
+<?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
 </body>
 </html>

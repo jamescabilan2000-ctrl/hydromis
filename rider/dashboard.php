@@ -1488,6 +1488,7 @@ window.addEventListener('DOMContentLoaded', () => {
     <strong><?php echo htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8'); ?></strong>
     <p id="riderLogoutMessage">You can sign in again anytime.</p>
     <form method="POST" action="../logout.php" id="riderLogoutForm">
+        <input type="hidden" name="logout_role" value="rider">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['logout_csrf'], ENT_QUOTES, 'UTF-8'); ?>">
         <div class="logout-actions"><button type="button" id="riderLogoutCancel">Stay signed in</button><button type="submit" id="riderLogoutConfirm">Log out</button></div>
     </form>
