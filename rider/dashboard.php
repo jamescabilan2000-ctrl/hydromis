@@ -17,6 +17,9 @@ include 'check_auth.php';
 require_once '../config/database.php';
 require_once '../config/inventory_service.php';
 ensure_inventory_schema($conn);
+if (empty($_SESSION['logout_csrf'])) {
+    $_SESSION['logout_csrf'] = bin2hex(random_bytes(32));
+}
 
 /* ---------- small helpers ---------- */
 
@@ -793,7 +796,7 @@ body{
         <button class="notification-toggle" id="notificationToggle" type="button" onclick="enablePushNotifications()"><i class="fas fa-bell"></i><span>Notifications</span><span class="notify-dot" id="notifyDot" aria-hidden="true"></span></button>
         <a href="history.php" class="menu-history"><i class="fas fa-clock-rotate-left"></i><span>Delivery history</span></a>
         <div class="menu-divider"></div>
-        <a href="../logout.php" class="menu-logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+        <button type="button" class="menu-logout" id="riderLogoutButton"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
       </div>
     </div>
   </div>
@@ -1467,6 +1470,49 @@ window.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => t.remove(), 3500);
 });
 <?php endif; ?>
+</script>
+<style>
+ .rider-logout-dialog{width:min(92vw,400px);margin:auto;padding:24px;border:1px solid #dce6e5;border-radius:20px;background:#fff;color:#172532;box-shadow:0 24px 65px rgba(24,54,65,.2)}
+ .rider-logout-dialog::backdrop{background:rgba(8,24,38,.58)}
+ .rider-logout-dialog h2{margin:0 0 10px;font-size:21px;line-height:1.3}
+ .rider-logout-dialog p{font-size:14px;line-height:1.6;color:#526777}
+ .rider-logout-dialog .logout-actions{display:flex;gap:10px;margin-top:20px}
+ .rider-logout-dialog button{flex:1;min-height:48px;padding:10px;border:1px solid #d7e0e3;border-radius:11px;font:600 13px 'Inter',sans-serif;cursor:pointer}
+ #riderLogoutCancel{background:#eef5f7;color:#23445d}#riderLogoutConfirm{background:#dc2626;color:white;border-color:#dc2626}
+ .rider-logout-dialog.has-delivery #riderLogoutCancel{background:#087f8c;color:white;border-color:#087f8c}
+ .rider-logout-dialog.has-delivery #riderLogoutConfirm{background:#fff;color:#b91c1c;border-color:#fecaca}
+ .rider-logout-dialog button:focus-visible{outline:3px solid #38bdf8;outline-offset:3px}
+</style>
+<dialog id="riderLogoutDialog" class="rider-logout-dialog" aria-labelledby="riderLogoutTitle" aria-describedby="riderLogoutMessage">
+    <h2 id="riderLogoutTitle">Log out of your rider account?</h2>
+    <strong><?php echo htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8'); ?></strong>
+    <p id="riderLogoutMessage">You can sign in again anytime.</p>
+    <form method="POST" action="../logout.php" id="riderLogoutForm">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['logout_csrf'], ENT_QUOTES, 'UTF-8'); ?>">
+        <div class="logout-actions"><button type="button" id="riderLogoutCancel">Stay signed in</button><button type="submit" id="riderLogoutConfirm">Log out</button></div>
+    </form>
+</dialog>
+<script>
+ const riderLogoutDialog=document.getElementById('riderLogoutDialog');
+ const logoutDeliveryStates=<?php echo json_encode(array_map(static fn($delivery) => ['id' => $delivery['id'], 'status' => $delivery['status']], $deliveries)); ?>;
+ document.getElementById('riderLogoutButton').addEventListener('click',()=>{
+    closeRiderMenu();
+    const ongoing=logoutDeliveryStates.some(delivery=>['on_way','on_the_way'].includes(currentDelivery?.id===delivery.id ? currentDelivery.status : delivery.status));
+    riderLogoutDialog.classList.toggle('has-delivery',ongoing);
+    document.getElementById('riderLogoutMessage').textContent=ongoing
+      ? 'You have an ongoing delivery. Logging out will stop location sharing; your delivery stays assigned to you.'
+      : 'You can sign in again anytime.';
+    riderLogoutDialog.showModal();
+    document.getElementById('riderLogoutCancel').focus();
+ });
+ document.getElementById('riderLogoutCancel').addEventListener('click',()=>riderLogoutDialog.close());
+ riderLogoutDialog.addEventListener('close',()=>menuToggle.focus());
+ document.getElementById('riderLogoutForm').addEventListener('submit',()=>{
+    if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
+    if(pollTimer)clearInterval(pollTimer);
+    document.getElementById('riderLogoutConfirm').disabled=true;
+    document.getElementById('riderLogoutConfirm').textContent='Logging out…';
+ });
 </script>
 </body>
 </html>

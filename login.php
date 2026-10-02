@@ -480,6 +480,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 		<h1>HydroMIS</h1>
 		<p class="subtitle"></p>
 
+        <?php if (($_GET['role'] ?? '') === 'rider' && ($_GET['logged_out'] ?? '') === '1'): ?>
+            <div role="status" style="margin-bottom:16px;padding:12px 14px;border-radius:10px;background:#e8faf4;color:#087961;font-size:14px;">You've been logged out.</div>
+        <?php endif; ?>
 		<?php if ($error): ?>
 			<div class="error"><i class="fas fa-exclamation-circle mr-2"></i><?php echo $error; ?></div>
 		<?php endif; ?>
