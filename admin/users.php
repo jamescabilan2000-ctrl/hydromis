@@ -788,7 +788,6 @@ html, body {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>User ID</th>
                                 <th>Full Name</th>
                                 <th>Contact</th>
                                 <th>Loyalty Points</th>
@@ -800,7 +799,6 @@ html, body {
                         <tbody>
                             <?php while ($row = $users->fetch_assoc()): ?>
                             <tr>
-                                <td><strong><?php echo htmlspecialchars($row['user_id']); ?></strong></td>
                                 <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                 <td><?php echo htmlspecialchars($row['contact_number']); ?></td>
                                 <td>
