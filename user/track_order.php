@@ -193,11 +193,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'messages') {
     $list = $conn->prepare('SELECT id, transaction_id, sender, recipient, message, created_at FROM (
         SELECT id, transaction_id, sender, recipient, message, created_at
         FROM rider_messages
-        WHERE (? <> \'station\' OR transaction_id = ?)
+        WHERE transaction_id = ?
           AND ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?))
         ORDER BY id DESC LIMIT 100
     ) recent_messages ORDER BY id ASC');
-    $list->bind_param('ssssss', $order['rider_id'], $transaction_id, $user_id, $order['rider_id'], $order['rider_id'], $user_id);
+    $list->bind_param('sssss', $transaction_id, $user_id, $order['rider_id'], $order['rider_id'], $user_id);
     $list->execute();
     $result = $list->get_result();
     while ($row = $result->fetch_assoc()) $messages[] = $row;
@@ -1672,6 +1672,7 @@ let orderStatusRefreshInterval = null;
 function selectCustomerConversation(transactionId) {
     if(!transactionId || !document.getElementById('customer-chat')) return;
     activeMessageTransaction = transactionId;
+    clearCustomerDelayAlert();
     const list=document.getElementById('customer-message-list');
     if(list) list.innerHTML='<div class="customer-chat-empty">Loading this order\'s conversation…</div>';
     if(messageRefreshInterval) clearInterval(messageRefreshInterval);
@@ -1702,11 +1703,19 @@ function formatMessageTime(value) {
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 }
 
+function clearCustomerDelayAlert() {
+    const alert=document.getElementById('customer-delay-alert');
+    const text=document.getElementById('customer-delay-message');
+    if(alert) alert.hidden=true;
+    if(text) text.textContent='';
+}
+
 function renderCustomerMessages(messages) {
     const list=document.getElementById('customer-message-list');
     if(!list) return;
     const delayAlert=document.getElementById('customer-delay-alert');
     const delayText=document.getElementById('customer-delay-message');
+    messages=messages.filter(message=>message.transaction_id===activeMessageTransaction);
     const latestDelay=[...messages].reverse().find(message=>message.sender!==TRACKING_USER_ID && String(message.message||'').startsWith('Delivery update:'));
     if(delayAlert && delayText){
         delayAlert.hidden=!latestDelay;
@@ -1737,6 +1746,7 @@ function renderCustomerMessages(messages) {
 }
 
 function closeCustomerConversation() {
+    clearCustomerDelayAlert();
     activeMessageTransaction = '';
     if(messageRefreshInterval) clearInterval(messageRefreshInterval);
     messageRefreshInterval = null;
@@ -1770,7 +1780,7 @@ document.getElementById('customer-chat-form')?.addEventListener('submit', event=
     }).then(response=>response.json()).then(data=>{
         if(!data.ok) throw new Error(data.error||'Unable to send message.');
         input.value='';
-        renderCustomerMessages(data.messages||[]);
+        if(data.ok && activeMessageTransaction) loadCustomerMessages(activeMessageTransaction);
     }).catch(error=>alert(error.message)).finally(()=>{button.disabled=false;input?.focus();});
 });
 
