@@ -403,8 +403,11 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
         }
 
         .rewards-back-form { margin: 0 0 18px; }
-        .rewards-back-btn { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 10px 16px; border: 1px solid #cde3ef; border-radius: 12px; background: #eef7fc; color: #1769aa; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
-        .rewards-back-btn:hover { background: #deeff9; }
+        .rewards-back-btn { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: #1769aa; font: inherit; font-size: 13px; font-weight: 500; line-height: 1.4; cursor: pointer; }
+        .rewards-back-btn i { font-size: 12px; }
+        @media (hover: hover) {
+            .rewards-back-btn:hover { background: #eef7fc; }
+        }
         .rewards-back-btn:focus-visible { outline: 3px solid #1769aa; outline-offset: 3px; }
         .rewards-hero {
             position: relative;
