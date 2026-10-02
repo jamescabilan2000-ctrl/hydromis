@@ -594,7 +594,12 @@ $container_image_map = [
             <div class="confirm-details">
                 <div class="confirm-row"><span>Order</span><strong id="confirmOrder"></strong></div>
                 <div class="confirm-row"><span>Container</span><strong id="confirmContainer"></strong></div>
+                <div id="confirmWaterIncluded" hidden style="margin:3px 0 8px;color:#587083;font-size:12px;line-height:1.5;">
+                    <i class="fas fa-circle-check" aria-hidden="true" style="color:#08a486;"></i> New container + water included. No extra refill charge.
+                </div>
                 <div class="confirm-row"><span>Fulfillment</span><strong id="confirmFulfillment"></strong></div>
+                <div class="confirm-row"><span id="confirmItemLabel">Items subtotal</span><strong id="confirmItemSubtotal"></strong></div>
+                <div class="confirm-row" id="confirmDeliveryRow"><span>Delivery fee</span><strong id="confirmDeliveryFee"></strong></div>
                 <div class="confirm-row total"><span>Total</span><strong id="confirmTotal"></strong></div>
             </div>
             <div class="confirm-actions">
@@ -732,7 +737,12 @@ $container_image_map = [
                 const fulfillmentChoice = fulfillmentMethod === 'delivery' ? 'Delivery' : 'Self pickup';
                 document.getElementById('confirmOrder').textContent = quantity + ' x ' + itemTitle.textContent;
                 document.getElementById('confirmContainer').textContent = containerChoice;
+                document.getElementById('confirmWaterIncluded').hidden = containerStatus !== 'new';
                 document.getElementById('confirmFulfillment').textContent = fulfillmentChoice;
+                document.getElementById('confirmItemLabel').textContent = containerStatus === 'new' ? 'Container + water' : 'Water refill';
+                document.getElementById('confirmItemSubtotal').textContent = '\u20B1' + (containerStatus === 'new' ? containerTotal.textContent : waterTotal.textContent);
+                document.getElementById('confirmDeliveryRow').style.display = fulfillmentMethod === 'delivery' ? 'flex' : 'none';
+                document.getElementById('confirmDeliveryFee').textContent = hasFreeDeliveryReward ? 'Free (reward applied)' : '\u20B1' + (10 * quantity).toFixed(2);
                 document.getElementById('confirmTotal').textContent = '\u20B1' + reviewTotal.textContent;
                 confirmOverlay.classList.add('open');
                 confirmOverlay.setAttribute('aria-hidden', 'false');
