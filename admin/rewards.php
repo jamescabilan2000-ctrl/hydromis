@@ -31,6 +31,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$stmt->execute()) throw new RuntimeException('Unable to add reward.');
             $stmt->close();
             $_SESSION['rewards_flash'] = $editing ? 'Reward updated. Changes apply to future redemptions.' : 'Reward added. Customers can now redeem it with their points.';
+        } elseif (($_POST['action'] ?? '') === 'delete') {
+            $deleteCode = $_POST['code'] ?? '';
+            if (!is_string($deleteCode) || !in_array($deleteCode, array_column($catalog, 'code'), true)) {
+                throw new InvalidArgumentException('Reward not found.');
+            }
+            if (!set_system_setting($conn, 'reward_deleted_' . $deleteCode, '1', $actor)) {
+                throw new RuntimeException('Unable to delete reward.');
+            }
+            $_SESSION['rewards_flash'] = 'Reward deleted from the catalog. Existing customer claims and redemption history are preserved.';
         } elseif (($_POST['action'] ?? '') === 'settings') {
             $points = $_POST['points_per_gallon'] ?? '';
             if (!is_string($points) || !preg_match('/\A(?:0|[1-9][0-9]?|100)\z/', $points)) throw new InvalidArgumentException('Points per gallon must be a whole number from 0 to 100.');
@@ -84,9 +93,12 @@ function reward_html($value): string { return htmlspecialchars((string)$value, E
 <label class="reward-field">Points earned per gallon<input type="number" name="points_per_gallon" min="0" max="100" step="1" required value="<?= $pointsPerGallon ?>"><small>Applies to new orders. Existing points are unchanged.</small></label>
 <p>Choose the rewards available for redemption.</p>
 <?php foreach ($catalog as $reward): ?>
-<div class="reward-option"><label style="display:flex;gap:12px;flex:1"><input type="checkbox" name="enabled[<?= reward_html($reward['code']) ?>]" value="1" <?= system_int_setting($conn, 'reward_enabled_' . $reward['code'], 1, 0, 1) ? 'checked' : '' ?>><span><strong><?= reward_html($reward['title']) ?> &middot; <?= (int)$reward['points'] ?> points</strong><small><?= reward_html($reward['description']) ?></small></span></label><a class="reward-edit" href="rewards.php?edit=<?= rawurlencode($reward['code']) ?>#reward-editor" aria-label="Edit <?= reward_html($reward['title']) ?>">Edit</a></div>
+<div class="reward-option"><label style="display:flex;gap:12px;flex:1"><input type="checkbox" name="enabled[<?= reward_html($reward['code']) ?>]" value="1" <?= system_int_setting($conn, 'reward_enabled_' . $reward['code'], 1, 0, 1) ? 'checked' : '' ?>><span><strong><?= reward_html($reward['title']) ?> &middot; <?= (int)$reward['points'] ?> points</strong><small><?= reward_html($reward['description']) ?></small></span></label><div style="display:flex;flex-wrap:wrap;gap:4px;"><a class="reward-edit" href="rewards.php?edit=<?= rawurlencode($reward['code']) ?>#reward-editor" aria-label="Edit <?= reward_html($reward['title']) ?>">Edit</a><button type="submit" form="deleteRewardForm" name="code" value="<?= reward_html($reward['code']) ?>" class="reward-edit" style="border:0;background:transparent;color:var(--red);cursor:pointer;min-height:44px;" aria-label="Delete <?= reward_html($reward['title']) ?>">Delete</button></div></div>
 <?php endforeach; ?>
 <button class="reward-save" type="submit">Save reward settings</button>
+</form>
+<form method="post" id="deleteRewardForm" onsubmit="return confirm('Delete this reward from the catalog? Customers will no longer be able to redeem it. Existing claims and history will remain.');">
+<input type="hidden" name="csrf" value="<?= reward_html($_SESSION['rewards_csrf']) ?>"><input type="hidden" name="action" value="delete">
 </form></section>
 <section class="panel" id="reward-editor"><div class="panel-head"><?= $editReward ? 'Edit redemption reward' : 'Add redemption reward' ?></div>
 <form method="post" class="reward-form">

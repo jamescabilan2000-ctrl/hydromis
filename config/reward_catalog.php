@@ -71,6 +71,14 @@ function system_reward_catalog($conn): array {
         $row['points'] = (int)$row['points'];
         $catalog[$row['code']] = $row;
     }
+    // Keep reward definitions and historical claims, but remove deleted rewards
+    // from the catalog used for future redemptions.
+    ensure_system_settings_schema($conn);
+    $deleted = $conn->query("SELECT setting_key FROM system_settings WHERE setting_key LIKE 'reward_deleted_%' AND setting_value='1'");
+    if (!$deleted) throw new RuntimeException('Unable to load reward availability.');
+    while ($row = $deleted->fetch_assoc()) {
+        unset($catalog[substr($row['setting_key'], strlen('reward_deleted_'))]);
+    }
     return array_values($catalog);
 }
 
