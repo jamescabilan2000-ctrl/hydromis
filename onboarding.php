@@ -584,9 +584,6 @@
         .price-slide p { margin-top:8px; font-size:11px; line-height:1.5; }
         .price-list-link { min-height:44px; border:0; background:transparent; color:#08678d; font:700 12px 'DM Sans',sans-serif; cursor:pointer; text-decoration:underline; }
         .hero.show-prices .actions { top:auto; bottom:126px; height:54px; }
-        .slide-controls { position:absolute; bottom:72px; left:0; right:0; z-index:7; display:flex; justify-content:center; gap:6px; }
-        .slide-controls button { min-height:44px; padding:8px 12px; border:1px solid #93cddd; border-radius:999px; background:#082e48; color:#fff; font:600 11px 'DM Sans',sans-serif; cursor:pointer; }
-        .slide-controls button[aria-pressed="true"] { background:#e7faff; color:#07597c; }
         .price-dialog { width:min(92vw,460px); max-height:85vh; margin:auto; padding:22px; border:0; border-radius:18px; color:#103e58; background:#fff; }
         .price-dialog::backdrop { background:rgba(3,20,40,.65); }
         .price-dialog h2 { font-size:20px; margin-bottom:10px; }
@@ -632,11 +629,6 @@
             </div>
             <p>Refill prices apply to customer-owned containers. New container + water: ₱160 each. Delivery: ₱10 per container.</p>
             <button type="button" class="price-list-link" id="openPriceList">View full price list (1–30 gallons)</button>
-        </div>
-        <div class="slide-controls" aria-label="Banner controls">
-            <button type="button" id="sceneSlideButton" aria-pressed="true">Water station</button>
-            <button type="button" id="priceSlideButton" aria-pressed="false">Refill prices</button>
-            <button type="button" id="pauseSlides" aria-label="Pause automatic slides">Pause</button>
         </div>
         <div class="ring ring-1"></div>
         <div class="ring ring-2"></div>
@@ -798,7 +790,6 @@
     const welcomeHero = document.getElementById('welcomeHero');
     const priceSlide = document.getElementById('priceSlide');
     const priceDialog = document.getElementById('priceDialog');
-    const pauseSlides = document.getElementById('pauseSlides');
     let showingPrices = false;
     let slidesPaused = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     function showPricingSlide(show) {
@@ -806,17 +797,7 @@
         welcomeHero.classList.toggle('show-prices', show);
         priceSlide.setAttribute('aria-hidden', String(!show));
         priceSlide.inert = !show;
-        document.getElementById('sceneSlideButton').setAttribute('aria-pressed', String(!show));
-        document.getElementById('priceSlideButton').setAttribute('aria-pressed', String(show));
     }
-    function syncSlidePause() {
-        pauseSlides.textContent = slidesPaused ? 'Play' : 'Pause';
-        pauseSlides.setAttribute('aria-label', slidesPaused ? 'Play automatic slides' : 'Pause automatic slides');
-    }
-    document.getElementById('sceneSlideButton').addEventListener('click', () => showPricingSlide(false));
-    document.getElementById('priceSlideButton').addEventListener('click', () => showPricingSlide(true));
-    pauseSlides.addEventListener('click', () => { slidesPaused = !slidesPaused; syncSlidePause(); });
-    syncSlidePause();
     setInterval(() => {
         const hovered = window.matchMedia('(hover: hover)').matches && welcomeHero.matches(':hover');
         if (!slidesPaused && !document.hidden && !priceDialog.open && !hovered && !welcomeHero.contains(document.activeElement)) showPricingSlide(!showingPrices);
