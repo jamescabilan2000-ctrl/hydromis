@@ -6,6 +6,7 @@ $systemLogo = system_logo_path($conn);
 
 // Initialize variables to prevent undefined variable warnings
 $riders = null;
+$rider_rows = [];
 $total_count = 0;
 $active_count = 0;
 $inactive_count = 0;
@@ -185,6 +186,7 @@ if (!$riders) {
     $error = 'Failed to load riders: ' . $conn->error;
 } else {
     while ($rider_summary = $riders->fetch_assoc()) {
+        $rider_rows[] = $rider_summary;
         if ($rider_summary['status'] === 'active') {
             if ((int)$rider_summary['active_deliveries'] > 0) {
                 $busy_count++;
@@ -192,9 +194,6 @@ if (!$riders) {
                 $available_count++;
             }
         }
-    }
-    if ($riders->num_rows > 0) {
-        $riders->data_seek(0);
     }
 }
 
@@ -882,8 +881,8 @@ html, body {
                         <tbody>
                             <?php 
                             $has_riders = false;
-                            if ($riders) {
-                                while ($row = $riders->fetch_assoc()): 
+                            if ($rider_rows) {
+                                foreach ($rider_rows as $row):
                                     $has_riders = true;
                             ?>
                             <tr>
@@ -930,7 +929,7 @@ html, body {
                                 </td>
                             </tr>
                             <?php 
-                                endwhile; 
+                                endforeach;
                             }
                             if (!$has_riders): 
                             ?>
