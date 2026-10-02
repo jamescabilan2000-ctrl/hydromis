@@ -9,6 +9,8 @@ $riders = null;
 $total_count = 0;
 $active_count = 0;
 $inactive_count = 0;
+$available_count = 0;
+$busy_count = 0;
 $error = null;
 $success_message = '';
 $editing_rider = null;
@@ -171,14 +173,29 @@ $riders = $conn->query("SELECT
         ru.contact_number,
         ru.status,
         ru.created_at,
-        COUNT(t.transaction_id) AS deliveries
+        SUM(CASE WHEN t.delivery_status = 'delivered' THEN 1 ELSE 0 END) AS deliveries,
+        SUM(CASE WHEN t.status = 'approved' AND COALESCE(NULLIF(t.delivery_status, ''), 'assigned') IN ('assigned', 'pending', 'on_way', 'on_the_way') THEN 1 ELSE 0 END) AS active_deliveries,
+        SUM(CASE WHEN t.status = 'approved' AND t.delivery_status IN ('on_way', 'on_the_way') THEN 1 ELSE 0 END) AS on_way_deliveries
     FROM rider_users ru
-    LEFT JOIN transactions t ON t.rider_id = ru.rider_id AND t.delivery_status = 'delivered'
+    LEFT JOIN transactions t ON t.rider_id = ru.rider_id OR (COALESCE(t.rider_id, '') = '' AND t.assigned_rider = ru.rider_id)
     GROUP BY ru.rider_id, ru.username, ru.full_name, ru.age, ru.address, ru.contact_number, ru.status, ru.created_at
     ORDER BY ru.created_at DESC");
 
 if (!$riders) {
     $error = 'Failed to load riders: ' . $conn->error;
+} else {
+    while ($rider_summary = $riders->fetch_assoc()) {
+        if ($rider_summary['status'] === 'active') {
+            if ((int)$rider_summary['active_deliveries'] > 0) {
+                $busy_count++;
+            } else {
+                $available_count++;
+            }
+        }
+    }
+    if ($riders->num_rows > 0) {
+        $riders->data_seek(0);
+    }
 }
 
 ?>
@@ -723,7 +740,7 @@ html, body {
             <!-- Heading -->
             <div style="margin-bottom: 24px;">
                 <div class="page-title">Rider Management</div>
-                <div class="page-subtitle">Create and manage delivery rider accounts</div>
+                <div class="page-subtitle">Manage rider accounts and monitor delivery assignments</div>
             </div>
 
                 <?php if ($success_message): ?>
@@ -769,6 +786,14 @@ html, body {
             </div>
 
             <!-- Create / Edit Rider Form -->
+            <div class="card" style="padding:16px 20px;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                    <div><strong><?php echo $available_count; ?> available</strong> &nbsp;·&nbsp; <strong><?php echo $busy_count; ?> assigned / on delivery</strong></div>
+                    <a href="manage_riders.php" class="btn-action btn-enable"><i class="fas fa-rotate" aria-hidden="true"></i> Refresh status</a>
+                </div>
+                <p style="margin:8px 0 0;font-size:12px;color:var(--muted);">Available means an active account with no unfinished deliveries. Status updates when you refresh this page.</p>
+            </div>
+
             <div class="form-card">
                 <h3>
                     <?php if ($editing_rider): ?>
@@ -847,7 +872,9 @@ html, body {
                                 <th>Age</th>
                                 <th>Address</th>
                                 <th>Contact</th>
-                                <th>Status</th>
+                                <th>Account</th>
+                                <th>Availability</th>
+                                <th>Active deliveries</th>
                                 <th>Created</th>
                                 <th>Action</th>
                             </tr>
@@ -867,6 +894,19 @@ html, body {
                                 <td><?php echo htmlspecialchars($row['address'] ?: '-'); ?></td>
                                 <td><?php echo htmlspecialchars($row['contact_number'] ?: '-'); ?></td>
                                 <td><span class="badge badge-<?php echo $row['status']; ?>"><?php echo ucfirst($row['status']); ?></span></td>
+                                <td>
+                                    <?php
+                                    $rider_work_status = $row['status'] !== 'active' ? 'Inactive' : ((int)$row['on_way_deliveries'] > 0 ? 'On delivery' : ((int)$row['active_deliveries'] > 0 ? 'Assigned' : 'Available'));
+                                    $rider_work_color = $row['status'] !== 'active' ? 'var(--muted)' : ((int)$row['active_deliveries'] > 0 ? '#f59e0b' : '#10b981');
+                                    ?>
+                                    <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:<?php echo $rider_work_color; ?>;"><i class="fas fa-circle" style="font-size:7px;" aria-hidden="true"></i> <?php echo $rider_work_status; ?></span>
+                                </td>
+                                <td>
+                                    <strong><?php echo (int)$row['active_deliveries']; ?></strong>
+                                    <?php if ((int)$row['on_way_deliveries'] > 0): ?>
+                                        <div style="margin-top:4px;font-size:11px;color:var(--muted);"><?php echo (int)$row['on_way_deliveries']; ?> on the way</div>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
                                 <td>
                                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
@@ -894,7 +934,7 @@ html, body {
                             }
                             if (!$has_riders): 
                             ?>
-                            <tr><td colspan="9" style="text-align: center; padding: 24px; color: var(--muted);">No rider accounts yet.</td></tr>
+                            <tr><td colspan="11" style="text-align: center; padding: 24px; color: var(--muted);">No rider accounts yet.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>

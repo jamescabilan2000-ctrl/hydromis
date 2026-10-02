@@ -772,6 +772,20 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                         <td><?php echo htmlspecialchars($row['contact_number']); ?></td>
                                         <td>
                                             ₱<?php echo number_format((float)$row['amount'], 2); ?>
+                                            <?php if (($row['fulfillment_method'] ?? '') === 'delivery' && (int)($row['quantity'] ?? 0) > 0 && isset($row['price_per_unit'])): ?>
+                                                <?php
+                                                // The saved total includes delivery; use saved prices rather
+                                                // than today's rates so discounts and free delivery stay accurate.
+                                                $order_subtotal = (float)$row['price_per_unit'] * (int)$row['quantity'];
+                                                $order_delivery_fee = max(0, round((float)$row['amount'] - $order_subtotal + (float)($row['discount'] ?? 0), 2));
+                                                ?>
+                                                <div style="margin-top:5px;font-size:11px;color:var(--muted);white-space:normal;">
+                                                    <i class="fas fa-truck" aria-hidden="true"></i>
+                                                    Delivery fee: <strong style="color:var(--text);">₱<?php echo number_format($order_delivery_fee, 2); ?></strong>
+                                                    <?php if ($order_delivery_fee == 0): ?><span> (Free delivery)</span><?php endif; ?>
+                                                    <span style="display:block;margin-top:2px;">Included in total</span>
+                                                </div>
+                                            <?php endif; ?>
                                             <?php if (!empty($row['payment_method']) && $row['payment_method'] !== 'cash'): ?>
                                                 <div style="font-size: 11px; margin-top: 4px;">
                                                     <span class="badge badge-info" style="font-size: 10px;"><?php echo strtoupper($row['payment_method']); ?></span>
