@@ -574,8 +574,7 @@
             .stats { margin-top: 10px; }
         }
         /* Readable pricing slide; only opacity changes, avoiding background repaints. */
-        .hero { min-height: 540px; }
-        .price-slide { position:absolute; inset:100px 20px auto; z-index:4; max-width:520px; margin:auto; padding:16px; border:1px solid #bceaf0; border-radius:18px; background:#f1fbff; color:#103e58; opacity:0; visibility:hidden; transition:opacity .45s ease,visibility .45s ease; }
+        .price-slide { position:absolute; inset:24px 20px auto; z-index:4; max-width:520px; margin:auto; padding:16px; border:1px solid #bceaf0; border-radius:18px; background:#f1fbff; color:#103e58; opacity:0; visibility:hidden; transition:opacity .45s ease,visibility .45s ease; }
         .hero.show-prices .price-slide { opacity:1; visibility:visible; }
         .price-slide h2 { font:800 20px 'Sora',sans-serif; margin-bottom:10px; }
         .price-tiers { display:flex; gap:10px; }
@@ -583,7 +582,8 @@
         .price-tier strong { display:block; margin-top:4px; font-size:21px; color:#087b9c; }
         .price-slide p { margin-top:8px; font-size:11px; line-height:1.5; }
         .price-list-link { min-height:44px; border:0; background:transparent; color:#08678d; font:700 12px 'DM Sans',sans-serif; cursor:pointer; text-decoration:underline; }
-        .hero.show-prices .actions { top:auto; bottom:126px; height:54px; }
+        .hero.show-prices .brand { visibility:hidden; }
+        .hero.show-prices .actions { top:auto; bottom:76px; height:54px; }
         .price-dialog { width:min(92vw,460px); max-height:85vh; margin:auto; padding:22px; border:0; border-radius:18px; color:#103e58; background:#fff; }
         .price-dialog::backdrop { background:rgba(3,20,40,.65); }
         .price-dialog h2 { font-size:20px; margin-bottom:10px; }
@@ -593,10 +593,18 @@
         .price-dialog p { font-size:12px; line-height:1.6; margin:12px 0; }
         .price-dialog button { min-height:44px; padding:10px 18px; border:0; border-radius:10px; background:#087b9c; color:#fff; cursor:pointer; }
         @media(max-width:600px) {
-            .hero { flex-basis:540px; min-height:540px; animation:none; }
+            .hero { flex-basis:290px; min-height:290px; animation:none; }
             .hero::after { display:none; }
             .hero:hover { filter:none; }
-            .price-slide { top:112px; }
+            .brand { max-width:100%; gap:6px; padding:6px 10px; font-size:clamp(9px,2.6vw,12px); letter-spacing:.3px; }
+            .price-slide { top:16px; left:16px; right:16px; padding:12px; border-radius:14px; }
+            .price-slide h2 { font-size:17px; margin-bottom:8px; }
+            .price-tiers { gap:8px; }
+            .price-tier { padding:8px; font-size:11px; }
+            .price-tier strong { font-size:19px; }
+            .price-slide p { display:none; }
+            .price-list-link { display:block; width:100%; text-align:center; font-size:11px; }
+            .hero.show-prices .actions { bottom:30px; height:50px; }
         }
         @media(prefers-reduced-motion:reduce) { .price-slide { transition:none; } .hero,.hero::after { animation:none; } }
     </style>
