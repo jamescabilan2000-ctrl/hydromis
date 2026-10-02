@@ -1230,13 +1230,19 @@ $final_total = $item_total + $delivery_fee - $discount;
                         <div class="fulfillment-badge"><i class="fas fa-circle-check"></i> Selected by you</div>
                         <h3 class="delivery-title"><?php echo $fulfillment_method === 'delivery' ? 'Door-to-door delivery' : 'Self pickup'; ?></h3>
                         <?php if ($fulfillment_method === 'delivery'): ?>
-                        <div class="delivery-date">
-                            <i class="far fa-calendar"></i>
-                            <span id="displayDate">Select delivery date</span>
-                        </div>
-                        <div class="delivery-time">
-                            <span id="displayTime">Select time slot</span>
-                            <a href="javascript:void(0);" class="change-link" onclick="openDateTimeModal()">Change</a>
+                        <div class="delivery-schedule" aria-labelledby="scheduleTitle">
+                            <h4 id="scheduleTitle">Delivery schedule</h4>
+                            <button type="button" class="schedule-field" onclick="openDateTimeModal('deliveryDate')" aria-haspopup="dialog">
+                                <i class="far fa-calendar" aria-hidden="true"></i>
+                                <span class="schedule-copy"><span class="schedule-label">Delivery date</span><span id="displayDate">Choose a date</span></span>
+                                <span class="schedule-action" id="dateAction">Choose</span>
+                            </button>
+                            <button type="button" class="schedule-field" id="scheduleTimeButton" onclick="openDateTimeModal('timeSlot')" aria-haspopup="dialog" disabled>
+                                <i class="far fa-clock" aria-hidden="true"></i>
+                                <span class="schedule-copy"><span class="schedule-label">Time slot</span><span id="displayTime">Choose a delivery time</span></span>
+                                <span class="schedule-action" id="timeAction">Choose</span>
+                            </button>
+                            <p class="schedule-hint" id="scheduleHint">Choose a date first. Deliveries start at 7:30 AM.</p>
                         </div>
                         <div class="address-box filled" id="addressBox" style="cursor: default; background: #ecfdf5; border: 1px solid #0d9488;">
                             <i class="fas fa-map-pin" style="color: #0d9488;"></i>
@@ -1478,22 +1484,37 @@ $final_total = $item_total + $delivery_fee - $discount;
         </form>
     </div>
 
+    <style>
+        .delivery-schedule { margin: 16px 0; }
+        .delivery-schedule h4 { margin: 0 0 9px; color: #23445d; font-size: 13px; font-weight: 700; }
+        .schedule-field { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 56px; margin-top: 8px; padding: 11px 12px; border: 1px solid #d6e5ee; border-radius: 11px; background: #f8fbfd; color: #23445d; font: inherit; text-align: left; cursor: pointer; }
+        .schedule-field > i { color: #1769aa; font-size: 16px; }
+        .schedule-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 3px; font-size: 13px; }
+        .schedule-label { color: #526b7d; font-size: 11px; font-weight: 600; }
+        .schedule-action { color: #1769aa; font-size: 12px; font-weight: 600; }
+        .schedule-field:disabled { cursor: default; background: #f4f7f9; }
+        .schedule-field:disabled .schedule-action { display: none; }
+        .schedule-field:focus-visible { outline: 3px solid #1769aa; outline-offset: 2px; }
+        .schedule-hint { margin: 8px 0 0; color: #526b7d; font-size: 12px; line-height: 1.5; }
+        @media (hover: hover) { .schedule-field:hover:not(:disabled) { border-color: #1769aa; background: #eef7fc; } }
+    </style>
+
     <!-- Date/Time Modal -->
     <div class="modal-overlay" id="dateTimeModal">
-        <div class="modal-content">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="scheduleModalTitle">
             <div class="modal-header">
-                <i class="far fa-calendar" style="color: #2563eb; margin-right: 8px;"></i> Select Delivery Date & Time
+                <span id="scheduleModalTitle"><i class="far fa-calendar" style="color: #2563eb; margin-right: 8px;"></i> Delivery schedule</span>
             </div>
             <div class="form-group">
-                <label class="form-label">Delivery Date</label>
+                <label class="form-label" for="deliveryDate">Delivery date</label>
                 <input type="date" class="form-control" id="deliveryDate">
                 <div class="validation-message" id="dateError"></div>
             </div>
             <div class="form-group">
-                <label class="form-label">Time Slot</label>
-                <select class="form-control" id="timeSlot">
-                    <option value="">Select time slot</option>
-                    <option value="09:00-12:00">09:00 AM - 12:00 PM</option>
+                <label class="form-label" for="timeSlot">Time slot</label>
+                <select class="form-control" id="timeSlot" disabled>
+                    <option value="">Choose a delivery time</option>
+                    <option value="07:30-12:00">7:30 AM - 12:00 PM</option>
                     <option value="12:00-15:00">12:00 PM - 03:00 PM</option>
                     <option value="15:00-18:00">03:00 PM - 06:00 PM</option>
                 </select>
@@ -1513,18 +1534,30 @@ $final_total = $item_total + $delivery_fee - $discount;
         let selectedTime = '';
         let selectedPayment = '';
 
-        function openDateTimeModal() {
+        let scheduleOpener = null;
+        function openDateTimeModal(focusField = 'deliveryDate') {
+            scheduleOpener = document.activeElement;
             document.getElementById('dateTimeModal').classList.add('active');
             const today = new Date();
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
-            const minDate = tomorrow.toISOString().split('T')[0];
+            const minDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
             document.getElementById('deliveryDate').setAttribute('min', minDate);
+            document.getElementById('deliveryDate').value = selectedDate;
+            document.getElementById('timeSlot').value = selectedTime;
+            document.getElementById('timeSlot').disabled = !selectedDate;
+            document.getElementById(selectedDate ? focusField : 'deliveryDate').focus();
         }
+
+        document.getElementById('deliveryDate').addEventListener('change', function() {
+            document.getElementById('timeSlot').disabled = !this.value;
+            if (!this.value) document.getElementById('timeSlot').value = '';
+        });
 
         function closeDateTimeModal() {
             document.getElementById('dateTimeModal').classList.remove('active');
             clearDateTimeErrors();
+            scheduleOpener?.focus();
         }
 
         function clearDateTimeErrors() {
@@ -1565,8 +1598,8 @@ $final_total = $item_total + $delivery_fee - $discount;
                 const date = document.getElementById('deliveryDate').value;
                 const time = document.getElementById('timeSlot').value;
 
-                const dateObj = new Date(date);
-                const options = { weekday: 'long', month: 'long', day: 'numeric' };
+                const dateObj = new Date(date + 'T00:00:00');
+                const options = { month: 'short', day: 'numeric', year: 'numeric' };
                 const formattedDate = dateObj.toLocaleDateString('en-US', options);
 
                 selectedDate = date;
@@ -1574,7 +1607,11 @@ $final_total = $item_total + $delivery_fee - $discount;
                 document.getElementById('hiddenDate').value = date;
                 document.getElementById('hiddenTime').value = time;
                 document.getElementById('displayDate').textContent = formattedDate;
-                document.getElementById('displayTime').textContent = time.replace('-', ' - ');
+                document.getElementById('displayTime').textContent = document.getElementById('timeSlot').selectedOptions[0].textContent;
+                document.getElementById('dateAction').textContent = 'Edit';
+                document.getElementById('timeAction').textContent = 'Edit';
+                document.getElementById('scheduleTimeButton').disabled = false;
+                document.getElementById('scheduleHint').textContent = 'Deliveries start at 7:30 AM. You can edit your schedule before placing the order.';
 
                 closeDateTimeModal();
             }
