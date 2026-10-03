@@ -42,12 +42,8 @@ if ($period !== 'all') {
     $params[] = $start->format('Y-m-d H:i:s');
     $params[] = $end->format('Y-m-d H:i:s');
 }
-if ($query !== '') {
-    $filters .= " AND (LOCATE(LOWER(?), LOWER(COALESCE(u.full_name, 'Unknown Customer'))) > 0
-        OR LOCATE(LOWER(?), LOWER(COALESCE(u.address, 'No address provided'))) > 0
-        OR LOCATE(LOWER(?), LOWER(t.transaction_id)) > 0)";
-    array_push($params, $query, $query);
-}
+// Names and addresses are encrypted in storage. Search after fetch_assoc()
+// decrypts them rather than comparing the search text to encrypted SQL values.
 $sql = "SELECT t.transaction_id, t.amount, t.updated_at, COALESCE(u.full_name, 'Unknown Customer') AS customer, COALESCE(u.address, 'No address provided') AS address
         FROM transactions t
         LEFT JOIN users u ON u.user_id = t.user_id
@@ -62,6 +58,9 @@ while ($delivery = $result->fetch_assoc()) {
     $day = date('Y-m-d', strtotime($delivery['updated_at']));
     $history[$day][] = $delivery;
 }
+$matchesQuery = static fn($delivery) => $query === '' || str_contains(mb_strtolower(implode(' ', [$delivery['customer'], $delivery['address'], $delivery['transaction_id']])), mb_strtolower($query));
+$matchingCount = 0;
+foreach ($history as $dayDeliveries) foreach ($dayDeliveries as $delivery) if ($matchesQuery($delivery)) $matchingCount++;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -100,9 +99,10 @@ while ($delivery = $result->fetch_assoc()) {
   <form class="history-filters" method="get" role="search" aria-label="Find completed deliveries">
     <label for="history-search">Find a delivery</label>
     <div class="search-row">
-      <input id="history-search" type="search" name="q" value="<?= $escape($query) ?>" placeholder="Name, address or transaction #">
+      <input id="history-search" type="search" name="q" value="<?= $escape($query) ?>" placeholder="Start typing a name, address or transaction #" aria-describedby="history-search-help" autocomplete="off">
       <button type="submit">Search</button>
     </div>
+    <small id="history-search-help" style="color:#536e82;font-size:12px;">Matches appear as you type within the selected dates. Choose All History to search older deliveries.</small>
     <input type="hidden" name="period" value="<?= $escape($period) ?>">
     <div class="date-filters" aria-label="Delivery dates">
       <?php foreach ($periods as $value => $label): if ($value === 'date') continue; ?>
@@ -115,13 +115,13 @@ while ($delivery = $result->fetch_assoc()) {
       <button type="submit" name="period" value="date">Go</button>
     </div>
   </form>
-  <p class="results-summary" role="status"><?= $result->num_rows ?> <?= $result->num_rows === 1 ? 'delivery' : 'deliveries' ?> &middot; <?= $period === 'date' ? $escape($selectedDate->format('M j, Y')) : $periods[$period] ?><?= $query !== '' ? ' &middot; Matching ?' . $escape($query) . '?' : '' ?></p>
-  <?php if (empty($history)): ?>
-    <div class="empty"><i class="fas fa-inbox" aria-hidden="true"></i>No deliveries found for these filters.<br><a href="history.php?period=all">View all history</a></div>
-  <?php else: foreach ($history as $day => $deliveries): ?>
-    <h2 class="day"><?= $day === $today->format('Y-m-d') ? 'Today' : $escape(date('D, M j, Y', strtotime($day))) ?> <span>&middot; <?= count($deliveries) ?> <?= count($deliveries) === 1 ? 'delivery' : 'deliveries' ?></span></h2>
+  <p class="results-summary" id="history-results-summary" role="status" data-period="<?= $escape($period === 'date' ? $selectedDate->format('M j, Y') : $periods[$period]) ?>"><?= $matchingCount ?> <?= $matchingCount === 1 ? 'delivery' : 'deliveries' ?> &middot; <?= $period === 'date' ? $escape($selectedDate->format('M j, Y')) : $periods[$period] ?></p>
+    <div class="empty" id="history-no-results" <?= $matchingCount > 0 ? 'hidden' : '' ?>><i class="fas fa-inbox" aria-hidden="true"></i>No deliveries found for these filters.<br><a href="history.php?period=all">View all history</a></div>
+  <?php foreach ($history as $day => $deliveries): $dayCount = count(array_filter($deliveries, $matchesQuery)); ?>
+    <section class="history-day-group" <?= $dayCount === 0 ? 'hidden' : '' ?>>
+    <h2 class="day"><?= $day === $today->format('Y-m-d') ? 'Today' : $escape(date('D, M j, Y', strtotime($day))) ?> <span>&middot; <span class="day-match-count"><?= $dayCount ?></span> deliveries</span></h2>
     <?php foreach ($deliveries as $delivery): ?>
-      <details class="delivery-row">
+      <details class="delivery-row" data-search="<?= $escape(implode(' ', [$delivery['customer'], $delivery['address'], $delivery['transaction_id']])) ?>" <?= !$matchesQuery($delivery) ? 'hidden' : '' ?>>
         <summary>
           <span class="delivery-customer"><strong class="name"><?= $escape($delivery['customer']) ?></strong><time><?= date('h:i A', strtotime($delivery['updated_at'])) ?></time></span>
           <strong class="amount">&#8369;<?= number_format((float)$delivery['amount'], 2) ?></strong>
@@ -130,7 +130,38 @@ while ($delivery = $result->fetch_assoc()) {
         <div class="delivery-details"><span class="address"><i class="fas fa-location-dot" aria-hidden="true"></i> <?= $escape($delivery['address']) ?></span><span class="details">Transaction #<?= $escape($delivery['transaction_id']) ?></span></div>
       </details>
     <?php endforeach; ?>
-  <?php endforeach; endif; ?>
+    </section>
+  <?php endforeach; ?>
 </main>
+<style>.delivery-row[hidden],.history-day-group[hidden],#history-no-results[hidden]{display:none}</style>
+<script>
+(() => {
+    const input=document.getElementById('history-search');
+    const summary=document.getElementById('history-results-summary');
+    function filterDeliveries(){
+        const query=input.value.trim().toLocaleLowerCase();
+        let total=0;
+        document.querySelectorAll('.history-day-group').forEach(group=>{
+            let matches=0;
+            group.querySelectorAll('.delivery-row').forEach(row=>{
+                row.hidden=!row.dataset.search.toLocaleLowerCase().includes(query);
+                if(!row.hidden)matches++;
+            });
+            group.hidden=matches===0;
+            group.querySelector('.day-match-count').textContent=matches;
+            total+=matches;
+        });
+        summary.textContent=total+' '+(total===1?'delivery':'deliveries')+' · '+summary.dataset.period+(query?' · Matching “'+input.value.trim()+'”':'');
+        document.getElementById('history-no-results').hidden=total>0;
+    }
+    input.addEventListener('input',filterDeliveries);
+    input.closest('form').addEventListener('submit',event=>{
+        if(event.submitter?.name==='period')return;
+        event.preventDefault();
+        filterDeliveries();
+    });
+    filterDeliveries();
+})();
+</script>
 </body>
 </html>
