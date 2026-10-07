@@ -1,6 +1,7 @@
 <?php
 require_once 'check_auth.php';
 require_once '../config/database.php';
+require_once '../config/cap_request.php';
 require_once '../config/system_settings.php';
 
 $systemLogo = system_logo_path($conn);
@@ -1253,6 +1254,13 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                     <span style="font-family:var(--font-head);font-weight:700;color:var(--green);font-size:13px;"><?php echo format_currency($row['amount']); ?></span>
                   </div>
                 </div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px 16px;margin:14px 0;padding:13px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.24);font-size:12px;">
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase">Gallons ordered</span><strong><?= (int)($row['quantity'] ?? 0) ?></strong></div>
+                  <?php $staff_caps = saved_cap_details((string)($row['notes'] ?? '')); ?>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Caps requested</span><strong><?= $staff_caps['quantity'] > 0 ? $staff_caps['quantity'] . ' caps' : 'No caps requested' ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cap price / unit</span><strong><?= format_currency($staff_caps['price']) ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Caps subtotal</span><strong><?= format_currency($staff_caps['subtotal']) ?></strong></div>
+                  </div>
                 <?php $paymentVerified = ($row['payment_status'] ?? '') === 'paid'; ?>
                 <?php if (!empty($rider_list) && $ds !== 'delivered' && $paymentVerified): ?>
                 <form method="POST" class="assign-row">
@@ -1318,6 +1326,10 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                   <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Price / Unit</span><strong><?php echo format_currency($pickup['price_per_unit']); ?></strong></div>
                   <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Container</span><strong><?php echo htmlspecialchars(ucwords(str_replace('-', ' ', (string)($pickup['container_size'] ?: 'Not specified'))) . ' · ' . ucfirst((string)($pickup['container_status'] ?: 'existing'))); ?></strong></div>
                   <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Payment</span><strong><?php echo htmlspecialchars(strtoupper((string)$pickup['payment_method']) . ' · ' . ucfirst((string)$pickup['payment_status'])); ?></strong></div>
+                  <?php $staff_caps = saved_cap_details((string)($pickup['notes'] ?? '')); ?>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Caps requested</span><strong><?= $staff_caps['quantity'] > 0 ? $staff_caps['quantity'] . ' caps' : 'No caps requested' ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cap price / unit</span><strong><?= format_currency($staff_caps['price']) ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Caps subtotal</span><strong><?= format_currency($staff_caps['subtotal']) ?></strong></div>
                   <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Customer ID</span><strong><?php echo htmlspecialchars($pickup['user_id']); ?></strong></div>
                   <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Ordered</span><strong><?php echo date('M d, Y · h:i A', strtotime($pickup['created_at'])); ?></strong></div>
                 </div>

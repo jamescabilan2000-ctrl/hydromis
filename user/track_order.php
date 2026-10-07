@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once '../config/cap_request.php';
 require_once '../config/inventory_service.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -1003,6 +1004,13 @@ function compactTransactionId(string $id): string {
                                 <span class="txn-val discount">−₱<?php echo number_format($txn['discount'],2); ?></span>
                             </div>
                             <?php endif; ?>
+<?php $tracking_caps = saved_cap_details((string)($txn['notes'] ?? '')); ?>
+<div class="txn-row"><span class="txn-lbl">Caps requested</span><span class="txn-val"><?= $tracking_caps['quantity'] > 0 ? $tracking_caps['quantity'] . ' caps' : 'No caps requested' ?></span></div>
+<?php if ($tracking_caps['quantity'] > 0): ?>
+<div class="txn-row"><span class="txn-lbl">Cap price / unit</span><span class="txn-val">&#8369;<?= number_format($tracking_caps['price'],2) ?></span></div>
+<div class="txn-row"><span class="txn-lbl">Caps subtotal</span><span class="txn-val">&#8369;<?= number_format($tracking_caps['subtotal'],2) ?></span></div>
+<?php endif; ?>
+
                             <div class="txn-row">
                                 <span class="txn-lbl" style="font-weight:800;color:var(--navy);">Total</span>
                                 <span class="txn-val total">₱<?php echo number_format($txn['amount'],2); ?></span>
@@ -1321,6 +1329,13 @@ function compactTransactionId(string $id): string {
                 <span class="txn-val discount">−₱<?php echo number_format($txn['discount'],2); ?></span>
             </div>
             <?php endif; ?>
+<?php $tracking_caps = saved_cap_details((string)($txn['notes'] ?? '')); ?>
+<div class="txn-row"><span class="txn-lbl">Caps requested</span><span class="txn-val"><?= $tracking_caps['quantity'] > 0 ? $tracking_caps['quantity'] . ' caps' : 'No caps requested' ?></span></div>
+<?php if ($tracking_caps['quantity'] > 0): ?>
+<div class="txn-row"><span class="txn-lbl">Cap price / unit</span><span class="txn-val">&#8369;<?= number_format($tracking_caps['price'],2) ?></span></div>
+<div class="txn-row"><span class="txn-lbl">Caps subtotal</span><span class="txn-val">&#8369;<?= number_format($tracking_caps['subtotal'],2) ?></span></div>
+<?php endif; ?>
+
             <div class="txn-row">
                 <span class="txn-lbl" style="font-weight:800;color:var(--navy);">Total</span>
                 <span class="txn-val total">₱<?php echo number_format($txn['amount'],2); ?></span>

@@ -1,6 +1,7 @@
 <?php
 require_once 'check_auth.php';
 require_once '../config/database.php';
+require_once '../config/cap_request.php';
 require_once '../config/storage_service.php';
 require_once '../config/inventory_service.php';
 ensure_inventory_schema($conn);
@@ -777,7 +778,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                                 // The saved total includes delivery; use saved prices rather
                                                 // than today's rates so discounts and free delivery stay accurate.
                                                 $order_subtotal = (float)$row['price_per_unit'] * (int)$row['quantity'];
-                                                $order_delivery_fee = max(0, round((float)$row['amount'] - $order_subtotal + (float)($row['discount'] ?? 0), 2));
+                                                $order_delivery_fee = max(0, round((float)$row['amount'] - $order_subtotal - saved_cap_details((string)($row['notes'] ?? ''))['subtotal'] + (float)($row['discount'] ?? 0), 2));
                                                 ?>
                                                 <div style="margin-top:5px;font-size:11px;color:var(--muted);white-space:normal;">
                                                     <i class="fas fa-truck" aria-hidden="true"></i>
