@@ -1,6 +1,5 @@
 <?php
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
-require_once '../config/gallon_caps.php';
 require_once '../config/customer_order_access.php';
 if (!isset($transaction)) { header('Location: track_order.php'); exit; }
 require_customer_order_access((string)$transaction['user_id']);
@@ -15,7 +14,7 @@ require_customer_order_access((string)$transaction['user_id']);
     <script src="../js/ui-protection.js" defer></script>
 </head>
 <body>
-    <main class="page-shell"><?php render_order_caps($transaction); ?>
+    <main class="page-shell">
         <a href="track_order.php" class="back-btn">
             <i class="fas fa-arrow-left"></i> Back to Orders
         </a>
@@ -82,7 +81,7 @@ require_customer_order_access((string)$transaction['user_id']);
                     </div>
                     <div class="breakdown-row">
                         <span class="breakdown-label">Subtotal</span>
-                        <span class="breakdown-value">₱<?php echo number_format(order_price_breakdown($transaction)['water'], 2); ?></span>
+                        <span class="breakdown-value">₱<?php echo number_format($transaction['quantity'] * $transaction['price_per_unit'], 2); ?></span>
                     </div>
                     <?php if ($transaction['discount'] > 0): ?>
                     <div class="breakdown-row">
@@ -92,7 +91,7 @@ require_customer_order_access((string)$transaction['user_id']);
                     <?php endif; ?>
                     <div class="breakdown-row">
                         <span class="breakdown-label"><?php echo ($transaction['fulfillment_method'] ?? '') === 'pickup' ? 'Pickup Fee' : 'Delivery Fee'; ?></span>
-                        <span class="breakdown-value"><?php echo ($transaction['fulfillment_method'] ?? '') === 'pickup' ? 'Free' : '₱' . number_format(order_price_breakdown($transaction)['delivery'], 2); ?></span>
+                        <span class="breakdown-value"><?php echo ($transaction['fulfillment_method'] ?? '') === 'pickup' ? 'Free' : '₱' . number_format(10 * (int)$transaction['quantity'], 2); ?></span>
                     </div>
                     <div class="breakdown-row total">
                         <span class="breakdown-label">Total Amount</span>

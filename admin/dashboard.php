@@ -107,7 +107,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
     try {
         $validatedPrices = validate_container_prices($settings['containerPrices'] ?? null);
-        $validatedCapPrice = trim((string)($settings['gallonCapPrice'] ?? '')) === '' ? null : cap_price_cents($settings['gallonCapPrice']) / 100;
     } catch (InvalidArgumentException $e) {
         http_response_code(422);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -167,8 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
     
     $pricesSaved = set_system_setting($conn, 'container_bundle_prices', json_encode($validatedPrices), (string)$_SESSION['admin_id']);
-    $capPriceSaved = $validatedCapPrice === null ? (bool)$conn->query("DELETE FROM system_settings WHERE setting_key='gallon_cap_unit_price'") : set_system_setting($conn, 'gallon_cap_unit_price', number_format($validatedCapPrice, 2, '.', ''), (string)$_SESSION['admin_id']);
-    if ($pricesSaved && $capPriceSaved && $conn->query($sql)) {
+    if ($pricesSaved && $conn->query($sql)) {
         echo json_encode(['success' => true, 'message' => 'Settings saved.' . $passwordMessage]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Error saving settings']);
@@ -853,7 +851,6 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
             <div class="settings-section">
                 <div class="settings-section-title">Container pricing</div>
                 <p class="settings-row-desc">Refills cost PHP 80 total for 1&ndash;4 gallons and PHP 15 per gallon for 5 or more. New containers cost PHP 160 each including water by default. Set the complete filled-container price below. Delivery is charged separately. Changes apply to new orders.</p>
-                <div class="settings-row"><label class="settings-row-info" for="gallonCapPrice"><span class="settings-row-label">Gallon cap unit price (PHP)</span><span class="settings-row-desc">Applies to new orders. Leave unconfigured to disable cap requests.</span></label><input class="settings-select" id="gallonCapPrice" type="number" min="0" max="99999.99" step="0.01" value="<?= htmlspecialchars((string)(configured_cap_price($conn) ?? '')) ?>" placeholder="Set price" style="width:112px"></div>
                 <?php foreach (['2.5gal-slim' => '2.5 Gallon Slim', '5gal-slim' => '5 Gallon Slim', '5gal-round' => '5 Gallon Round'] as $size => $label): ?>
                     <?php foreach (['container' => 'New container including water'] as $kind => $priceLabel): ?>
                     <div class="settings-row">
@@ -1463,7 +1460,6 @@ function saveSettings() {
         twoFactor: document.getElementById('tog-two-factor')?.checked ?? false,
         sessionTimeout: document.getElementById('sel-session-timeout')?.value || '1 hour',
         containerPrices,
-        gallonCapPrice: document.getElementById('gallonCapPrice').value,
     };
     
     const btn = document.querySelector('.btn-save');

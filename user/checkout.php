@@ -21,7 +21,6 @@ if (!$user_id) {
 
 require_once '../config/customer_order_access.php';
 require_customer_order_access((string)$user_id);
-
 $sql = "SELECT * FROM users WHERE user_id = '$user_id'";
 $result = $conn->query($sql);
 if (!$result || $result->num_rows === 0) {
@@ -98,7 +97,7 @@ if ($container_status === 'new') {
 }
 $stock_blocked = $quantity > $available_stock || ($container_status === 'new' && $quantity > $new_container_stock);
 if ($edit_transaction_id !== '') {
-    $edit_stmt = $conn->prepare("SELECT cap_quantity, cap_unit_price, cap_subtotal, delivery_latitude, delivery_longitude, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, quantity FROM transactions WHERE transaction_id = ? AND user_id = ? AND status = 'pending' LIMIT 1");
+    $edit_stmt = $conn->prepare("SELECT notes, delivery_latitude, delivery_longitude, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, quantity FROM transactions WHERE transaction_id = ? AND user_id = ? AND status = 'pending' LIMIT 1");
     if ($edit_stmt) {
         $edit_stmt->bind_param('ss', $edit_transaction_id, $user_id);
         $edit_stmt->execute();
@@ -147,10 +146,8 @@ $item_total = $water_total + $new_container;
 
 $discount = 0;
 $delivery_fee = $fulfillment_method === 'delivery' && !$free_delivery_reward ? 10 * $quantity : 0;
-$cap_price = configured_cap_price($conn);
-$cap_quantity = (int)($edit_order['cap_quantity'] ?? 0);
-$cap_subtotal = $cap_quantity * ($cap_price ?? 0);
-$final_total = $item_total + $cap_subtotal + $delivery_fee - $discount;
+$final_total = $item_total + $delivery_fee - $discount;
+$cap_requested = isset($_POST['request_gallon_cap']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1279,7 +1276,7 @@ $final_total = $item_total + $cap_subtotal + $delivery_fee - $discount;
                         <div class="checkout-product-name">
                             <?php echo htmlspecialchars($size_map[$container_size] . ' - ' . ucfirst($type_map[$container_size])); ?>
                         </div>
-                        <div class="checkout-product-price" id="waterUnitPrice">
+                        <div class="checkout-product-price">
                             ₱<?php echo number_format($price_per_unit, 2); ?> per unit
                         </div>
                         </div>
@@ -1295,16 +1292,6 @@ $final_total = $item_total + $cap_subtotal + $delivery_fee - $discount;
                         </div>
                     </div>
                 </div>
-                <div style="margin:12px 0">
-                    <label><input type="checkbox" name="add_gallon_cap" id="addGallonCap" form="checkoutForm" value="1" <?= $cap_quantity > 0 ? 'checked' : '' ?> <?= $cap_price === null ? 'disabled' : '' ?> onchange="updateDisplay()"> Add Gallon Cap</label>
-                    <?php if ($cap_price === null): ?><div>Gallon caps are currently unavailable.</div><?php endif; ?>
-                    <div id="capFields" <?= $cap_quantity > 0 ? '' : 'hidden' ?>>
-                        <label for="capQuantity">Cap quantity</label>
-                        <input type="number" id="capQuantity" name="cap_quantity" form="checkoutForm" min="1" max="99999" step="1" value="<?= $cap_quantity ?: 1 ?>" oninput="updateDisplay()">
-                        <div>Unit price: PHP <?= number_format($cap_price ?? 0, 2) ?> · Subtotal: <span id="capSubtotal">PHP <?= number_format($cap_subtotal, 2) ?></span></div>
-                    </div>
-                </div>
-                <div class="summary-row" id="waterBreakdown"></div><div class="summary-row" id="capsBreakdown"></div>
                 <?php if ($container_status === 'new'): ?>
                 <div style="display: flex; justify-content: space-between; font-size: 13px; color: #6b7280; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
                     <span>New container + water included</span>
@@ -1322,7 +1309,7 @@ $final_total = $item_total + $cap_subtotal + $delivery_fee - $discount;
                 <div class="summary-table">
                     <div class="summary-row">
                         <span class="summary-label">Item total</span>
-                        <span class="summary-value" id="summaryItemTotal">₱<?php echo number_format($item_total + $cap_subtotal, 2); ?></span>
+                        <span class="summary-value" id="summaryItemTotal">₱<?php echo number_format($item_total, 2); ?></span>
                     </div>
                     <div class="summary-row">
                         <span class="summary-label"><?php echo $fulfillment_method === 'delivery' ? 'Delivery fee' : 'Pickup fee'; ?></span>
@@ -1350,6 +1337,7 @@ $final_total = $item_total + $cap_subtotal + $delivery_fee - $discount;
             </div>
         <?php endif; ?>
         <form method="POST" action="purchase.php" enctype="multipart/form-data" style="margin-bottom: 20px;" id="checkoutForm" onsubmit="return validateCheckout(event);">
+            <?php if ($cap_requested): ?><input type="hidden" name="request_gallon_cap" value="1"><?php endif; ?>
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['customer_order_csrf']) ?>">
             <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user_id); ?>">
             <input type="hidden" name="buy_submit" value="1">
@@ -1489,7 +1477,8 @@ $final_total = $item_total + $cap_subtotal + $delivery_fee - $discount;
                 <label class="comment-label">
                     <i class="fas fa-comment-alt" style="color: #2563eb;"></i> Special Instructions (Optional)
                 </label>
-                <textarea class="comment-textarea" name="customer_notes" id="customerNotes" placeholder="<?php echo $fulfillment_method === 'delivery' ? 'e.g., Please leave at front door, handle with care' : 'e.g., Preferred collection time or other notes'; ?>"></textarea>
+                <textarea class="comment-textarea" name="customer_notes" id="customerNotes" placeholder="<?php echo $fulfillment_method === 'delivery' ? 'e.g., Please leave at front door, handle with care' : 'e.g., Preferred collection time or other notes'; ?>"><?= htmlspecialchars(trim(str_replace('Please include a gallon cap if available.', '', (string)($edit_order['notes'] ?? '')))) ?></textarea>
+                <?php if ($cap_requested): ?><div class="comment-hint" style="color:#078da4">Optional request: include a gallon cap if available.</div><?php endif; ?>
                 <div class="comment-hint"><?php echo $fulfillment_method === 'delivery' ? 'Let the driver know any special delivery instructions' : 'Add any notes for station staff preparing your pickup'; ?></div>
             </div>
 
@@ -1658,25 +1647,11 @@ $final_total = $item_total + $cap_subtotal + $delivery_fee - $discount;
             const newTotal = <?php echo $container_status === 'new' ? json_encode($container_price_map[$container_size]) . ' * currentQuantity' : 'waterOrderTotal(currentQuantity)'; ?>;
             const discount = 0;
             const deliveryFee = isDelivery && !<?php echo $free_delivery_reward ? 'true' : 'false'; ?> ? 10 * currentQuantity : 0;
-            const enabled = document.getElementById('addGallonCap').checked;
-            const capInput = document.getElementById('capQuantity');
-            document.getElementById('capFields').hidden = !enabled;
-            capInput.disabled = !enabled;
-            capInput.required = enabled;
-            if (!enabled) capInput.value = 0;
-            else if (capInput.value === '0') capInput.value = 1;
-            const caps = enabled && /^[1-9][0-9]{0,4}$/.test(capInput.value) ? Number(capInput.value) : 0;
-            const capPrice = <?= json_encode($cap_price ?? 0) ?>;
-            const capTotal = Math.round(caps * Math.round(capPrice * 100)) / 100;
-            document.getElementById('capSubtotal').textContent = 'PHP ' + capTotal.toFixed(2);
-            document.getElementById('waterBreakdown').textContent = 'Water<?= $container_status === 'new' ? ' + new container' : '' ?>: ' + currentQuantity + ' × PHP ' + (newTotal / currentQuantity).toFixed(2) + ' = PHP ' + newTotal.toFixed(2);
-            document.getElementById('capsBreakdown').textContent = 'Caps: ' + caps + ' × PHP ' + capPrice.toFixed(2) + ' = PHP ' + capTotal.toFixed(2);
-            const finalAmount = newTotal + capTotal + deliveryFee - discount;
+            const finalAmount = newTotal + deliveryFee - discount;
             document.getElementById('summaryDeliveryFee').textContent = deliveryFee > 0 ? '\u20b1' + deliveryFee.toFixed(2) : 'Free';
 
-            document.getElementById('waterUnitPrice').textContent = 'PHP ' + (newTotal / currentQuantity).toFixed(2) + ' per unit';
             document.getElementById('itemTotalDisplay').textContent = '₱' + newTotal.toFixed(2);
-            document.getElementById('summaryItemTotal').textContent = '₱' + (newTotal + capTotal).toFixed(2);
+            document.getElementById('summaryItemTotal').textContent = '₱' + newTotal.toFixed(2);
             document.getElementById('summaryFinalTotal').textContent = '₱' + finalAmount.toFixed(2);
             document.getElementById('hiddenAmount').value = finalAmount.toFixed(2);
 
@@ -1694,8 +1669,6 @@ $final_total = $item_total + $cap_subtotal + $delivery_fee - $discount;
             document.getElementById('newContainerCost').textContent = '₱' + newContainerCost.toFixed(2);
             <?php endif; ?>
         }
-
-        document.addEventListener("DOMContentLoaded", updateDisplay);
 
         function selectPayment(method) {
             selectedPayment = method;
@@ -1742,9 +1715,6 @@ $final_total = $item_total + $cap_subtotal + $delivery_fee - $discount;
 
             let isValid = true;
             const errors = [];
-            if (document.getElementById('addGallonCap').checked && !/^[1-9][0-9]{0,4}$/.test(document.getElementById('capQuantity').value)) {
-                errors.push('Cap quantity must be a positive whole number up to 99,999'); isValid = false;
-            }
 
             if (availableStock !== null && currentQuantity > availableStock) {
                 errors.push('Only ' + availableStock + ' of this gallon container are available');

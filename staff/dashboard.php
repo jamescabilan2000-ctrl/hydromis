@@ -1,7 +1,6 @@
 <?php
 require_once 'check_auth.php';
 require_once '../config/database.php';
-require_once '../config/gallon_caps.php';
 require_once '../config/system_settings.php';
 
 $systemLogo = system_logo_path($conn);
@@ -1236,7 +1235,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                 <div class="delivery-top">
                   <div>
                     <div class="delivery-id"><?php echo htmlspecialchars($row['transaction_id']); ?></div>
-                    <div class="delivery-cust"><?php echo htmlspecialchars($row['full_name']); ?></div><?php render_order_caps($row); ?>
+                    <div class="delivery-cust"><?php echo htmlspecialchars($row['full_name']); ?></div>
                     <div class="delivery-rider">
                       <?php if ($row['rider_name']): ?>
                         <span class="rider-online"><i class="fas fa-motorcycle"></i></span>
@@ -1306,7 +1305,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                 <div class="delivery-top">
                   <div>
                     <div class="delivery-id"><?php echo htmlspecialchars($pickup['transaction_id']); ?></div>
-                    <div class="delivery-cust"><?php echo htmlspecialchars($pickup['full_name']); ?></div><?php render_order_caps($pickup); ?>
+                    <div class="delivery-cust"><?php echo htmlspecialchars($pickup['full_name']); ?></div>
                     <div class="delivery-rider"><span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($pickup['contact_number'] ?: 'No contact number'); ?></span></div>
                   </div>
                   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
@@ -1385,7 +1384,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                     <?php endif; ?>
                   </td>
                   <td style="font-size:13px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                    <?php echo htmlspecialchars($row['description']); render_order_caps($row); ?>
+                    <?php echo htmlspecialchars($row['description']); ?>
                     <?php if (!empty($row['container_size'])): ?>
                     <div style="margin-top:4px;font-size:10px;">
                       <?php echo ($row['container_status'] ?? '') === 'new' ? 'New container' : 'Customer container'; ?> ·

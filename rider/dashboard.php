@@ -15,7 +15,6 @@
 
 include 'check_auth.php';
 require_once '../config/database.php';
-require_once '../config/gallon_caps.php';
 require_once '../config/inventory_service.php';
 ensure_inventory_schema($conn);
 if (empty($_SESSION['logout_csrf'])) {
@@ -164,7 +163,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'delivery_info') {
     }
 
     if ($transactions_has_assigned_rider) {
-        $stmt = $conn->prepare("SELECT t.transaction_id, t.amount, t.delivery_status, t.description, t.water_type, t.quantity, t.price_per_unit, t.cap_quantity, t.cap_unit_price, t.cap_subtotal, t.order_water_subtotal, t.container_status, t.discount, t.payment_method, t.notes, t.user_id,
+        $stmt = $conn->prepare("SELECT t.transaction_id, t.amount, t.delivery_status, t.description, t.water_type, t.quantity, t.price_per_unit, t.payment_method, t.notes, t.user_id,
             COALESCE(u.full_name, 'Unknown Customer') AS customer_name,
             COALESCE(u.contact_number, '-') AS contact_number,
             COALESCE(u.email, '-') AS email,
@@ -174,7 +173,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'delivery_info') {
             WHERE t.transaction_id = ? AND (t.rider_id = ? OR t.assigned_rider = ?) LIMIT 1");
         $stmt->bind_param('sss', $transaction_id, $rider_id, $rider_id);
     } else {
-        $stmt = $conn->prepare("SELECT t.transaction_id, t.amount, t.delivery_status, t.description, t.water_type, t.quantity, t.price_per_unit, t.cap_quantity, t.cap_unit_price, t.cap_subtotal, t.order_water_subtotal, t.container_status, t.discount, t.payment_method, t.notes, t.user_id,
+        $stmt = $conn->prepare("SELECT t.transaction_id, t.amount, t.delivery_status, t.description, t.water_type, t.quantity, t.price_per_unit, t.payment_method, t.notes, t.user_id,
             COALESCE(u.full_name, 'Unknown Customer') AS customer_name,
             COALESCE(u.contact_number, '-') AS contact_number,
             COALESCE(u.email, '-') AS email,
@@ -409,7 +408,7 @@ $sql = "SELECT
         t.description,
         t.water_type,
         t.quantity,
-        t.price_per_unit, t.cap_quantity, t.cap_unit_price, t.cap_subtotal, t.order_water_subtotal, t.container_status, t.discount,
+        t.price_per_unit,
         t.payment_method,
         t.notes,
         t.user_id,
@@ -472,12 +471,6 @@ while ($row = $res->fetch_assoc()) {
         'water_type' => $row['water_type'],
         'quantity' => $quantity,
         'price_per_unit' => $price_per_unit,
-        'cap_quantity' => (int)($row['cap_quantity'] ?? 0),
-        'cap_unit_price' => (float)($row['cap_unit_price'] ?? 0),
-        'cap_subtotal' => (float)($row['cap_subtotal'] ?? 0),
-        'order_water_subtotal' => $row['order_water_subtotal'] ?? null,
-        'container_status' => $row['container_status'] ?? '',
-        'discount' => (float)($row['discount'] ?? 0),
         'payment_method' => $payment_method,
         'payment_label' => $payment_label,
         'notes' => $row['notes'],
@@ -872,7 +865,6 @@ body{
         </div>
       </div>
 
-      <?php render_order_caps($d); ?>
       <div class="delivery-flow" role="list" aria-label="Delivery progress: <?php echo htmlspecialchars($status_label); ?>">
         <div class="flow-step <?php echo $step_index === 0 ? 'current' : 'done'; ?>" role="listitem">
           <span class="flow-node"><i class="fas fa-clipboard-check"></i></span><span>Assigned</span>
@@ -1025,7 +1017,6 @@ body{
           <div class="value" id="detailPaymentMethod">–</div>
         </div>
         <div class="detail-group">
-          <div class="label">Order price breakdown</div><div class="value" id="detailCapBreakdown" style="white-space:pre-line;margin-bottom:12px"></div>
           <div class="label"><i class="fas fa-comment-alt" aria-hidden="true"></i> Customer instructions</div>
           <div class="value" id="detailNotes">–</div>
         </div>
@@ -1277,16 +1268,6 @@ function fillDeliveryDetails(delivery){
   document.getElementById('detailPhone').textContent = delivery.phone || '-';
   document.getElementById('detailEmail').textContent = delivery.email || '-';
   document.getElementById('detailPaymentMethod').textContent = delivery.payment_label || 'Cash';
-  const waterSubtotal = delivery.order_water_subtotal == null ? Number(delivery.quantity || 0) * Number(delivery.price_per_unit || 0) : Number(delivery.order_water_subtotal);
-  const capQty = Number(delivery.cap_quantity || 0);
-  const capSubtotal = Number(delivery.cap_subtotal || 0);
-  const discount = Number(delivery.discount || 0);
-  const deliveryFee = Math.max(0, Number(delivery.amount || 0) - waterSubtotal - capSubtotal + discount);
-  document.getElementById('detailCapBreakdown').textContent =
-    `Water: ${delivery.quantity || 0} × PHP ${Number(delivery.price_per_unit || 0).toFixed(2)} = PHP ${waterSubtotal.toFixed(2)}\n` +
-    `Caps requested: ${capQty}${capQty ? '' : ' (No caps requested)'}\n` +
-    `Caps: ${capQty} × PHP ${Number(delivery.cap_unit_price || 0).toFixed(2)} = PHP ${capSubtotal.toFixed(2)}\n` +
-    `Delivery: PHP ${deliveryFee.toFixed(2)} · Discount: PHP ${discount.toFixed(2)}\nTotal: PHP ${Number(delivery.amount || 0).toFixed(2)}`;
   const notes = document.getElementById('detailNotes');
   notes.textContent = String(delivery.notes || '').trim() || 'No special instructions.';
   notes.parentElement.classList.add('customer-instructions');

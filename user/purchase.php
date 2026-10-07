@@ -73,7 +73,6 @@ if (!$user_id) {
 require_once '../config/customer_order_access.php';
 require_customer_order_access((string)$user_id);
 if (isset($_POST['user_id'])) require_customer_order_access((string)$_POST['user_id']);
-
 // Fetch user data
 $sql = "SELECT * FROM users WHERE user_id = '$user_id'";
 $result = $conn->query($sql);
@@ -118,15 +117,7 @@ if ($edit_transaction_id !== '') {
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     if (!hash_equals((string)$_SESSION['customer_order_csrf'], (string)($_POST['csrf_token'] ?? ''))) { http_response_code(403); exit('Refresh checkout before placing your order.'); }
     $user_id = sanitize($_POST['user_id']);
-    $raw_quantity = $_POST['quantity'] ?? '';
-    $quantity = is_scalar($raw_quantity) && preg_match('/\A[1-9][0-9]{0,4}\z/', (string)$raw_quantity) ? (int)$raw_quantity : 0;
-    $cap_values = ['cap_quantity' => 0, 'cap_unit_price' => 0, 'cap_subtotal' => 0];
-    try {
-        $cap_values = cap_order_values(isset($_POST['add_gallon_cap']), $_POST['cap_quantity'] ?? '', configured_cap_price($conn));
-    } catch (InvalidArgumentException $e) { $error = $e->getMessage(); }
-    $cap_quantity = $cap_values['cap_quantity'];
-    $cap_unit_price = $cap_values['cap_unit_price'];
-    $cap_subtotal = $cap_values['cap_subtotal'];
+    $quantity = intval($_POST['quantity']);
     $container_size = sanitize($_POST['container_size']); // '5gal-round', '2.5gal-slim', '5gal-slim'
     $container_status = sanitize($_POST['container_status']); // 'new' or 'existing'
     $fulfillment_method = sanitize($_POST['fulfillment_method'] ?? 'delivery');
@@ -136,7 +127,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     $delivery_lat_sql = $destination === null ? 'NULL' : sprintf('%.8F', $destination[0]);
     $delivery_lng_sql = $destination === null ? 'NULL' : sprintf('%.8F', $destination[1]);
     $amount_tendered = floatval($_POST['amount_tendered']);
-    $customer_notes = isset($_POST['customer_notes']) ? sanitize($_POST['customer_notes']) : '';
+    $raw_notes = is_string($_POST['customer_notes'] ?? null) ? $_POST['customer_notes'] : '';
+    // Use the existing instructions field; a cap request has no quantity or charge.
+    $cap_request_note = 'Please include a gallon cap if available.';
+    $raw_notes = trim(str_replace($cap_request_note, '', $raw_notes));
+    if (isset($_POST['request_gallon_cap'])) $raw_notes .= ($raw_notes !== '' ? "\n" : '') . $cap_request_note;
+    $customer_notes = sanitize($raw_notes);
     $payment_method = isset($_POST['payment_method']) ? sanitize($_POST['payment_method']) : 'cash';
     $edit_transaction_id = trim((string)($_POST['edit_transaction_id'] ?? ''));
     $is_editing_order = $edit_transaction_id !== '';
@@ -193,11 +189,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         }
     }
     $delivery_fee = $fulfillment_method === 'delivery' && $free_delivery_claim_id === 0 ? 10 * $quantity : 0;
-    $final_amount = round($total_amount + $cap_subtotal + $delivery_fee - $discount, 2);
+    $final_amount = $total_amount + $delivery_fee - $discount;
     $change = $amount_tendered - $final_amount;
     
     if ($quantity <= 0) {
-        $error = 'Gallon quantity must be a positive whole number, up to 99,999.';
+        $error = 'Quantity must be at least 1!';
     } elseif ($amount_tendered < $final_amount) {
         $error = 'Amount tendered is insufficient! Amount needed: ₱' . number_format($final_amount, 2);
     } elseif (empty($error)) {
@@ -295,9 +291,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         $qr_priority = (($_SESSION['qr_priority_user'] ?? '') === (string)$scanned_data['user_id']) ? 1 : 0;
         $new_container_inventory_item_sql = $new_container_inventory_item_id === null ? 'NULL' : (string)$new_container_inventory_item_id;
         $sql = $is_editing_order
-            ? "UPDATE transactions SET order_water_subtotal='$total_amount', cap_quantity='$cap_quantity', cap_unit_price='$cap_unit_price', cap_subtotal='$cap_subtotal', amount='$final_amount', description='$description', water_type='regular', quantity='$quantity', price_per_unit='$price_per_unit', discount='$discount', loyalty_points_earned='$loyalty_points', notes='$customer_notes', status='pending', payment_method='$payment_method', payment_reference=$safe_reference, payment_status='$payment_status', payment_proof=$safe_proof, container_size='$container_size', container_status='$container_status', fulfillment_method='$fulfillment_method', delivery_latitude=$delivery_lat_sql, delivery_longitude=$delivery_lng_sql, inventory_item_id=$inventory_item_sql, inventory_reserved=$inventory_reserved, new_container_inventory_item_id=$new_container_inventory_item_sql, new_container_inventory_reserved=$new_container_inventory_reserved, updated_at=NOW() WHERE transaction_id='" . $conn->real_escape_string($transaction_id) . "' AND user_id='" . $conn->real_escape_string((string)$user_id) . "' AND status='pending'"
-            : "INSERT INTO transactions (order_water_subtotal, cap_quantity, cap_unit_price, cap_subtotal, transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, notes, status, payment_method, payment_reference, payment_status, payment_proof, container_size, container_status, fulfillment_method, delivery_latitude, delivery_longitude, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, qr_priority, created_at)
-                VALUES ('$total_amount', '$cap_quantity', '$cap_unit_price', '$cap_subtotal', '$transaction_id', '$user_id', '$final_amount', '$description', 'regular', '$quantity', '$price_per_unit', '$discount', '$loyalty_points', '$customer_notes', 'pending', '$payment_method', $safe_reference, '$payment_status', $safe_proof, '$container_size', '$container_status', '$fulfillment_method', $delivery_lat_sql, $delivery_lng_sql, $inventory_item_sql, $inventory_reserved, $new_container_inventory_item_sql, $new_container_inventory_reserved, $qr_priority, NOW())";
+            ? "UPDATE transactions SET amount='$final_amount', description='$description', water_type='regular', quantity='$quantity', price_per_unit='$price_per_unit', discount='$discount', loyalty_points_earned='$loyalty_points', notes='$customer_notes', status='pending', payment_method='$payment_method', payment_reference=$safe_reference, payment_status='$payment_status', payment_proof=$safe_proof, container_size='$container_size', container_status='$container_status', fulfillment_method='$fulfillment_method', delivery_latitude=$delivery_lat_sql, delivery_longitude=$delivery_lng_sql, inventory_item_id=$inventory_item_sql, inventory_reserved=$inventory_reserved, new_container_inventory_item_id=$new_container_inventory_item_sql, new_container_inventory_reserved=$new_container_inventory_reserved, updated_at=NOW() WHERE transaction_id='" . $conn->real_escape_string($transaction_id) . "' AND user_id='" . $conn->real_escape_string((string)$user_id) . "' AND status='pending'"
+            : "INSERT INTO transactions (transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, notes, status, payment_method, payment_reference, payment_status, payment_proof, container_size, container_status, fulfillment_method, delivery_latitude, delivery_longitude, inventory_item_id, inventory_reserved, new_container_inventory_item_id, new_container_inventory_reserved, qr_priority, created_at)
+                VALUES ('$transaction_id', '$user_id', '$final_amount', '$description', 'regular', '$quantity', '$price_per_unit', '$discount', '$loyalty_points', '$customer_notes', 'pending', '$payment_method', $safe_reference, '$payment_status', $safe_proof, '$container_size', '$container_status', '$fulfillment_method', $delivery_lat_sql, $delivery_lng_sql, $inventory_item_sql, $inventory_reserved, $new_container_inventory_item_sql, $new_container_inventory_reserved, $qr_priority, NOW())";
 
         if (!empty($error)) {
             // Stock validation already supplied the customer-facing message.
@@ -338,7 +334,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
                 'container_size' => $container_size,
                 'container_status' => $container_status,
                 'fulfillment_method' => $fulfillment_method,
-                'order_water_subtotal' => $total_amount, 'cap_quantity' => $cap_quantity, 'cap_unit_price' => $cap_unit_price, 'cap_subtotal' => $cap_subtotal,
                 'quantity' => $quantity,
                 'price_per_unit' => $price_per_unit,
                 'total_amount' => $total_amount,
@@ -1290,7 +1285,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                         <div class="receipt-section">
                             <div class="receipt-row">
                                 <span class="receipt-label">Subtotal:</span>
-                                <span class="receipt-value">₱<?php echo number_format($transaction_data['total_amount'] + $transaction_data['cap_subtotal'], 2); ?></span>
+                                <span class="receipt-value">₱<?php echo number_format($transaction_data['total_amount'], 2); ?></span>
                             </div>
                             <?php if ($transaction_data['discount'] > 0): ?>
                             <div class="receipt-row" style="color: #059669;">
@@ -1320,7 +1315,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                         <div class="receipt-line"></div>
                         <?php endif; ?>
                         
-                        <?php render_order_caps($transaction_data); ?>
                         <?php if (!empty($transaction_data['customer_notes'])): ?>
                         <div class="receipt-section">
                             <div class="receipt-header-small" style="font-weight: 700; margin-bottom: 8px; color: #2563eb;"><i class="fas fa-comment-alt mr-1"></i> Special Instructions</div>

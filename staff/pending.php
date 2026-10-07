@@ -1,7 +1,6 @@
 <?php
 require_once 'check_auth.php';
 require_once '../config/database.php';
-require_once '../config/gallon_caps.php';
 require_once '../config/storage_service.php';
 require_once '../config/inventory_service.php';
 ensure_inventory_schema($conn);
@@ -777,8 +776,8 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                                 <?php
                                                 // The saved total includes delivery; use saved prices rather
                                                 // than today's rates so discounts and free delivery stay accurate.
-                                                $order_subtotal = order_price_breakdown($row)['water'];
-                                                $order_delivery_fee = max(0, round((float)$row['amount'] - $order_subtotal - (float)($row['cap_subtotal'] ?? 0) + (float)($row['discount'] ?? 0), 2));
+                                                $order_subtotal = (float)$row['price_per_unit'] * (int)$row['quantity'];
+                                                $order_delivery_fee = max(0, round((float)$row['amount'] - $order_subtotal + (float)($row['discount'] ?? 0), 2));
                                                 ?>
                                                 <div style="margin-top:5px;font-size:11px;color:var(--muted);white-space:normal;">
                                                     <i class="fas fa-truck" aria-hidden="true"></i>
@@ -800,7 +799,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php echo htmlspecialchars($row['description']); render_order_caps($row); ?>
+                                            <?php echo htmlspecialchars($row['description']); ?>
                                             <?php if (!empty($row['container_size'])): ?>
                                             <div style="margin-top:5px;font-size:10px;color:var(--muted);">
                                                 <i class="fas fa-box"></i> <?php echo ($row['container_status'] ?? '') === 'new' ? 'New container' : 'Customer container'; ?>

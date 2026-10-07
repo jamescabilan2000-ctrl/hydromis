@@ -1,6 +1,5 @@
 <?php
 require_once '../config/database.php';
-require_once '../config/gallon_caps.php';
 require_once '../config/inventory_service.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -1004,7 +1003,6 @@ function compactTransactionId(string $id): string {
                                 <span class="txn-val discount">−₱<?php echo number_format($txn['discount'],2); ?></span>
                             </div>
                             <?php endif; ?>
-<?php render_order_caps($txn); ?>
                             <div class="txn-row">
                                 <span class="txn-lbl" style="font-weight:800;color:var(--navy);">Total</span>
                                 <span class="txn-val total">₱<?php echo number_format($txn['amount'],2); ?></span>
@@ -1323,7 +1321,6 @@ function compactTransactionId(string $id): string {
                 <span class="txn-val discount">−₱<?php echo number_format($txn['discount'],2); ?></span>
             </div>
             <?php endif; ?>
-<?php render_order_caps($txn); ?>
             <div class="txn-row">
                 <span class="txn-lbl" style="font-weight:800;color:var(--navy);">Total</span>
                 <span class="txn-val total">₱<?php echo number_format($txn['amount'],2); ?></span>

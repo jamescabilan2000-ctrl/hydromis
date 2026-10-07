@@ -19,7 +19,6 @@ if (!$user_id) {
 
 require_once '../config/customer_order_access.php';
 require_customer_order_access((string)$user_id);
-
 $sql = "SELECT * FROM users WHERE user_id = '$user_id'";
 $result = $conn->query($sql);
 if (!$result || $result->num_rows === 0) {
@@ -56,6 +55,14 @@ if (!in_array($fulfillment_method, $allowed_fulfillment, true)) {
     $fulfillment_method = 'delivery';
 }
 
+$cap_requested = isset($_POST['request_gallon_cap']);
+if ($edit_transaction_id !== '' && !isset($_POST['cap_selection_present'])) {
+    $request_stmt = $conn->prepare("SELECT notes FROM transactions WHERE transaction_id=? AND user_id=? AND status='pending' LIMIT 1");
+    $request_stmt->bind_param('ss', $edit_transaction_id, $user_id);
+    $request_stmt->execute();
+    $request_order = $request_stmt->get_result()->fetch_assoc();
+    $cap_requested = str_contains((string)($request_order['notes'] ?? ''), 'Please include a gallon cap if available.');
+}
 $size_map = [
     '5gal-round' => '5 Gallon',
     '2.5gal-slim' => '2.5 Gallon',
@@ -514,6 +521,11 @@ $container_image_map = [
         @media(max-width:820px){.review-wrap{align-items:flex-start;padding:18px 12px 45px}.review-grid{grid-template-columns:1fr}.review-config{padding:21px;border-right:0;border-bottom:1px solid #e3edf2}.review-summary{padding:21px}.review-head{padding:20px}.item-thumb{width:88px;height:88px}}
         @media(max-width:520px){.sheet{border-radius:23px}.review-head-icon{width:46px;height:46px}.review-head-icon .review-brand-logo{width:46px;height:46px}.review-head-icon .review-brand-logo img{width:41px!important;height:41px!important}.review-head h2{font-size:19px}.review-step{display:none}.review-config,.review-summary{padding:17px}.item-row{align-items:center;padding:13px}.item-thumb{width:70px;height:70px}.qty-box{min-width:112px}.mode-row{grid-template-columns:1fr 1fr}.mode-btn{min-height:57px;font-size:11px}.trust-row{gap:5px}.trust-row span{font-size:8px}}
         .confirm-overlay{position:fixed;z-index:1000;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,35,52,.58);backdrop-filter:blur(5px);opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease}.confirm-overlay.open{opacity:1;visibility:visible}.confirm-card{width:min(100%,410px);overflow:hidden;border:1px solid rgba(255,255,255,.7);border-radius:24px;background:#fff;box-shadow:0 28px 70px rgba(10,42,61,.3);transform:translateY(14px) scale(.98);transition:transform .22s ease}.confirm-overlay.open .confirm-card{transform:none}.confirm-head{padding:25px 24px 18px;text-align:center}.confirm-icon{display:grid;place-items:center;width:58px;height:58px;margin:0 auto 14px;border-radius:18px;background:linear-gradient(145deg,#d9f8f2,#e8f8ff);color:#0bac92;font-size:23px}.confirm-head h3{margin:0;color:#173247;font-size:21px;font-weight:800}.confirm-head p{margin:7px 0 0;color:#6b8292;font-size:12px}.confirm-details{margin:0 20px;padding:15px 17px;border:1px solid #dceaf0;border-radius:15px;background:#f5fafc}.confirm-row{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:7px 0;color:#6b8292;font-size:12px}.confirm-row strong{color:#213e53;text-align:right}.confirm-row.total{margin-top:6px;padding-top:13px;border-top:1px dashed #cddfe6;font-size:14px}.confirm-row.total strong{color:#08a486;font-size:19px}.confirm-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:10px;padding:20px}.confirm-actions button{min-height:48px;border:0;border-radius:13px;font:800 12px 'Manrope',sans-serif;cursor:pointer}.confirm-cancel{background:#edf3f6;color:#587083}.confirm-proceed{background:linear-gradient(135deg,#0cae91,#0aa5be);color:#fff;box-shadow:0 10px 20px rgba(10,169,161,.22)}.confirm-actions button:focus-visible{outline:3px solid rgba(14,165,233,.3);outline-offset:2px}@media(max-width:420px){.confirm-actions{grid-template-columns:1fr}.confirm-proceed{grid-row:1}.confirm-card{border-radius:20px}}
+        .cap-request{margin-top:18px;padding:16px;border:1px solid #d6e8ee;border-radius:16px;background:linear-gradient(135deg,#f4fbfe,#edf9f7)}
+        .cap-request label{display:flex;align-items:center;gap:12px;margin:0;color:#173247;font-size:14px;font-weight:800;cursor:pointer}
+        .cap-request input{width:19px;height:19px;accent-color:#0ba4b5;flex-shrink:0}
+        .cap-request small{display:block;margin-top:4px;color:#688494;font-size:11px;font-weight:500;line-height:1.5}
+        .cap-request:has(input:checked){border-color:#0ba4b5;box-shadow:0 0 0 2px rgba(11,164,181,.08)}
     </style>
     <script src="../js/ui-protection.js" defer></script>
 <script src="../js/customer-home.js?v=20260911" data-hide-home="true" defer></script>
@@ -537,6 +549,7 @@ $container_image_map = [
                         <button type="button" class="qty-btn" id="plusBtn">+</button>
                     </div>
                 </div>
+                <div class="cap-request"><label for="requestGallonCap"><input type="checkbox" id="requestGallonCap" name="request_gallon_cap" value="1" form="finalForm" <?= $cap_requested ? 'checked' : '' ?>><span>Request a gallon cap<small>Optional. Ask the station to include a cap if available.</small></span></label></div>
             </div>
 
             <div class="row-box">
@@ -571,6 +584,7 @@ $container_image_map = [
 
             <div class="actions">
                 <form method="POST" action="checkout.php" id="finalForm">
+                    <input type="hidden" name="cap_selection_present" value="1">
                     <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user_id); ?>">
                     <input type="hidden" name="container_size" value="<?php echo htmlspecialchars($container_size); ?>">
                     <input type="hidden" name="container_status" id="finalStatus" value="<?php echo htmlspecialchars($container_status); ?>">
@@ -602,6 +616,7 @@ $container_image_map = [
                 </div>
                 <div class="confirm-row"><span>Fulfillment</span><strong id="confirmFulfillment"></strong></div>
                 <div class="confirm-row"><span id="confirmItemLabel">Items subtotal</span><strong id="confirmItemSubtotal"></strong></div>
+                <div class="confirm-row" id="confirmCapRequest" hidden><span>Optional request</span><strong>Gallon cap, if available</strong></div>
                 <div class="confirm-row" id="confirmDeliveryRow"><span>Delivery fee</span><strong id="confirmDeliveryFee"></strong></div>
                 <div class="confirm-row total"><span>Total</span><strong id="confirmTotal"></strong></div>
             </div>
@@ -746,6 +761,7 @@ $container_image_map = [
                 document.getElementById('confirmItemSubtotal').textContent = '\u20B1' + (containerStatus === 'new' ? containerTotal.textContent : waterTotal.textContent);
                 document.getElementById('confirmDeliveryRow').style.display = fulfillmentMethod === 'delivery' ? 'flex' : 'none';
                 document.getElementById('confirmDeliveryFee').textContent = hasFreeDeliveryReward ? 'Free (reward applied)' : '\u20B1' + (10 * quantity).toFixed(2);
+                document.getElementById('confirmCapRequest').hidden = !document.getElementById('requestGallonCap').checked;
                 document.getElementById('confirmTotal').textContent = '\u20B1' + reviewTotal.textContent;
                 confirmOverlay.classList.add('open');
                 confirmOverlay.setAttribute('aria-hidden', 'false');
