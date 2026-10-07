@@ -3,6 +3,7 @@ require_once 'check_auth.php';
 require_once '../config/database.php';
 require_once '../config/storage_service.php';
 require_once '../config/system_settings.php';
+require_once '../config/cap_request.php';
 $systemLogo = system_logo_path($conn);
 
 // Filter parameters
@@ -23,6 +24,13 @@ if ($filter_method && $filter_method !== 'all') {
     $stat_where[] = "payment_method = '$safe_method'";
 }
 
+$date_from = preg_match('/\A\d{4}-\d{2}-\d{2}\z/', (string)($_GET['from'] ?? '')) ? $_GET['from'] : '';
+$date_to = preg_match('/\A\d{4}-\d{2}-\d{2}\z/', (string)($_GET['to'] ?? '')) ? $_GET['to'] : '';
+foreach (['from'=>$date_from,'to'=>$date_to] as $direction=>$date) {
+    if ($date !== '') { $op=$direction==='from'?'>=':'<='; $where[]="DATE(t.created_at) $op '$date'"; $stat_where[]="DATE(created_at) $op '$date'"; }
+}
+$monitor_status = in_array($_GET['status'] ?? '', ['pending','approved','denied','cancelled','delivered'],true) ? $_GET['status'] : 'all';
+$monitor_caps = in_array($_GET['caps'] ?? '', ['yes','no'],true) ? $_GET['caps'] : 'all';
 $where_sql = count($where) > 0 ? ' AND ' . implode(' AND ', $where) : '';
 $stat_where_sql = count($stat_where) > 0 ? ' AND ' . implode(' AND ', $stat_where) : '';
 
@@ -41,6 +49,14 @@ $pending_trans = $conn->query("SELECT COUNT(*) as count FROM transactions WHERE 
 $denied_trans = $conn->query("SELECT COUNT(*) as count FROM transactions WHERE status='denied' $stat_where_sql")->fetch_assoc()['count'];
 $total_sales = $conn->query("SELECT SUM(amount) as total FROM transactions WHERE status='approved' $stat_where_sql")->fetch_assoc()['total'] ?? 0;
 
+$monitor_orders=[];
+if ($transactions) while ($order=$transactions->fetch_assoc()) $monitor_orders[]=$order;
+$cap_totals=summarize_caps($monitor_orders);
+$monitor_orders=array_values(array_filter($monitor_orders, static function($order) use ($monitor_status,$monitor_caps) {
+    $qty=caps_requested_from_notes((string)($order['notes'] ?? ''));
+    if ($monitor_caps==='yes' && $qty===0 || $monitor_caps==='no' && $qty>0) return false;
+    return $monitor_status==='all' || ($monitor_status==='delivered' ? ($order['delivery_status'] ?? '')==='delivered' : ($order['status'] ?? '')===$monitor_status);
+}));
 // Labels for active filter
 $method_labels = ['all' => 'All Methods', 'cash' => 'Cash', 'gcash' => 'GCash', 'maya' => 'Maya'];
 $active_method_label = $method_labels[$filter_method] ?? 'All Methods';
@@ -576,6 +592,12 @@ html, body {
 
             <?php include __DIR__ . '/export_buttons.php'; ?>
 
+            <form method="get" class="filter-bar" style="flex-wrap:wrap">
+                <label>From <input class="filter-date-input" type="date" name="from" value="<?= htmlspecialchars($date_from) ?>"></label><label>To <input class="filter-date-input" type="date" name="to" value="<?= htmlspecialchars($date_to) ?>"></label>
+                <label>Status <select class="filter-date-input" name="status"><?php foreach(['all','pending','approved','denied','cancelled','delivered'] as $value): ?><option <?= $value===$monitor_status?'selected':'' ?> value="<?= $value ?>"><?= ucfirst($value) ?></option><?php endforeach; ?></select></label>
+                <label>Caps <select class="filter-date-input" name="caps"><?php foreach(['all'=>'All orders','yes'=>'Caps requested','no'=>'No caps'] as $value=>$label): ?><option <?= $value===$monitor_caps?'selected':'' ?> value="<?= $value ?>"><?= $label ?></option><?php endforeach; ?></select></label><button type="submit" class="btn">Apply</button><a href="transactions.php">Reset</a>
+            </form>
+            <div class="card" style="padding:16px;margin-bottom:16px">Caps requested: <strong><?= $cap_totals['requested'] ?></strong> &middot; Caps fulfilled: <strong><?= $cap_totals['fulfilled'] ?></strong> &middot; Paid cap sales: <strong>PHP <?= number_format($cap_totals['sales'],2) ?></strong><div style="font-size:11px;margin-top:6px;color:var(--muted)">Totals for the selected dates and payment method. Cancelled and denied orders are excluded.</div></div>
             <!-- Filter Bar -->
             <div class="filter-bar">
                 <div class="filter-group">
@@ -674,18 +696,18 @@ html, body {
                                 <th>Transaction ID</th>
                                 <th>Customer Name</th>
                                 <th>Contact</th>
-                                <th>Amount</th>
+                                <th>Gallons</th><th>Caps requested</th><th>Cap sales</th><th>Total amount</th>
                                 <th>Description</th>
                                 <th>Status</th>
                                 <th>Date</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($row = $transactions->fetch_assoc()): ?>
+                            <?php foreach ($monitor_orders as $row): $saved_caps=saved_cap_details((string)($row['notes'] ?? '')); ?>
                             <tr>
                                 <td><strong><?php echo htmlspecialchars($row['transaction_id']); ?></strong></td>
                                 <td><?php echo htmlspecialchars($row['full_name']); ?></td>
-                                <td><?php echo htmlspecialchars($row['contact_number']); ?></td>
+                                <td><?php echo htmlspecialchars($row['contact_number']); ?></td><td><?= (int)($row['quantity'] ?? 0) ?></td><td><?= $saved_caps['quantity'] ?></td><td>PHP <?= number_format($saved_caps['subtotal'],2) ?><div style="font-size:11px">PHP <?= number_format($saved_caps['price'],2) ?> each</div></td>
                                 <td>
                                     ₱ <?php echo number_format($row['amount'], 2); ?>
                                     <?php if (!empty($row['payment_method']) && $row['payment_method'] !== 'cash'): ?>
@@ -719,7 +741,7 @@ html, body {
                                 <td><span class="badge badge-<?php echo $row['status']; ?>"><?php echo ucfirst($row['status']); ?></span></td>
                                 <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
@@ -735,9 +757,9 @@ function applyFilters() {
     const date = document.getElementById('filterDate').value;
     const activeTab = document.querySelector('.method-tab.active');
     const method = activeTab ? activeTab.dataset.method : 'all';
-    const params = new URLSearchParams();
-    if (date) params.set('date', date);
-    if (method && method !== 'all') params.set('method', method);
+    const params = new URLSearchParams(window.location.search);
+    params.delete('date'); if (date) { params.set('date', date); params.delete('from'); params.delete('to'); }
+    params.delete('method'); if (method && method !== 'all') params.set('method', method);
     const qs = params.toString();
     window.location.href = 'transactions.php' + (qs ? '?' + qs : '');
 }

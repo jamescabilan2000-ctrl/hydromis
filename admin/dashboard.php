@@ -2,6 +2,7 @@
 require_once 'check_auth.php';
 require_once '../config/database.php';
 require_once '../config/system_settings.php';
+require_once '../config/cap_request.php';
 require_once '../config/storage_service.php';
 
 $systemLogo = system_logo_path($conn);
@@ -107,6 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
     try {
         $validatedPrices = validate_container_prices($settings['containerPrices'] ?? null);
+        $capPrice = validate_cap_price($settings['capPrice'] ?? '0');
     } catch (InvalidArgumentException $e) {
         http_response_code(422);
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -166,7 +168,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
     
     $pricesSaved = set_system_setting($conn, 'container_bundle_prices', json_encode($validatedPrices), (string)$_SESSION['admin_id']);
-    if ($pricesSaved && $conn->query($sql)) {
+    $capSaved = set_system_setting($conn, 'gallon_cap_unit_price', number_format($capPrice,2,'.',''), (string)$_SESSION['admin_id']);
+    if ($pricesSaved && $capSaved && $conn->query($sql)) {
         echo json_encode(['success' => true, 'message' => 'Settings saved.' . $passwordMessage]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Error saving settings']);
@@ -849,7 +852,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
         <!-- ── Container Pricing Tab ── -->
         <div class="tab-panel active" id="tab-pricing">
             <div class="settings-section">
-                <div class="settings-section-title">Container pricing</div>
+                <div class="settings-section-title">Container pricing</div><div class="settings-row"><label class="settings-row-info" for="capPrice"><span class="settings-row-label">Gallon cap price (PHP)</span><span class="settings-row-desc">Per cap. Price changes apply to new or resubmitted orders.</span></label><input id="capPrice" class="settings-select" type="number" min="0" max="99999.99" step="0.01" value="<?= number_format(cap_unit_price($conn),2,'.','') ?>" style="width:112px"></div>
                 <p class="settings-row-desc">Refills cost PHP 80 total for 1&ndash;4 gallons and PHP 15 per gallon for 5 or more. New containers cost PHP 160 each including water by default. Set the complete filled-container price below. Delivery is charged separately. Changes apply to new orders.</p>
                 <?php foreach (['2.5gal-slim' => '2.5 Gallon Slim', '5gal-slim' => '5 Gallon Slim', '5gal-round' => '5 Gallon Round'] as $size => $label): ?>
                     <?php foreach (['container' => 'New container including water'] as $kind => $priceLabel): ?>
@@ -1460,6 +1463,7 @@ function saveSettings() {
         twoFactor: document.getElementById('tog-two-factor')?.checked ?? false,
         sessionTimeout: document.getElementById('sel-session-timeout')?.value || '1 hour',
         containerPrices,
+        capPrice: document.getElementById('capPrice').value,
     };
     
     const btn = document.querySelector('.btn-save');

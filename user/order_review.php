@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../config/system_settings.php';
+require_once '../config/cap_request.php';
 $systemLogo = system_logo_path($conn);
 $containerPrices = system_container_prices($conn);
 $container_price_map = array_map(static fn($price) => $price['container'], $containerPrices);
@@ -55,13 +56,17 @@ if (!in_array($fulfillment_method, $allowed_fulfillment, true)) {
     $fulfillment_method = 'delivery';
 }
 
+$cap_price = cap_unit_price($conn);
 $cap_requested = isset($_POST['request_gallon_cap']);
+try { $caps_requested = cap_request_quantity($cap_requested, $_POST['caps_requested'] ?? '1'); }
+catch (InvalidArgumentException $e) { http_response_code(400); exit(htmlspecialchars($e->getMessage())); }
 if ($edit_transaction_id !== '' && !isset($_POST['cap_selection_present'])) {
     $request_stmt = $conn->prepare("SELECT notes FROM transactions WHERE transaction_id=? AND user_id=? AND status='pending' LIMIT 1");
     $request_stmt->bind_param('ss', $edit_transaction_id, $user_id);
     $request_stmt->execute();
     $request_order = $request_stmt->get_result()->fetch_assoc();
-    $cap_requested = str_contains((string)($request_order['notes'] ?? ''), 'Please include a gallon cap if available.');
+    $caps_requested = caps_requested_from_notes((string)($request_order['notes'] ?? ''));
+    $cap_requested = $caps_requested > 0;
 }
 $size_map = [
     '5gal-round' => '5 Gallon',
@@ -549,7 +554,7 @@ $container_image_map = [
                         <button type="button" class="qty-btn" id="plusBtn">+</button>
                     </div>
                 </div>
-                <div class="cap-request"><label for="requestGallonCap"><input type="checkbox" id="requestGallonCap" name="request_gallon_cap" value="1" form="finalForm" <?= $cap_requested ? 'checked' : '' ?>><span>Request a gallon cap<small>Optional. Ask the station to include a cap if available.</small></span></label></div>
+                <div class="cap-request"><label for="requestGallonCap"><input type="checkbox" id="requestGallonCap" name="request_gallon_cap" value="1" form="finalForm" <?= $cap_requested ? 'checked' : '' ?>><span>Request a gallon cap<small>Optional. PHP <?= number_format($cap_price,2) ?> per cap.</small></span></label><div id="capRequestFields" <?= $cap_requested ? '' : 'hidden' ?> style="margin-top:14px"><label for="capsRequested" style="font-size:12px">How many caps?</label><input type="number" id="capsRequested" name="caps_requested" form="finalForm" min="1" max="99999" step="1" value="<?= $caps_requested ?: 1 ?>" <?= $cap_requested ? 'required' : 'disabled' ?> style="width:90px;margin-left:12px;padding:8px;border:1px solid #cfe3eb;border-radius:10px;background:white;color:#173247"></div></div>
             </div>
 
             <div class="row-box">
@@ -576,6 +581,7 @@ $container_image_map = [
                 <div class="totals">
                     <div class="total-line"><span>Water</span><strong>₱<span id="waterTotal">0.00</span></strong></div>
                     <div class="total-line" id="containerLine"><span>New container + water included</span><strong>₱<span id="containerTotal">0.00</span></strong></div>
+                    <div class="total-line"><span id="reviewCapsLabel">Caps</span><strong id="reviewCapsTotal">PHP 0.00</strong></div>
                     <div class="total-line"><span>Delivery fee</span><strong id="deliveryFeeDisplay">₱0.00</strong></div>
                     <div class="total-line" id="discountLine" style="display:none;color:#059669;"><span>Quantity discount</span><strong style="color:#059669;">-₱<span id="discountTotal">0.00</span></strong></div>
                     <div class="total-line grand-total"><span>Order total</span><strong>₱<span id="reviewTotal">0.00</span></strong></div>
@@ -616,7 +622,7 @@ $container_image_map = [
                 </div>
                 <div class="confirm-row"><span>Fulfillment</span><strong id="confirmFulfillment"></strong></div>
                 <div class="confirm-row"><span id="confirmItemLabel">Items subtotal</span><strong id="confirmItemSubtotal"></strong></div>
-                <div class="confirm-row" id="confirmCapRequest" hidden><span>Optional request</span><strong>Gallon cap, if available</strong></div>
+                <div class="confirm-row" id="confirmCapRequest" hidden><span>Optional request</span><strong id="confirmCapsRequested">Gallon cap, if available</strong></div>
                 <div class="confirm-row" id="confirmDeliveryRow"><span>Delivery fee</span><strong id="confirmDeliveryFee"></strong></div>
                 <div class="confirm-row total"><span>Total</span><strong id="confirmTotal"></strong></div>
             </div>
@@ -656,6 +662,17 @@ $container_image_map = [
             const discountTotal = document.getElementById('discountTotal');
             const continueBtn = document.getElementById('continueBtn');
             const itemTitle = document.getElementById('itemTitle');
+            const capCheckbox = document.getElementById('requestGallonCap');
+            const capsInput = document.getElementById('capsRequested');
+            capCheckbox.addEventListener('change', function() {
+                document.getElementById('capRequestFields').hidden = !capCheckbox.checked;
+                capsInput.disabled = !capCheckbox.checked;
+                capsInput.required = capCheckbox.checked;
+                if (!capCheckbox.checked) capsInput.value = '0';
+                else if (capsInput.value === '0') capsInput.value = '1';
+                updateSummary();
+            });
+            capsInput.addEventListener('input', updateSummary);
             const finalForm = document.getElementById('finalForm');
             const confirmOverlay = document.getElementById('confirmOverlay');
             const confirmCancel = document.getElementById('confirmCancel');
@@ -686,7 +703,12 @@ $container_image_map = [
                 const discountCount = Math.floor(quantity / 5);
                 const discount = 0;
                 const deliveryFee = fulfillmentMethod === 'delivery' && !hasFreeDeliveryReward ? 10 * quantity : 0;
-                const finalAmount = water + newContainer + deliveryFee - discount;
+                const capCount = document.getElementById('requestGallonCap').checked ? Number(document.getElementById('capsRequested').value) || 0 : 0;
+                const capPrice = <?= json_encode($cap_price) ?>;
+                const capsTotal = Math.max(0, capCount) * Math.round(capPrice * 100) / 100;
+                document.getElementById('reviewCapsLabel').textContent = 'Caps: ' + capCount + ' x PHP ' + capPrice.toFixed(2);
+                document.getElementById('reviewCapsTotal').textContent = 'PHP ' + capsTotal.toFixed(2);
+                const finalAmount = water + newContainer + capsTotal + deliveryFee - discount;
 
                 qtyDisplay.textContent = String(quantity);
                 waterTotal.textContent = water.toFixed(2);
@@ -744,6 +766,7 @@ $container_image_map = [
             });
 
             finalForm.addEventListener('submit', function(event) {
+                if (capCheckbox.checked && !/^[1-9][0-9]{0,4}$/.test(capsInput.value)) { event.preventDefault(); capsInput.reportValidity(); return; }
                 if (orderConfirmed) {
                     continueBtn.classList.add('is-loading');
                     continueBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Opening checkout...';
@@ -761,6 +784,7 @@ $container_image_map = [
                 document.getElementById('confirmItemSubtotal').textContent = '\u20B1' + (containerStatus === 'new' ? containerTotal.textContent : waterTotal.textContent);
                 document.getElementById('confirmDeliveryRow').style.display = fulfillmentMethod === 'delivery' ? 'flex' : 'none';
                 document.getElementById('confirmDeliveryFee').textContent = hasFreeDeliveryReward ? 'Free (reward applied)' : '\u20B1' + (10 * quantity).toFixed(2);
+                document.getElementById('confirmCapsRequested').textContent = 'Caps requested: ' + capsInput.value + ' x PHP <?= number_format($cap_price,2) ?> = PHP ' + (Number(capsInput.value) * <?= json_encode(round($cap_price*100)) ?> / 100).toFixed(2);
                 document.getElementById('confirmCapRequest').hidden = !document.getElementById('requestGallonCap').checked;
                 document.getElementById('confirmTotal').textContent = '\u20B1' + reviewTotal.textContent;
                 confirmOverlay.classList.add('open');

@@ -1,11 +1,11 @@
-# Optional gallon cap request
+# Gallon cap requests and pricing
 
-The order review screen shows **Request a gallon cap** below the gallon quantity. This is an optional request to include a cap if available. There is no cap quantity, unit price, subtotal, or additional charge.
+Customers select **Request a gallon cap** and enter a positive whole-number quantity on order review. The configured cap price and subtotal appear in the receipt and confirmation; checkout totals and server totals include the caps.
 
-The checkbox selection passes through checkout and is added to the existing customer instructions as:
+Administrators set **Gallon cap price (PHP)** in Settings under Container pricing. Zero means free caps. Prices are validated to two decimal places. The setting uses the existing `system_settings` table; no new columns or migration are needed.
 
-> Please include a gallon cap if available.
+Each order saves the cap quantity, charged unit price, and subtotal as generated lines in its existing customer instructions. Staff and riders see these instructions. Later price changes do not alter saved order amounts or cap monitoring; resubmitting an edited pending order uses current prices. Earlier requests without a saved price count as free.
 
-Staff, administrators, and riders can read the request with the order instructions. Editing a pending order restores the checkbox from those instructions. Unchecking it removes the generated request when the edited order is saved.
+Admin Transactions shows gallons, caps requested, the saved cap subtotal and unit price, and the order total. Date range, status and cap-request filters are available. Summary quantities and sales use the selected dates/payment method, independently of the status and cap filters. Cancelled/denied orders and reward/demo transactions are excluded. Fulfilled quantities use delivered/completed status; cap sales require fulfillment and paid status. Summaries read each transaction once.
 
-No database migration or new database fields are required. The earlier cap pricing migration is no longer needed. If it was already applied, leave its unused columns in place to preserve historical data; this revision does not delete or rewrite existing orders.
+No schema migration is required. Previously added cap columns may remain unused to preserve existing data.

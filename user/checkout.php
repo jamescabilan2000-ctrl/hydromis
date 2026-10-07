@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../config/system_settings.php';
+require_once '../config/cap_request.php';
 require_once '../config/inventory_service.php';
 ensure_inventory_schema($conn);
 $systemLogo = system_logo_path($conn);
@@ -148,6 +149,11 @@ $discount = 0;
 $delivery_fee = $fulfillment_method === 'delivery' && !$free_delivery_reward ? 10 * $quantity : 0;
 $final_total = $item_total + $delivery_fee - $discount;
 $cap_requested = isset($_POST['request_gallon_cap']);
+try { $caps_requested = cap_request_quantity($cap_requested, $_POST['caps_requested'] ?? '1'); }
+catch (InvalidArgumentException $e) { http_response_code(400); exit(htmlspecialchars($e->getMessage())); }
+$cap_price = cap_unit_price($conn);
+$cap_subtotal = cap_charge($caps_requested, $cap_price);
+$final_total += $cap_subtotal;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1308,8 +1314,8 @@ $cap_requested = isset($_POST['request_gallon_cap']);
             <div class="panel-body">
                 <div class="summary-table">
                     <div class="summary-row">
-                        <span class="summary-label">Item total</span>
-                        <span class="summary-value" id="summaryItemTotal">₱<?php echo number_format($item_total, 2); ?></span>
+                        <span class="summary-label">Caps: <?= $caps_requested ?> x PHP <?= number_format($cap_price,2) ?></span><span class="summary-value">PHP <?= number_format($cap_subtotal,2) ?></span></div><div class="summary-row"><span class="summary-label">Item total (water and caps)</span>
+                        <span class="summary-value" id="summaryItemTotal">₱<?php echo number_format($item_total + $cap_subtotal, 2); ?></span>
                     </div>
                     <div class="summary-row">
                         <span class="summary-label"><?php echo $fulfillment_method === 'delivery' ? 'Delivery fee' : 'Pickup fee'; ?></span>
@@ -1337,7 +1343,7 @@ $cap_requested = isset($_POST['request_gallon_cap']);
             </div>
         <?php endif; ?>
         <form method="POST" action="purchase.php" enctype="multipart/form-data" style="margin-bottom: 20px;" id="checkoutForm" onsubmit="return validateCheckout(event);">
-            <?php if ($cap_requested): ?><input type="hidden" name="request_gallon_cap" value="1"><?php endif; ?>
+            <?php if ($cap_requested): ?><input type="hidden" name="request_gallon_cap" value="1"><input type="hidden" name="caps_requested" value="<?= $caps_requested ?>"><?php endif; ?>
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['customer_order_csrf']) ?>">
             <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user_id); ?>">
             <input type="hidden" name="buy_submit" value="1">
@@ -1477,8 +1483,8 @@ $cap_requested = isset($_POST['request_gallon_cap']);
                 <label class="comment-label">
                     <i class="fas fa-comment-alt" style="color: #2563eb;"></i> Special Instructions (Optional)
                 </label>
-                <textarea class="comment-textarea" name="customer_notes" id="customerNotes" placeholder="<?php echo $fulfillment_method === 'delivery' ? 'e.g., Please leave at front door, handle with care' : 'e.g., Preferred collection time or other notes'; ?>"><?= htmlspecialchars(trim(str_replace('Please include a gallon cap if available.', '', (string)($edit_order['notes'] ?? '')))) ?></textarea>
-                <?php if ($cap_requested): ?><div class="comment-hint" style="color:#078da4">Optional request: include a gallon cap if available.</div><?php endif; ?>
+                <textarea class="comment-textarea" name="customer_notes" id="customerNotes" placeholder="<?php echo $fulfillment_method === 'delivery' ? 'e.g., Please leave at front door, handle with care' : 'e.g., Preferred collection time or other notes'; ?>"><?= htmlspecialchars(notes_without_cap_request((string)($edit_order['notes'] ?? ''))) ?></textarea>
+                <?php if ($cap_requested): ?><div class="comment-hint" style="color:#078da4">Caps requested: <?= $caps_requested ?> (if available).</div><?php endif; ?>
                 <div class="comment-hint"><?php echo $fulfillment_method === 'delivery' ? 'Let the driver know any special delivery instructions' : 'Add any notes for station staff preparing your pickup'; ?></div>
             </div>
 
@@ -1647,11 +1653,12 @@ $cap_requested = isset($_POST['request_gallon_cap']);
             const newTotal = <?php echo $container_status === 'new' ? json_encode($container_price_map[$container_size]) . ' * currentQuantity' : 'waterOrderTotal(currentQuantity)'; ?>;
             const discount = 0;
             const deliveryFee = isDelivery && !<?php echo $free_delivery_reward ? 'true' : 'false'; ?> ? 10 * currentQuantity : 0;
-            const finalAmount = newTotal + deliveryFee - discount;
+            const capsTotal = <?= json_encode($cap_subtotal) ?>;
+            const finalAmount = newTotal + capsTotal + deliveryFee - discount;
             document.getElementById('summaryDeliveryFee').textContent = deliveryFee > 0 ? '\u20b1' + deliveryFee.toFixed(2) : 'Free';
 
             document.getElementById('itemTotalDisplay').textContent = '₱' + newTotal.toFixed(2);
-            document.getElementById('summaryItemTotal').textContent = '₱' + newTotal.toFixed(2);
+            document.getElementById('summaryItemTotal').textContent = '₱' + (newTotal + capsTotal).toFixed(2);
             document.getElementById('summaryFinalTotal').textContent = '₱' + finalAmount.toFixed(2);
             document.getElementById('hiddenAmount').value = finalAmount.toFixed(2);
 

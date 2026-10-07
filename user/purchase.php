@@ -4,6 +4,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 require_once '../config/database.php';
 require_once '../config/storage_service.php';
 require_once '../config/system_settings.php';
+require_once '../config/cap_request.php';
 require_once '../config/inventory_service.php';
 require_once '../config/system_settings.php';
 ensure_inventory_schema($conn);
@@ -128,10 +129,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     $delivery_lng_sql = $destination === null ? 'NULL' : sprintf('%.8F', $destination[1]);
     $amount_tendered = floatval($_POST['amount_tendered']);
     $raw_notes = is_string($_POST['customer_notes'] ?? null) ? $_POST['customer_notes'] : '';
-    // Use the existing instructions field; a cap request has no quantity or charge.
-    $cap_request_note = 'Please include a gallon cap if available.';
-    $raw_notes = trim(str_replace($cap_request_note, '', $raw_notes));
-    if (isset($_POST['request_gallon_cap'])) $raw_notes .= ($raw_notes !== '' ? "\n" : '') . $cap_request_note;
+    try { $caps_requested = cap_request_quantity(isset($_POST['request_gallon_cap']), $_POST['caps_requested'] ?? '1'); }
+    catch (InvalidArgumentException $e) { $caps_requested = 0; $error = $e->getMessage(); }
+    $cap_price = cap_unit_price($conn);
+    $cap_subtotal = cap_charge($caps_requested, $cap_price);
+    $raw_notes = notes_with_cap_request($raw_notes, $caps_requested, $cap_price);
     $customer_notes = sanitize($raw_notes);
     $payment_method = isset($_POST['payment_method']) ? sanitize($_POST['payment_method']) : 'cash';
     $edit_transaction_id = trim((string)($_POST['edit_transaction_id'] ?? ''));
@@ -189,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         }
     }
     $delivery_fee = $fulfillment_method === 'delivery' && $free_delivery_claim_id === 0 ? 10 * $quantity : 0;
-    $final_amount = $total_amount + $delivery_fee - $discount;
+    $final_amount = round($total_amount + $cap_subtotal + $delivery_fee - $discount,2);
     $change = $amount_tendered - $final_amount;
     
     if ($quantity <= 0) {
@@ -336,7 +338,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
                 'fulfillment_method' => $fulfillment_method,
                 'quantity' => $quantity,
                 'price_per_unit' => $price_per_unit,
-                'total_amount' => $total_amount,
+                'total_amount' => $total_amount + $cap_subtotal,
                 'discount' => $discount,
                 'delivery_fee' => $delivery_fee,
                 'final_amount' => $final_amount,
@@ -1264,7 +1266,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                         <div class="receipt-line"></div>
                         
                         <div class="receipt-section">
-                            <div class="receipt-header-small" style="font-weight: 700; margin-bottom: 8px;">Items</div>
+                            <div class="receipt-header-small" style="font-weight: 700; margin-bottom: 8px;">Items</div><?php if ($caps_requested > 0): ?><div class="receipt-row"><span>Caps: <?= $caps_requested ?> x PHP <?= number_format($cap_price,2) ?></span><strong>PHP <?= number_format($cap_subtotal,2) ?></strong></div><?php endif; ?>
                             <div class="receipt-item-row">
                                 <span class="receipt-item-desc"><?php 
                                     $container_map = [
@@ -1276,7 +1278,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                 ?></span>
                                 <span class="receipt-item-qty"><?php echo $transaction_data['quantity']; ?></span>
                                 <span class="receipt-item-unit">@ ₱<?php echo number_format($transaction_data['price_per_unit'], 2); ?></span>
-                                <span class="receipt-item-total">₱<?php echo number_format($transaction_data['total_amount'], 2); ?></span>
+                                <span class="receipt-item-total">₱<?php echo number_format($transaction_data['total_amount'] - $cap_subtotal, 2); ?></span>
                             </div>
                         </div>
                         
