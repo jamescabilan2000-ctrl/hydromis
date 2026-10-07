@@ -1352,7 +1352,7 @@ $final_total += $cap_subtotal;
             <input type="hidden" name="container_status" value="<?php echo htmlspecialchars($container_status); ?>">
             <input type="hidden" name="fulfillment_method" value="<?php echo htmlspecialchars($fulfillment_method); ?>">
             <input type="hidden" name="quantity" id="hiddenQuantity" value="<?php echo $quantity; ?>">
-            <input type="hidden" name="amount_tendered" id="hiddenAmount" value="<?php echo number_format($final_total, 2); ?>">
+            <input type="hidden" name="amount_tendered" id="hiddenAmount" value="<?php echo number_format($final_total, 2, '.', ''); ?>">
             <input type="hidden" name="delivery_address" id="hiddenAddress" value="<?php echo htmlspecialchars($user_address); ?>">
             <input type="hidden" name="delivery_latitude" id="deliveryLatitude" value="<?= htmlspecialchars((string)($edit_order['delivery_latitude'] ?? '')) ?>">
             <input type="hidden" name="delivery_longitude" id="deliveryLongitude" value="<?= htmlspecialchars((string)($edit_order['delivery_longitude'] ?? '')) ?>">
