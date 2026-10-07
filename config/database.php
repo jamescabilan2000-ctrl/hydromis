@@ -257,6 +257,10 @@ class DBCompatConnection {
         $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS water_type VARCHAR(20) DEFAULT 'regular'");
         $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 1");
         $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS price_per_unit DECIMAL(10,2) NULL");
+        $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS order_water_subtotal DECIMAL(12,2) NULL");
+        $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cap_quantity INT UNSIGNED NOT NULL DEFAULT 0");
+        $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cap_unit_price DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+        $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cap_subtotal DECIMAL(12,2) NOT NULL DEFAULT 0.00");
         $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS discount DECIMAL(10,2) DEFAULT 0");
         $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS notes TEXT");
         $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS delivery_status VARCHAR(30) DEFAULT 'pending'");

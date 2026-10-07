@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once '../config/gallon_caps.php';
 require_once '../config/inventory_service.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -71,7 +72,12 @@ if (isset($_SESSION['tracking_feedback_flash'])) {
     $success = $flash['success'];
     $success_title = $flash['title'];
 }
-$search_value = sanitize($_GET['search_value'] ?? ($_GET['user_id'] ?? ($_GET['contact_number'] ?? '')));
+require_once '../config/customer_order_access.php';
+require_customer_order_access((string)($_SESSION['customer_user_id'] ?? ''));
+$customer_scope = $conn->real_escape_string((string)$_SESSION['customer_user_id']);
+if (isset($_POST['user_id'])) require_customer_order_access((string)$_POST['user_id']);
+if (in_array($_GET['action'] ?? '', ['messages','send_message'], true) && isset($_GET['user_id'])) require_customer_order_access((string)$_GET['user_id']);
+$search_value = sanitize($_GET['search_value'] ?? ($_GET['user_id'] ?? ($_GET['contact_number'] ?? $_SESSION['customer_user_id'])));
 $search_contact_lookup = '';
 
 function tracking_contact_lookup(string $input): string {
@@ -151,6 +157,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'messages') {
         : $_GET;
     $transaction_id = trim((string)($input['transaction_id'] ?? ''));
     $user_id = trim((string)($input['user_id'] ?? ''));
+    require_customer_order_access($user_id);
     $message = trim((string)($input['message'] ?? ''));
 
     $rider_expr = $transactions_has_assigned_rider ? 'COALESCE(rider_id, assigned_rider)' : 'rider_id';
@@ -280,7 +287,7 @@ if (
                 FROM transactions t
                 JOIN users u ON t.user_id = u.user_id
                 LEFT JOIN rider_users ru ON {$transaction_rider_expr} = ru.rider_id
-                WHERE (u.contact_lookup = '$search_contact_lookup' OR u.user_id LIKE '%$search_value%')
+                WHERE t.user_id = '$customer_scope' AND (u.contact_lookup = '$search_contact_lookup' OR u.user_id = '$search_value')
                   AND t.transaction_id NOT LIKE 'RWD-%'
                   AND COALESCE(t.description, '') NOT LIKE 'Reward Redemption - %'
                 ORDER BY CASE
@@ -309,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_feedback']) && 
             FROM transactions t
             JOIN users u ON t.user_id = u.user_id
             LEFT JOIN rider_users ru ON {$transaction_rider_expr} = ru.rider_id
-            WHERE (u.contact_lookup = '$search_contact_lookup' OR u.user_id LIKE '%$search_value%')
+            WHERE t.user_id = '$customer_scope' AND (u.contact_lookup = '$search_contact_lookup' OR u.user_id = '$search_value')
               AND t.transaction_id NOT LIKE 'RWD-%'
               AND COALESCE(t.description, '') NOT LIKE 'Reward Redemption - %'
              ORDER BY CASE
@@ -997,6 +1004,7 @@ function compactTransactionId(string $id): string {
                                 <span class="txn-val discount">−₱<?php echo number_format($txn['discount'],2); ?></span>
                             </div>
                             <?php endif; ?>
+<?php render_order_caps($txn); ?>
                             <div class="txn-row">
                                 <span class="txn-lbl" style="font-weight:800;color:var(--navy);">Total</span>
                                 <span class="txn-val total">₱<?php echo number_format($txn['amount'],2); ?></span>
@@ -1315,6 +1323,7 @@ function compactTransactionId(string $id): string {
                 <span class="txn-val discount">−₱<?php echo number_format($txn['discount'],2); ?></span>
             </div>
             <?php endif; ?>
+<?php render_order_caps($txn); ?>
             <div class="txn-row">
                 <span class="txn-lbl" style="font-weight:800;color:var(--navy);">Total</span>
                 <span class="txn-val total">₱<?php echo number_format($txn['amount'],2); ?></span>

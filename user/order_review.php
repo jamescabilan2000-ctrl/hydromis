@@ -17,6 +17,9 @@ if (!$user_id) {
     exit;
 }
 
+require_once '../config/customer_order_access.php';
+require_customer_order_access((string)$user_id);
+
 $sql = "SELECT * FROM users WHERE user_id = '$user_id'";
 $result = $conn->query($sql);
 if (!$result || $result->num_rows === 0) {

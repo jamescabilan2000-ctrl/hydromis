@@ -71,6 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mobile_login'])) {
     }
 }
 
+if ($scanned_data) { $_SESSION['customer_user_id'] = (string)$scanned_data['user_id']; }
+
 // Transaction and profile handling moved to purchase.php
 // Redirect to purchase page when user is scanned
 if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])) {

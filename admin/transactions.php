@@ -9,13 +9,40 @@ $systemLogo = system_logo_path($conn);
 $filter_date = isset($_GET['date']) ? $_GET['date'] : '';
 $filter_method = isset($_GET['method']) ? $_GET['method'] : 'all';
 
+$date_value = static function ($value): string {
+    if (!is_string($value)) return '';
+    $d = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+    return $d && $d->format('Y-m-d') === $value ? $value : '';
+};
+$filter_date = $date_value($filter_date);
+$date_from = $date_value($_GET['date_from'] ?? '') ?: $filter_date;
+$date_to = $date_value($_GET['date_to'] ?? '') ?: $filter_date;
+if ($date_from && $date_to && $date_from > $date_to) [$date_from, $date_to] = [$date_to, $date_from];
+$filter_status = in_array($_GET['status'] ?? '', ['pending','approved','denied','cancelled','completed','delivered'], true) ? $_GET['status'] : 'all';
+$filter_caps = in_array($_GET['caps'] ?? '', ['yes','no'], true) ? $_GET['caps'] : 'all';
+$date_clauses = [];
+if ($date_from) $date_clauses[] = "created_at >= '$date_from 00:00:00'";
+if ($date_to) $date_clauses[] = "created_at < '" . (new DateTimeImmutable($date_to))->modify('+1 day')->format('Y-m-d') . " 00:00:00'";
+$date_sql = $date_clauses ? ' AND ' . implode(' AND ', $date_clauses) : '';
+$cap_summary = $conn->query(cap_summary_sql($date_sql))->fetch_assoc();
 // Build WHERE clauses
 $where = [];
 $stat_where = [];
-if ($filter_date) {
-    $safe_date = $conn->real_escape_string($filter_date);
-    $where[] = "DATE(t.created_at) = '$safe_date'";
-    $stat_where[] = "DATE(created_at) = '$safe_date'";
+foreach ($date_clauses as $clause) {
+    $where[] = 't.' . $clause; $stat_where[] = $clause;
+}
+if ($filter_status !== 'all') {
+    $condition = in_array($filter_status, ['completed','delivered'], true)
+        ? "(delivery_status IN ('delivered','completed') OR status='completed') AND status NOT IN ('cancelled','canceled','denied')"
+        : "status='$filter_status'";
+    $where[] = in_array($filter_status, ['completed','delivered'], true)
+        ? "(t.delivery_status IN ('delivered','completed') OR t.status='completed') AND t.status NOT IN ('cancelled','canceled','denied')" : "t.status='$filter_status'";
+    $stat_where[] = $condition;
+}
+if ($filter_caps !== 'all') {
+    $comparison = $filter_caps === 'yes' ? '> 0' : '= 0';
+    $where[] = "COALESCE(t.cap_quantity,0) $comparison";
+    $stat_where[] = "COALESCE(cap_quantity,0) $comparison";
 }
 if ($filter_method && $filter_method !== 'all') {
     $safe_method = $conn->real_escape_string($filter_method);
@@ -576,6 +603,14 @@ html, body {
 
             <?php include __DIR__ . '/export_buttons.php'; ?>
 
+            <form method="get" class="filter-bar" style="flex-wrap:wrap">
+                <label class="filter-group">From <input class="filter-date-input" type="date" name="date_from" value="<?= htmlspecialchars($date_from) ?>"></label>
+                <label class="filter-group">To <input class="filter-date-input" type="date" name="date_to" value="<?= htmlspecialchars($date_to) ?>"></label>
+                <label class="filter-group">Order status <select class="filter-date-input" name="status"><?php foreach (['all','pending','approved','denied','cancelled','delivered','completed'] as $value): ?><option value="<?= $value ?>" <?= $filter_status === $value ? 'selected' : '' ?>><?= ucfirst($value) ?></option><?php endforeach; ?></select></label>
+                <label class="filter-group">Caps requested <select class="filter-date-input" name="caps"><?php foreach (['all'=>'All','yes'=>'Yes','no'=>'No'] as $value=>$label): ?><option value="<?= $value ?>" <?= $filter_caps === $value ? 'selected' : '' ?>><?= $label ?></option><?php endforeach; ?></select></label>
+                <input type="hidden" name="method" value="<?= htmlspecialchars($filter_method) ?>"><button type="submit" class="btn">Apply filters</button><a href="transactions.php">Reset</a>
+            </form>
+            <div class="card" style="padding:16px;margin-bottom:16px">Caps in selected order date range · Requested: <strong><?= (int)$cap_summary['requested'] ?></strong> · Fulfilled: <strong><?= (int)$cap_summary['fulfilled'] ?></strong> · Cap sales: <strong>PHP <?= number_format((float)$cap_summary['sales'],2) ?></strong></div>
             <!-- Filter Bar -->
             <div class="filter-bar">
                 <div class="filter-group">
@@ -674,7 +709,7 @@ html, body {
                                 <th>Transaction ID</th>
                                 <th>Customer Name</th>
                                 <th>Contact</th>
-                                <th>Amount</th>
+                                <th>Gallons</th><th>Caps</th><th>Amount</th>
                                 <th>Description</th>
                                 <th>Status</th>
                                 <th>Date</th>
@@ -685,7 +720,7 @@ html, body {
                             <tr>
                                 <td><strong><?php echo htmlspecialchars($row['transaction_id']); ?></strong></td>
                                 <td><?php echo htmlspecialchars($row['full_name']); ?></td>
-                                <td><?php echo htmlspecialchars($row['contact_number']); ?></td>
+                                <td><?php echo htmlspecialchars($row['contact_number']); ?></td><td><?= (int)($row['quantity'] ?? 0) ?></td><td><?= (int)($row['cap_quantity'] ?? 0) ?></td>
                                 <td>
                                     ₱ <?php echo number_format($row['amount'], 2); ?>
                                     <?php if (!empty($row['payment_method']) && $row['payment_method'] !== 'cash'): ?>
@@ -701,7 +736,7 @@ html, body {
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <?php echo htmlspecialchars($row['description']); ?>
+                                    <?php echo htmlspecialchars($row['description']); render_order_caps($row); ?>
                                     <?php if (!empty($row['container_size'])): ?>
                                     <div style="margin-top:5px;font-size:10px;color:var(--muted);">
                                         <i class="fas fa-box"></i> <?php echo ($row['container_status'] ?? '') === 'new' ? 'New container' : 'Customer container'; ?>
@@ -735,8 +770,10 @@ function applyFilters() {
     const date = document.getElementById('filterDate').value;
     const activeTab = document.querySelector('.method-tab.active');
     const method = activeTab ? activeTab.dataset.method : 'all';
-    const params = new URLSearchParams();
-    if (date) params.set('date', date);
+    const params = new URLSearchParams(window.location.search);
+    params.delete('date');
+    if (date) { params.set('date', date); params.delete('date_from'); params.delete('date_to'); }
+    params.delete('method');
     if (method && method !== 'all') params.set('method', method);
     const qs = params.toString();
     window.location.href = 'transactions.php' + (qs ? '?' + qs : '');
