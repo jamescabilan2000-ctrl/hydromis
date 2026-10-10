@@ -1,6 +1,7 @@
 <?php
 require_once 'check_auth.php';
 require_once '../config/database.php';
+require_once '../config/order_status.php';
 
 $period = $_GET['period'] ?? 'all';
 $allowedPeriods = ['all', 'day', 'month', 'year'];
@@ -36,7 +37,7 @@ if ($search !== '') {
 
 $all_trans = $conn->query("
     SELECT p.payment_id, p.transaction_id, p.amount, p.payment_method,
-           p.payment_status, p.created_at, u.full_name
+           p.payment_status, p.created_at, u.full_name, t.status, t.cancellation_reason
     FROM payments p
     JOIN transactions t ON t.transaction_id = p.transaction_id
     JOIN users u ON t.user_id = u.user_id
@@ -399,6 +400,8 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
 }
 
 .badge-denied::before { background: var(--red); }
+.badge-cancelled { background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3);white-space:normal; }
+.badge-cancelled::before { background:var(--amber);flex-shrink:0; }
 
 /* ─── EMPTY STATE ────────────────────────────────────────── */
 .empty-state {
@@ -679,7 +682,8 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                     <th>Customer</th>
                                     <th>Amount</th>
                                     <th>Method</th>
-                                    <th>Status</th>
+                                    <th>Payment status</th>
+                                    <th>Order status</th>
                                     <th>Date</th>
                                 </tr>
                             </thead>
@@ -694,11 +698,18 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                         <td><?php echo htmlspecialchars(strtoupper($row['payment_method'])); ?></td>
                                         <?php $paymentStatus = strtolower((string)$row['payment_status']); $paymentBadge = in_array($paymentStatus, ['paid'], true) ? 'approved' : (in_array($paymentStatus, ['failed', 'rejected'], true) ? 'denied' : 'pending'); ?>
                                         <td><span class="badge badge-<?php echo $paymentBadge; ?>"><?php echo htmlspecialchars(ucfirst($paymentStatus)); ?></span></td>
+                                        <td>
+                                            <?php $customer_cancelled = transaction_cancelled_by_customer($row); ?>
+                                            <span class="badge badge-<?= htmlspecialchars($customer_cancelled ? 'cancelled' : $row['status']) ?>"><?= $customer_cancelled ? 'Cancelled by customer' : htmlspecialchars(ucfirst($row['status'])) ?></span>
+                                            <?php if (trim((string)($row['cancellation_reason'] ?? '')) !== ''): ?>
+                                            <div style="margin-top:6px;max-width:220px;font-size:11px;color:var(--muted);line-height:1.5;"><?= htmlspecialchars($row['cancellation_reason']) ?></div>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
                                     </tr>
                                     <?php endwhile; ?>
                                 <?php else: ?>
-                                    <tr><td colspan="7"><div class="empty-state"><i class="fas fa-inbox"></i><p>No payments recorded yet.</p></div></td></tr>
+                                    <tr><td colspan="8"><div class="empty-state"><i class="fas fa-inbox"></i><p>No payments recorded yet.</p></div></td></tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>

@@ -1,6 +1,7 @@
 <?php
 require_once 'check_auth.php';
 require_once '../config/database.php';
+require_once '../config/order_status.php';
 require_once '../config/cap_request.php';
 require_once '../config/system_settings.php';
 
@@ -913,6 +914,8 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
 .badge-approved::before, .badge-delivered::before { background: var(--green); }
 .badge-denied   { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid rgba(239,68,68,.3); }
 .badge-denied::before { background: var(--red); }
+.badge-cancelled { background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3);white-space:normal; }
+.badge-cancelled::before { background:var(--amber);flex-shrink:0; }
 .badge-on_the_way, .badge-on_way, .badge-assigned {
   background: rgba(59,130,246,.15); color: var(--accent); border: 1px solid rgba(59,130,246,.3);
 }
@@ -1404,7 +1407,13 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                     </div>
                     <?php endif; ?>
                   </td>
-                  <td><span class="badge badge-<?php echo htmlspecialchars($row['status']); ?>"><?php echo ucfirst(htmlspecialchars($row['status'])); ?></span></td>
+                  <td>
+                    <?php $customer_cancelled = transaction_cancelled_by_customer($row); ?>
+                    <span class="badge badge-<?= htmlspecialchars($customer_cancelled ? 'cancelled' : $row['status']) ?>"><?= $customer_cancelled ? 'Cancelled by customer' : htmlspecialchars(ucfirst($row['status'])) ?></span>
+                    <?php if (trim((string)($row['cancellation_reason'] ?? '')) !== ''): ?>
+                    <div style="margin-top:6px;max-width:220px;font-size:11px;color:var(--muted);line-height:1.5;"><?= htmlspecialchars($row['cancellation_reason']) ?></div>
+                    <?php endif; ?>
+                  </td>
                   <td><span class="t-date"><?php echo date('M d, Y', strtotime($row['created_at'])); ?></span></td>
                 </tr>
                 <?php endwhile; ?>

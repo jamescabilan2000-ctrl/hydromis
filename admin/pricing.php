@@ -122,7 +122,7 @@ $systemLogo = system_logo_path($conn);
         </div>
     </aside>
     <main class="main">
-        <header class="page-heading"><div><p class="eyebrow">ADMIN / PRICING</p><h1>Container Pricing</h1><p class="intro">Set your prices. See what customers will pay.</p></div><span class="page-badge"><i class="fas fa-tags" aria-hidden="true"></i> All prices in PHP</span></header>
+        <header class="page-heading"><div><p class="eyebrow">ADMIN / PRICING</p><h1>Container Pricing</h1><p class="intro">Set your prices. See what customers will pay.</p></div></header>
         <?php if ($error): ?><div class="notice error" role="alert"><?= htmlspecialchars($error) ?></div><?php endif; ?>
         <?php if ($saved): ?><div class="notice success" role="status">Prices saved successfully.</div><?php endif; ?>
         <div class="pricing-layout">

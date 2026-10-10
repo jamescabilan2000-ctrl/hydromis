@@ -1381,7 +1381,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                         </div>
                                         <div class="container-info">
                                             <div class="container-size">9.5 Liters</div>
-                                            <div class="container-type">Half Slim (2.5 Gallon)</div>
+                                            <div class="container-type">Half Slim</div>
                                             <div class="container-pricing">
                                                 <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['2.5gal-slim']['water'], 2) . ' each' : htmlspecialchars(quantity_pricing_description($pricingRules)); ?></span>
                                                 <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['2.5gal-slim']['container'], 2); ?></span>
@@ -1397,7 +1397,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                         </div>
                                         <div class="container-info">
                                             <div class="container-size">19 Liters</div>
-                                            <div class="container-type">Slim (5 Gallon)</div>
+                                            <div class="container-type">Slim</div>
                                             <div class="container-pricing">
                                                 <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['5gal-slim']['water'], 2) . ' each' : htmlspecialchars(quantity_pricing_description($pricingRules)); ?></span>
                                                 <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['5gal-slim']['container'], 2); ?></span>
@@ -1413,7 +1413,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                         </div>
                                         <div class="container-info">
                                             <div class="container-size">19 Liters</div>
-                                            <div class="container-type">Round (5 Gallon)</div>
+                                            <div class="container-type">Round</div>
                                             <div class="container-pricing">
                                                 <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['5gal-round']['water'], 2) . ' each' : htmlspecialchars(quantity_pricing_description($pricingRules)); ?></span>
                                                 <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['5gal-round']['container'], 2); ?></span>

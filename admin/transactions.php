@@ -6,6 +6,8 @@ require_once '../config/system_settings.php';
 require_once '../config/cap_request.php';
 $systemLogo = system_logo_path($conn);
 
+require_once '../config/order_status.php';
+
 // Filter parameters
 $filter_date = isset($_GET['date']) ? $_GET['date'] : '';
 $filter_method = isset($_GET['method']) ? $_GET['method'] : 'all';
@@ -29,7 +31,7 @@ $date_to = preg_match('/\A\d{4}-\d{2}-\d{2}\z/', (string)($_GET['to'] ?? '')) ? 
 foreach (['from'=>$date_from,'to'=>$date_to] as $direction=>$date) {
     if ($date !== '') { $op=$direction==='from'?'>=':'<='; $where[]="DATE(t.created_at) $op '$date'"; $stat_where[]="DATE(created_at) $op '$date'"; }
 }
-$monitor_status = in_array($_GET['status'] ?? '', ['pending','approved','denied','cancelled','delivered'],true) ? $_GET['status'] : 'all';
+$monitor_status = in_array($_GET['status'] ?? '', ['pending','approved','denied','cancelled','customer_cancelled','delivered'],true) ? $_GET['status'] : 'all';
 $monitor_caps = in_array($_GET['caps'] ?? '', ['yes','no'],true) ? $_GET['caps'] : 'all';
 $where_sql = count($where) > 0 ? ' AND ' . implode(' AND ', $where) : '';
 $stat_where_sql = count($stat_where) > 0 ? ' AND ' . implode(' AND ', $stat_where) : '';
@@ -55,6 +57,10 @@ $cap_totals=summarize_caps($monitor_orders);
 $monitor_orders=array_values(array_filter($monitor_orders, static function($order) use ($monitor_status,$monitor_caps) {
     $qty=caps_requested_from_notes((string)($order['notes'] ?? ''));
     if ($monitor_caps==='yes' && $qty===0 || $monitor_caps==='no' && $qty>0) return false;
+    $customer_cancelled = transaction_cancelled_by_customer($order);
+    if ($monitor_status === 'customer_cancelled') return $customer_cancelled;
+    if ($monitor_status === 'cancelled') return $customer_cancelled || ($order['status'] ?? '') === 'cancelled';
+    if ($monitor_status === 'denied' && $customer_cancelled) return false;
     return $monitor_status==='all' || ($monitor_status==='delivered' ? ($order['delivery_status'] ?? '')==='delivered' : ($order['status'] ?? '')===$monitor_status);
 }));
 // Labels for active filter
@@ -367,6 +373,8 @@ html, body {
 .badge-pending::before  { background: var(--amber); }
 .badge-denied   { background: var(--red-dim);   color: var(--red); }
 .badge-denied::before   { background: var(--red); }
+.badge-cancelled { background: var(--amber-dim); color: var(--amber); white-space:normal; }
+.badge-cancelled::before { background: var(--amber); flex-shrink:0; }
 
 @media (max-width: 1200px) {
     .stats-grid {
@@ -595,7 +603,7 @@ html, body {
 
             <form method="get" class="filter-bar" style="flex-wrap:wrap">
                 <label>From <input class="filter-date-input" type="date" name="from" value="<?= htmlspecialchars($date_from) ?>"></label><label>To <input class="filter-date-input" type="date" name="to" value="<?= htmlspecialchars($date_to) ?>"></label>
-                <label>Status <select class="filter-date-input" name="status"><?php foreach(['all','pending','approved','denied','cancelled','delivered'] as $value): ?><option <?= $value===$monitor_status?'selected':'' ?> value="<?= $value ?>"><?= ucfirst($value) ?></option><?php endforeach; ?></select></label>
+                <label>Status <select class="filter-date-input" name="status"><?php foreach(['all'=>'All','pending'=>'Pending','approved'=>'Approved','denied'=>'Denied','cancelled'=>'Cancelled','customer_cancelled'=>'Cancelled by customer','delivered'=>'Delivered'] as $value=>$label): ?><option <?= $value===$monitor_status?'selected':'' ?> value="<?= $value ?>"><?= $label ?></option><?php endforeach; ?></select></label>
                 <label>Caps <select class="filter-date-input" name="caps"><?php foreach(['all'=>'All orders','yes'=>'Caps requested','no'=>'No caps'] as $value=>$label): ?><option <?= $value===$monitor_caps?'selected':'' ?> value="<?= $value ?>"><?= $label ?></option><?php endforeach; ?></select></label><button type="submit" class="btn">Apply</button><a href="transactions.php">Reset</a>
             </form>
             <div class="card" style="padding:16px;margin-bottom:16px">Caps requested: <strong><?= $cap_totals['requested'] ?></strong> &middot; Caps fulfilled: <strong><?= $cap_totals['fulfilled'] ?></strong> &middot; Paid cap sales: <strong>PHP <?= number_format($cap_totals['sales'],2) ?></strong><div style="font-size:11px;margin-top:6px;color:var(--muted)">Totals for the selected dates and payment method. Cancelled and denied orders are excluded.</div></div>
@@ -739,7 +747,13 @@ html, body {
                                     </div>
                                     <?php endif; ?>
                                 </td>
-                                <td><span class="badge badge-<?php echo $row['status']; ?>"><?php echo ucfirst($row['status']); ?></span></td>
+                                <td>
+                                    <?php $customer_cancelled = transaction_cancelled_by_customer($row); ?>
+                                    <span class="badge badge-<?= htmlspecialchars($customer_cancelled ? 'cancelled' : $row['status']) ?>"><?= $customer_cancelled ? 'Cancelled by customer' : htmlspecialchars(ucfirst($row['status'])) ?></span>
+                                    <?php if (trim((string)($row['cancellation_reason'] ?? '')) !== ''): ?>
+                                    <div style="margin-top:6px;max-width:200px;font-size:11px;color:var(--muted);line-height:1.5;"><?= htmlspecialchars($row['cancellation_reason']) ?></div>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
                             </tr>
                             <?php endforeach; ?>
