@@ -503,6 +503,7 @@ function compactTransactionId(string $id): string {
     .mob-qr img{display:block;width:160px;max-width:100%;height:auto;margin:0 auto;background:#fff;border-radius:8px}
     .mob-qr p{margin:10px 0;font-size:12px;line-height:1.5;color:var(--t2)}
     .mob-qr .mob-itm{justify-content:center;font-size:13px}
+    .mob-qr[hidden],.mob-qr [hidden]{display:none!important}
     .mob-itm{display:flex;align-items:center;gap:12px;padding:13px 12px;
         border-radius:var(--r-sm);color:var(--t1);font-weight:700;font-size:16px;transition:background .15s}
     .mob-itm:hover{background:var(--surf2)}
@@ -935,10 +936,14 @@ function compactTransactionId(string $id): string {
             </a>
             <?php endif; ?>
             <?php endif; ?>
-            <section class="mob-qr" aria-labelledby="customer-qr-title">
+            <button type="button" class="mob-itm mob-btn" id="customer-qr-toggle" aria-expanded="false" aria-controls="customer-qr-panel">
+                <i class="fas fa-qrcode" aria-hidden="true"></i> Your QR Code
+            </button>
+            <section class="mob-qr" id="customer-qr-panel" aria-labelledby="customer-qr-title" hidden>
                 <h3 id="customer-qr-title">Your QR Code</h3>
                 <img src="../download_qr.php?inline=1&amp;user_id=<?php echo rawurlencode((string)$_SESSION['customer_user_id']); ?>"
-                    alt="Your HydroMIS customer QR code" width="160" height="160">
+                    id="customer-qr-image" alt="Your HydroMIS customer QR code" width="160" height="160" loading="lazy">
+                <p id="customer-qr-error" role="status" hidden>Your QR code could not load. <button type="button" id="customer-qr-retry">Try again</button></p>
                 <p>Save your QR code to use when ordering again.</p>
                 <a class="mob-itm" href="../download_qr.php?user_id=<?php echo rawurlencode((string)$_SESSION['customer_user_id']); ?>">
                     <i class="fas fa-download" aria-hidden="true"></i> Download QR Code
@@ -1533,6 +1538,27 @@ const mobCls = document.getElementById('mob-close');
 const mobIco = document.getElementById('mob-icon');
 const mobOrdersPanel = document.getElementById('mob-orders-panel');
 const mobOrdersToggle = document.querySelector('[data-toggle-orders]');
+const customerQrToggle = document.getElementById('customer-qr-toggle');
+const customerQrPanel = document.getElementById('customer-qr-panel');
+const customerQrImage = document.getElementById('customer-qr-image');
+const customerQrError = document.getElementById('customer-qr-error');
+customerQrToggle?.addEventListener('click', () => {
+    const expanded = customerQrToggle.getAttribute('aria-expanded') !== 'true';
+    customerQrToggle.setAttribute('aria-expanded', String(expanded));
+    customerQrToggle.classList.toggle('is-active', expanded);
+    customerQrPanel.hidden = !expanded;
+});
+customerQrImage?.addEventListener('error', () => {
+    customerQrImage.hidden = true;
+    customerQrError.hidden = false;
+});
+customerQrImage?.addEventListener('load', () => {
+    customerQrImage.hidden = false;
+    customerQrError.hidden = true;
+});
+document.getElementById('customer-qr-retry')?.addEventListener('click', () => {
+    customerQrImage.src = customerQrImage.src.split('&retry=')[0] + '&retry=' + Date.now();
+});
 function openMob()  { document.body.classList.add('mob-open');    if(mobIco) mobIco.className='fas fa-xmark'; mobTog?.setAttribute('aria-expanded','true'); mobTog?.setAttribute('aria-label','Close menu'); }
 function closeMob() { document.body.classList.remove('mob-open'); if(mobIco) mobIco.className='fas fa-bars';  mobTog?.setAttribute('aria-expanded','false'); mobTog?.setAttribute('aria-label','Open menu'); }
 function toggleMobOrders(forceState = null) {

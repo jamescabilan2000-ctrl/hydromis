@@ -26,9 +26,27 @@ if ($userId === '' || !preg_match('/^[A-Z0-9-]{3,50}$/', $userId) || !$authorize
 
 $contents = hydromis_read_bytes('qrcodes/' . $userId . '.png');
 if ($contents === null) {
-    http_response_code(404);
-    header('Content-Type: text/plain; charset=UTF-8');
-    exit('QR code not found.');
+    // Older accounts or a deployment may not have a saved PNG. Recreate a
+    // scannable code using the customer ID, without sending personal details.
+    require_once __DIR__ . '/config/database.php';
+    $customer = $conn->prepare('SELECT user_id FROM users WHERE user_id = ? LIMIT 1');
+    $customer->bind_param('s', $userId);
+    $customer->execute();
+    if (!$customer->get_result()->fetch_assoc()) {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=UTF-8');
+        exit('Customer QR code not found.');
+    }
+    $payload = json_encode(['user_id' => $userId]);
+    $context = stream_context_create(['http' => ['timeout' => 10]]);
+    $generated = @file_get_contents('https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . rawurlencode($payload), false, $context);
+    if ($generated === false || !str_starts_with($generated, "\x89PNG\r\n\x1a\n")) {
+        http_response_code(503);
+        header('Content-Type: text/plain; charset=UTF-8');
+        exit('Your QR code is temporarily unavailable. Please try again.');
+    }
+    $contents = $generated;
+    hydromis_store_bytes('qrcodes/' . $userId . '.png', $contents, 'image/png');
 }
 
 $disposition = isset($_GET['inline']) ? 'inline' : 'attachment';
