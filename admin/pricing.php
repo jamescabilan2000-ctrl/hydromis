@@ -50,6 +50,7 @@ $containerPrices = system_container_prices($conn);
 $capPrice = cap_unit_price($conn);
 $refillMode = system_refill_pricing_mode($conn);
 $pricingRules = system_order_pricing_rules($conn);
+$systemLogo = system_logo_path($conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -58,28 +59,67 @@ $pricingRules = system_order_pricing_rules($conn);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Container Pricing - HydroMIS Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/admin-pricing.css?v=20261010b">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="../css/admin-pricing-sidebar.css">
     <link rel="stylesheet" href="../css/admin-sidebar-hover.css">
-    <link rel="stylesheet" href="../css/admin-pricing.css?v=20261010">
 </head>
 <body>
 <div class="shell">
     <aside class="sidebar">
-        <div class="brand"><img src="../imagess/hydromis-logo-v2.png" alt="HydroMIS logo">HydroMIS</div>
-        <nav aria-label="Admin navigation">
-            <a class="nav-item" href="dashboard.php"><i class="fas fa-chart-pie"></i> Dashboard</a>
-            <a class="nav-item" href="transactions.php"><i class="fas fa-exchange-alt"></i> Transactions</a>
-            <a class="nav-item" href="reports.php"><i class="fas fa-chart-bar"></i> Reports</a>
-            <a class="nav-item" href="feedback.php"><i class="fas fa-comments"></i> Customer Feedback</a>
-            <a class="nav-item" href="inventory.php"><i class="fas fa-boxes-stacked"></i> Inventory</a>
-            <a class="nav-item active" href="pricing.php" aria-current="page"><i class="fas fa-tags"></i> Container Pricing</a>
-            <a class="nav-item" href="rewards.php"><i class="fas fa-gift"></i> Rewards &amp; Loyalty</a>
-            <a class="nav-item" href="users.php"><i class="fas fa-users"></i> Users</a>
-            <a class="nav-item" href="staff_account.php"><i class="fas fa-user-shield"></i> Staff Account</a>
-            <a class="nav-item" href="manage_riders.php"><i class="fas fa-motorcycle"></i> Riders</a>
-            <a class="nav-item" href="activity_logs.php"><i class="fas fa-clock-rotate-left"></i> Activity Log</a>
-            <a class="nav-item" href="dashboard.php?open_settings=1"><i class="fas fa-cog"></i> Settings</a>
-            <a class="nav-item" href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        <div class="brand-logo">
+            <div class="brand-icon"><img src="<?= htmlspecialchars(hydromis_asset_url($systemLogo, '../')) ?>" alt="HydroMIS logo" style="width:24px;height:24px;object-fit:contain;"></div>
+            <div>
+                <div class="brand-name">HydroMIS</div>
+                <div class="brand-sub">Admin Portal</div>
+            </div>
+        </div>
+        <nav style="display:flex;flex-direction:column;gap:24px;">
+            <div>
+                <div class="nav-section-label">Main</div>
+                <div class="nav-group">
+                    <a href="dashboard.php" class="nav-item"><i class="fas fa-chart-pie"></i> Dashboard</a>
+                    <a href="transactions.php" class="nav-item"><i class="fas fa-exchange-alt"></i> Transactions </a>
+                    <a href="reports.php" class="nav-item"><i class="fas fa-chart-bar"></i> Reports</a>
+                    <a href="feedback.php" class="nav-item"><i class="fas fa-comments"></i> Customer Feedback</a>
+                    <a href="inventory.php" class="nav-item"><i class="fas fa-boxes-stacked"></i> Inventory</a>
+<a href="pricing.php" class="nav-item active" aria-current="page"><i class="fas fa-tags"></i> Container Pricing</a>
+<a href="rewards.php" class="nav-item"><i class="fas fa-gift"></i> Rewards &amp; Loyalty</a>
+                </div>
+            </div>
+            <div>
+                <div class="nav-section-label">People</div>
+                <div class="nav-group">
+                    <a href="users.php" class="nav-item"><i class="fas fa-users"></i> Users </a>
+                    <a href="staff_account.php" class="nav-item"><i class="fas fa-user-shield"></i> Staff Account</a>
+                    <a href="manage_riders.php" class="nav-item"><i class="fas fa-motorcycle"></i> Riders</a>
+                </div>
+            </div>
+            <div>
+                <div class="nav-section-label">System</div>
+                <div class="nav-group">
+                    <a href="activity_logs.php" class="nav-item"><i class="fas fa-clock-rotate-left"></i> Activity Log</a>
+                    <a href="dashboard.php?open_settings=1" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
+
+                </div>
+            </div>
         </nav>
+        <div class="sidebar-footer">
+            <div class="admin-card">
+                <div class="admin-avatar" id="sidebarAvatar" style="overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                    <?php if (!empty($_SESSION['avatar_path']) && hydromis_object_exists($_SESSION['avatar_path'])): ?>
+                        <img src="<?= htmlspecialchars(hydromis_storage_url($_SESSION['avatar_path'])) ?>" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    <?php else: ?>
+                        <?= strtoupper(substr($_SESSION['full_name'] ?? 'A', 0, 1)) ?>
+                    <?php endif; ?>
+                </div>
+                <div>
+                    <div class="admin-name"><?=htmlspecialchars($_SESSION['full_name']??'Admin')?></div>
+                    <div class="admin-role">Administrator</div>
+                </div>
+                <a href="../logout.php" class="logout-link" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
+            </div>
+        </div>
     </aside>
     <main class="main">
         <header class="page-heading"><div><p class="eyebrow">ADMIN / PRICING</p><h1>Container Pricing</h1><p class="intro">Set your prices. See what customers will pay.</p></div><span class="page-badge"><i class="fas fa-tags" aria-hidden="true"></i> All prices in PHP</span></header>
