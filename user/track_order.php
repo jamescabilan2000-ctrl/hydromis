@@ -1,9 +1,5 @@
 <?php
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
-if (empty($_SESSION['customer_user_id'])) {
-    header('Location: scan_qr.php?next=tracking');
-    exit;
-}
 require_once '../config/database.php';
 require_once '../config/cap_request.php';
 require_once '../config/inventory_service.php';
@@ -78,11 +74,28 @@ if (isset($_SESSION['tracking_feedback_flash'])) {
     $success_title = $flash['title'];
 }
 require_once '../config/customer_order_access.php';
-require_customer_order_access((string)($_SESSION['customer_user_id'] ?? ''));
-$customer_scope = $conn->real_escape_string((string)$_SESSION['customer_user_id']);
+// Tracking has its own mobile-number entry screen. Resolve the customer only
+// after a valid search, using the same contact lookup as customer login.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search_submit'])) {
+    $tracking_mobile = trim((string)($_POST['search_value'] ?? ''));
+    if (preg_match('/\A09[0-9]{9}\z/', $tracking_mobile)) {
+        $lookup = sensitive_lookup($tracking_mobile);
+        $customer = $conn->prepare('SELECT user_id FROM users WHERE contact_lookup = ? LIMIT 1');
+        $customer->bind_param('s', $lookup);
+        $customer->execute();
+        $matched_customer = $customer->get_result()->fetch_assoc();
+        if ($matched_customer) {
+            $_SESSION['customer_user_id'] = (string)$matched_customer['user_id'];
+            unset($_SESSION['qr_priority_user']);
+        } else {
+            $error = 'No transactions found for this mobile number.';
+        }
+    }
+}
+$customer_scope = $conn->real_escape_string((string)($_SESSION['customer_user_id'] ?? ''));
 if (isset($_POST['user_id'])) require_customer_order_access((string)$_POST['user_id']);
 if (in_array($_GET['action'] ?? '', ['messages','send_message'], true) && isset($_GET['user_id'])) require_customer_order_access((string)$_GET['user_id']);
-$search_value = sanitize($_GET['search_value'] ?? ($_GET['user_id'] ?? ($_GET['contact_number'] ?? $_SESSION['customer_user_id'])));
+$search_value = sanitize($_GET['search_value'] ?? ($_GET['user_id'] ?? ($_GET['contact_number'] ?? (($_GET['view'] ?? '') === 'search' ? '' : ($_SESSION['customer_user_id'] ?? '')))));
 $search_contact_lookup = '';
 
 function tracking_contact_lookup(string $input): string {
@@ -361,7 +374,7 @@ if ($tracking_info) {
 
 $view = $tracking_info ? 'results' : 'search';
 $has_active_order = false;
-foreach ($tracking_info as $tracked_order) {
+foreach ($tracking_info ?? [] as $tracked_order) {
     $tracked_status = strtolower((string)($tracked_order['status'] ?? ''));
     $tracked_delivery_status = strtolower(trim((string)($tracked_order['delivery_status'] ?? 'pending')));
     if ($tracked_status === 'pending' || ($tracked_status === 'approved' && !in_array($tracked_delivery_status, ['delivered'], true))) {
@@ -941,6 +954,7 @@ function compactTransactionId(string $id): string {
             </a>
             <?php endif; ?>
             <?php endif; ?>
+            <?php if (!empty($_SESSION['customer_user_id'])): ?>
             <button type="button" class="mob-itm mob-btn" id="customer-qr-toggle" aria-expanded="false" aria-controls="customer-qr-panel">
                 <i class="fas fa-qrcode" aria-hidden="true"></i> Your QR Code
             </button>
@@ -954,6 +968,7 @@ function compactTransactionId(string $id): string {
                     <i class="fas fa-download" aria-hidden="true"></i> Download QR Code
                 </a>
             </section>
+            <?php endif; ?>
             <?php if($tracking_info): ?>
             <div class="mob-orders-panel" id="mob-orders-panel">
                 <div class="mob-orders-head">

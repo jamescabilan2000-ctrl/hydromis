@@ -2709,7 +2709,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
 
         // Navigate to order tracking page
         function goToTrackOrder() {
-            window.location.href = './scan_qr.php?next=tracking';
+            window.location.href = './track_order.php?view=search';
         }
 
         function confirmRewardConvert(rewardTitle, requiredPoints, currentPoints) {
