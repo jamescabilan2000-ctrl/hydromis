@@ -1547,14 +1547,18 @@ $final_total += $cap_subtotal;
         let selectedPayment = '';
 
         let scheduleOpener = null;
+        function earliestDeliveryDate() {
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit'
+            }).formatToParts(new Date());
+            const value = type => parts.find(part => part.type === type).value;
+            return `${value('year')}-${value('month')}-${value('day')}`;
+        }
+
         function openDateTimeModal(focusField = 'deliveryDate') {
             scheduleOpener = document.activeElement;
             document.getElementById('dateTimeModal').classList.add('active');
-            const today = new Date();
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const minDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
-            document.getElementById('deliveryDate').setAttribute('min', minDate);
+            document.getElementById('deliveryDate').setAttribute('min', earliestDeliveryDate());
             document.getElementById('deliveryDate').value = selectedDate;
             document.getElementById('timeSlot').value = selectedTime;
             document.getElementById('timeSlot').disabled = !selectedDate;
@@ -1586,6 +1590,9 @@ $final_total += $cap_subtotal;
             const date = document.getElementById('deliveryDate').value;
             if (!date) {
                 showDateTimeError('dateError', 'Please select a delivery date');
+                isValid = false;
+            } else if (date < earliestDeliveryDate()) {
+                showDateTimeError('dateError', 'Please select today or a future delivery date');
                 isValid = false;
             }
 
@@ -1791,11 +1798,7 @@ $final_total += $cap_subtotal;
 
         // Set min date for date picker
         window.addEventListener('DOMContentLoaded', function() {
-            const today = new Date();
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const minDate = tomorrow.toISOString().split('T')[0];
-            document.getElementById('deliveryDate').setAttribute('min', minDate);
+            document.getElementById('deliveryDate').setAttribute('min', earliestDeliveryDate());
         });
     </script>
 </body>

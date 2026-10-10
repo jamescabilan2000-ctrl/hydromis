@@ -498,6 +498,11 @@ function compactTransactionId(string $id): string {
         font-size:16px;transition:all .2s}
     .mob-cls:hover{background:rgba(239,68,68,.1);color:var(--red)}
     .mob-nav{padding:12px 14px}
+    .mob-qr{margin:12px 4px;padding:16px 12px;border:1px solid var(--border);border-radius:14px;background:var(--surf2);text-align:center}
+    .mob-qr h3{margin:0 0 12px;font-size:14px}
+    .mob-qr img{display:block;width:160px;max-width:100%;height:auto;margin:0 auto;background:#fff;border-radius:8px}
+    .mob-qr p{margin:10px 0;font-size:12px;line-height:1.5;color:var(--t2)}
+    .mob-qr .mob-itm{justify-content:center;font-size:13px}
     .mob-itm{display:flex;align-items:center;gap:12px;padding:13px 12px;
         border-radius:var(--r-sm);color:var(--t1);font-weight:700;font-size:16px;transition:background .15s}
     .mob-itm:hover{background:var(--surf2)}
@@ -930,6 +935,15 @@ function compactTransactionId(string $id): string {
             </a>
             <?php endif; ?>
             <?php endif; ?>
+            <section class="mob-qr" aria-labelledby="customer-qr-title">
+                <h3 id="customer-qr-title">Your QR Code</h3>
+                <img src="../download_qr.php?inline=1&amp;user_id=<?php echo rawurlencode((string)$_SESSION['customer_user_id']); ?>"
+                    alt="Your HydroMIS customer QR code" width="160" height="160">
+                <p>Save your QR code to use when ordering again.</p>
+                <a class="mob-itm" href="../download_qr.php?user_id=<?php echo rawurlencode((string)$_SESSION['customer_user_id']); ?>">
+                    <i class="fas fa-download" aria-hidden="true"></i> Download QR Code
+                </a>
+            </section>
             <?php if($tracking_info): ?>
             <div class="mob-orders-panel" id="mob-orders-panel">
                 <div class="mob-orders-head">

@@ -6,8 +6,19 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 require_once __DIR__ . '/config/storage_service.php';
 
 $userId = strtoupper(trim((string)($_GET['user_id'] ?? '')));
-$authorizedUserId = strtoupper((string)($_SESSION['qr_download_user_id'] ?? $_SESSION['user_id'] ?? ''));
-if ($userId === '' || !preg_match('/^[A-Z0-9-]{3,50}$/', $userId) || !hash_equals($authorizedUserId, $userId)) {
+$authorizedUserIds = [
+    $_SESSION['qr_download_user_id'] ?? '',
+    $_SESSION['user_id'] ?? '',
+    $_SESSION['customer_user_id'] ?? '',
+];
+$authorized = false;
+foreach ($authorizedUserIds as $authorizedUserId) {
+    if ($authorizedUserId !== '' && hash_equals(strtoupper((string)$authorizedUserId), $userId)) {
+        $authorized = true;
+        break;
+    }
+}
+if ($userId === '' || !preg_match('/^[A-Z0-9-]{3,50}$/', $userId) || !$authorized) {
     http_response_code(403);
     header('Content-Type: text/plain; charset=UTF-8');
     exit('QR download is not authorized for this session.');
