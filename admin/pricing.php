@@ -59,10 +59,7 @@ $pricingRules = system_order_pricing_rules($conn);
     <title>Container Pricing - HydroMIS Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/admin-sidebar-hover.css">
-    <style>
-        :root{--bg:#0d1117;--bg2:#161c26;--bg3:#1e2633;--bg4:#252f3f;--border:#303b4e;--border2:#44536b;--text:#e6edf7;--muted:#99a9bf;--muted2:#7c8da6;--aqua:#33d6c5}
-        *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,sans-serif}.shell{display:grid;grid-template-columns:260px 1fr;min-height:100vh}.sidebar{padding:28px 16px;background:var(--bg2);border-right:1px solid var(--border)}.brand{display:flex;align-items:center;gap:10px;padding:0 12px 28px;font-weight:800;font-size:20px}.brand img{width:38px;height:38px}.nav-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;text-decoration:none;color:var(--muted)}.nav-item i{width:18px;text-align:center}.nav-item:hover,.nav-item.active{background:var(--bg3);color:var(--aqua)}.main{min-width:0;padding:32px}.main h1{margin:0 0 8px}.intro{color:var(--muted);margin-bottom:24px}.pricing-panel{max-width:850px}.settings-section{background:var(--bg2);border:1px solid var(--border);border-radius:18px;overflow:hidden}.settings-section-title{padding:18px;font-weight:700}.settings-row{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px;border-top:1px solid var(--border)}.settings-row-info{flex:1;min-width:0}.settings-row-label{font-weight:700}.settings-row-desc{font-size:12px;color:var(--muted);line-height:1.6}.settings-section>p{padding:0 18px}.settings-select{padding:10px;border:1px solid var(--border2);border-radius:10px;background:var(--bg4);color:var(--text);font:inherit;width:180px!important;max-width:45%}.settings-select:focus-visible{outline:2px solid var(--aqua);outline-offset:3px}.btn-save{margin-top:20px;padding:13px 24px;border:0;border-radius:10px;background:var(--aqua);color:#082c2a;font:700 14px system-ui;cursor:pointer}.notice{max-width:850px;padding:14px 18px;margin-bottom:20px;border-radius:10px;background:var(--bg3)}.notice.error{color:#ffb4b4}.notice.success{color:var(--aqua)}@media(max-width:850px){.shell{grid-template-columns:1fr}.sidebar{padding:16px}.brand{padding-bottom:12px}.sidebar nav{display:flex;gap:6px;overflow:auto}.nav-item{white-space:nowrap}.main{padding:24px 16px}}@media(max-width:480px){.settings-row{flex-wrap:wrap}.settings-row-info{flex-basis:100%}.settings-select{max-width:100%;width:100%!important}.btn-save{width:100%}}
-    </style>
+    <link rel="stylesheet" href="../css/admin-pricing.css?v=20261010">
 </head>
 <body>
 <div class="shell">
@@ -72,38 +69,42 @@ $pricingRules = system_order_pricing_rules($conn);
             <a class="nav-item" href="dashboard.php"><i class="fas fa-chart-pie"></i> Dashboard</a>
             <a class="nav-item" href="transactions.php"><i class="fas fa-exchange-alt"></i> Transactions</a>
             <a class="nav-item" href="reports.php"><i class="fas fa-chart-bar"></i> Reports</a>
+            <a class="nav-item" href="feedback.php"><i class="fas fa-comments"></i> Customer Feedback</a>
             <a class="nav-item" href="inventory.php"><i class="fas fa-boxes-stacked"></i> Inventory</a>
             <a class="nav-item active" href="pricing.php" aria-current="page"><i class="fas fa-tags"></i> Container Pricing</a>
+            <a class="nav-item" href="rewards.php"><i class="fas fa-gift"></i> Rewards &amp; Loyalty</a>
             <a class="nav-item" href="users.php"><i class="fas fa-users"></i> Users</a>
+            <a class="nav-item" href="staff_account.php"><i class="fas fa-user-shield"></i> Staff Account</a>
+            <a class="nav-item" href="manage_riders.php"><i class="fas fa-motorcycle"></i> Riders</a>
+            <a class="nav-item" href="activity_logs.php"><i class="fas fa-clock-rotate-left"></i> Activity Log</a>
             <a class="nav-item" href="dashboard.php?open_settings=1"><i class="fas fa-cog"></i> Settings</a>
+            <a class="nav-item" href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </aside>
     <main class="main">
-        <h1>Container Pricing</h1>
-        <p class="intro">Manage regular refills, new containers, and gallon caps.</p>
+        <header class="page-heading"><div><p class="eyebrow">ADMIN / PRICING</p><h1>Container Pricing</h1><p class="intro">Set your prices. See what customers will pay.</p></div><span class="page-badge"><i class="fas fa-tags" aria-hidden="true"></i> All prices in PHP</span></header>
         <?php if ($error): ?><div class="notice error" role="alert"><?= htmlspecialchars($error) ?></div><?php endif; ?>
         <?php if ($saved): ?><div class="notice success" role="status">Prices saved successfully.</div><?php endif; ?>
-        <form method="POST" action="pricing.php">
+        <div class="pricing-layout">
+        <form method="POST" action="pricing.php" id="pricing-form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['pricing_csrf']) ?>">
             <?php require __DIR__ . '/pricing-fields.php'; ?>
-            <button class="btn-save" type="submit"><i class="fas fa-floppy-disk"></i> Save Prices</button>
+            <div class="save-bar"><div><strong id="pricing-save-state" role="status">Prices up to date</strong><p>Changes apply to new or resubmitted orders.</p></div><button class="btn-save" type="submit"><i class="fas fa-floppy-disk" aria-hidden="true"></i> Save Prices</button></div>
         </form>
-        <section class="pricing-panel" style="margin-top:28px" aria-labelledby="price-list-title">
-            <h2 id="price-list-title">Price list: 1–30 gallons</h2>
-            <p class="intro">Updates as you edit. Refill totals exclude caps; delivery shows the standard fee before rewards. Save Prices to apply changes. Quantities above 30 use the same formula.</p>
-            <label for="preview-container">Container type</label>
-            <select class="settings-select" id="preview-container">
-                <option value="2.5gal-slim">9.5 Liters Half Slim</option>
-                <option value="5gal-slim">19 Liters Slim</option>
-                <option value="5gal-round">19 Liters Round</option>
-            </select>
-            <div style="overflow-x:auto;margin-top:16px">
-                <table style="width:100%;border-collapse:collapse;text-align:left">
-                    <thead><tr><th scope="col">Gallons</th><th scope="col">Refill total</th><th scope="col">Delivery</th><th scope="col">Total with delivery</th></tr></thead>
-                    <tbody id="pricing-preview"></tbody>
-                </table>
+        <section class="preview-card" aria-labelledby="price-list-title">
+            <div class="preview-heading"><span class="card-icon"><i class="fas fa-list" aria-hidden="true"></i></span><div><h2 id="price-list-title">Live price preview</h2><p>All quantities from 1 to 30 gallons</p></div><span class="live-badge">Live</span></div>
+            <div class="preview-controls"><label class="field-label" for="preview-container">Preview container</label><select class="price-input" id="preview-container">
+                <option value="2.5gal-slim">9.5 Liters ? Half Slim</option>
+                <option value="5gal-slim">19 Liters ? Slim</option>
+                <option value="5gal-round">19 Liters ? Round</option>
+            </select></div>
+            <div class="preview-example"><div><span>5-gallon order</span><strong id="preview-example-total">?</strong></div><p id="preview-example-detail">Refill + standard delivery</p></div>
+            <div class="preview-table-wrap" tabindex="0" role="region" aria-label="Price list for 1 to 30 gallons">
+                <table class="preview-table"><thead><tr><th scope="col">Gallons</th><th scope="col">Refill</th><th scope="col">Delivery</th><th scope="col">Total</th></tr></thead><tbody id="pricing-preview"></tbody></table>
             </div>
+            <p class="preview-footnote"><i class="fas fa-circle-info" aria-hidden="true"></i> Includes standard delivery. Caps and reward discounts are excluded. Save Prices to apply your edits.</p>
         </section>
+        </div>
     </main>
 </div>
 <script src="../js/water-pricing.js"></script>
