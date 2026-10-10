@@ -380,7 +380,8 @@ if (!$access_customer && !empty($_SESSION['customer_user_id'])) {
     $access_query->execute();
     $access_customer = $access_query->get_result()->fetch_assoc();
 }
-$view = $tracking_info ? 'results' : 'search';
+$customer_access_ready = $access_customer && ($matched_customer || ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['view'] ?? '') !== 'search' && $error === ''));
+$view = ($tracking_info || $customer_access_ready) ? 'results' : 'search';
 $has_active_order = false;
 foreach ($tracking_info ?? [] as $tracked_order) {
     $tracked_status = strtolower((string)($tracked_order['status'] ?? ''));
@@ -935,30 +936,32 @@ function compactTransactionId(string $id): string {
         <nav class="mob-nav">
             <button
                 type="button"
-                class="mob-itm mob-btn <?php echo $tracking_info ? '' : 'is-disabled'; ?>"
+                class="mob-itm mob-btn <?php echo ($tracking_info || $access_customer) ? '' : 'is-disabled'; ?>"
                 <?php if($tracking_info): ?>
                 data-toggle-orders="1"
+                <?php elseif ($access_customer): ?>
+                data-open-page="pg-results"
                 <?php else: ?>
                 data-open-page="pg-search"
                 title="Search for orders first"
                 <?php endif; ?>>
                 <i class="fas fa-box-open"></i>
-                <?php echo $tracking_info ? 'Order History' : 'Find Orders'; ?>
+                <?php echo ($tracking_info || $access_customer) ? 'Order History' : 'Find Orders'; ?>
             </button>
             <button type="button" class="mob-itm mob-btn" data-open-page="pg-search">
                 <i class="fas fa-magnifying-glass"></i>
                 Search Again
             </button>
-            <?php if($tracking_info && !empty($tracking_info[0]['user_id'])): ?>
+            <?php if($access_customer): ?>
             <?php if($has_active_order): ?>
             <button type="button" class="mob-itm mob-btn is-disabled" disabled title="Complete or cancel your current order first">
                 <i class="fas fa-rotate-right"></i>
                 Order Again
             </button>
             <?php else: ?>
-            <a class="mob-itm" href="purchase.php?user_id=<?php echo urlencode($tracking_info[0]['user_id']); ?>">
+            <a class="mob-itm" href="purchase.php?user_id=<?php echo urlencode($access_customer['user_id']); ?>">
                 <i class="fas fa-rotate-right"></i>
-                Order Again
+                <?php echo $tracking_info ? 'Order Again' : 'Place an Order'; ?>
             </a>
             <?php endif; ?>
             <?php endif; ?>
@@ -1168,15 +1171,20 @@ function compactTransactionId(string $id): string {
                 trackingPhone.addEventListener('input', function() { this.setCustomValidity(''); });
             </script>
         </div>
-        <?php if (!$tracking_info && $matched_customer): ?>
-        <div class="tracking-no-orders"><p>Your account is ready. You have no orders yet. Save your access pass to log in with your mobile number or QR code anytime.</p><?php require __DIR__ . '/customer-access-pass.php'; ?></div>
-        <?php endif; ?>
     </div>
 </section>
 
 <!-- ══ PAGE 2: RESULTS ══ -->
 <section id="pg-results" class="pg <?php echo $view==='results'?'on':''; ?>">
 <div class="r-wrap">
+    <?php if (!$tracking_info && $access_customer): ?>
+    <div class="tracking-no-orders" style="max-width:460px;margin:24px auto;">
+        <h2 style="margin-bottom:12px;">Welcome, <?= htmlspecialchars($access_customer['full_name']) ?></h2>
+        <p>You have no orders yet. You can access your QR pass anytime and place your first order below.</p>
+        <?php require __DIR__ . '/customer-access-pass.php'; ?>
+        <a class="btn-primary" href="purchase.php?user_id=<?= rawurlencode($access_customer['user_id']) ?>" style="text-decoration:none;display:flex;justify-content:center;align-items:center;gap:8px;"><i class="fas fa-cart-shopping" aria-hidden="true"></i> Place an Order</a>
+    </div>
+    <?php endif; ?>
 
     <div class="r-top">
         <div>
