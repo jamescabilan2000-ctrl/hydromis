@@ -74,13 +74,14 @@ if (isset($_SESSION['tracking_feedback_flash'])) {
     $success_title = $flash['title'];
 }
 require_once '../config/customer_order_access.php';
+$matched_customer = null;
 // Tracking has its own mobile-number entry screen. Resolve the customer only
 // after a valid search, using the same contact lookup as customer login.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search_submit'])) {
     $tracking_mobile = trim((string)($_POST['search_value'] ?? ''));
     if (preg_match('/\A09[0-9]{9}\z/', $tracking_mobile)) {
         $lookup = sensitive_lookup($tracking_mobile);
-        $customer = $conn->prepare('SELECT user_id FROM users WHERE contact_lookup = ? LIMIT 1');
+        $customer = $conn->prepare('SELECT user_id, full_name, contact_number FROM users WHERE contact_lookup = ? LIMIT 1');
         $customer->bind_param('s', $lookup);
         $customer->execute();
         $matched_customer = $customer->get_result()->fetch_assoc();
@@ -88,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search_submit'])) {
             $_SESSION['customer_user_id'] = (string)$matched_customer['user_id'];
             unset($_SESSION['qr_priority_user']);
         } else {
-            $error = 'No transactions found for this mobile number.';
+            $error = 'This mobile number is not registered. Please check the number or create an account.';
         }
     }
 }
@@ -320,7 +321,7 @@ if (
                 $tracking_info[] = $row;
             }
         } elseif ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $error = 'No transactions found for this mobile number.';
+            $error = $matched_customer ? '' : 'No transactions found for this mobile number.';
         }
     } elseif ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = 'Please enter a mobile number.';
@@ -372,6 +373,13 @@ if ($tracking_info) {
     }
 }
 
+$access_customer = $matched_customer;
+if (!$access_customer && !empty($_SESSION['customer_user_id'])) {
+    $access_query = $conn->prepare('SELECT user_id, full_name, contact_number FROM users WHERE user_id = ? LIMIT 1');
+    $access_query->bind_param('s', $_SESSION['customer_user_id']);
+    $access_query->execute();
+    $access_customer = $access_query->get_result()->fetch_assoc();
+}
 $view = $tracking_info ? 'results' : 'search';
 $has_active_order = false;
 foreach ($tracking_info ?? [] as $tracked_order) {
@@ -898,7 +906,7 @@ function compactTransactionId(string $id): string {
     </style>
 <script src="../js/ui-protection.js" defer></script>
 <script src="../js/customer-home.js?v=20260911" data-hide-home="true" defer></script>
-</head>
+<link rel="stylesheet" href="../css/customer-access-pass.css"><script src="../js/customer-access-pass.js" defer></script></head>
 <body class="<?php echo $view === 'search' ? 'search-view' : 'results-view'; ?>">
 
 <div class="bg-anim" id="bg-anim" style="<?php echo $view==='results'?'display:none':''; ?>"></div>
@@ -954,20 +962,11 @@ function compactTransactionId(string $id): string {
             </a>
             <?php endif; ?>
             <?php endif; ?>
-            <?php if (!empty($_SESSION['customer_user_id'])): ?>
+            <?php if ($access_customer): ?>
             <button type="button" class="mob-itm mob-btn" id="customer-qr-toggle" aria-expanded="false" aria-controls="customer-qr-panel">
                 <i class="fas fa-qrcode" aria-hidden="true"></i> Your QR Code
             </button>
-            <section class="mob-qr" id="customer-qr-panel" aria-labelledby="customer-qr-title" hidden>
-                <h3 id="customer-qr-title">Your QR Code</h3>
-                <img src="../download_qr.php?inline=1&amp;user_id=<?php echo rawurlencode((string)$_SESSION['customer_user_id']); ?>"
-                    id="customer-qr-image" alt="Your HydroMIS customer QR code" width="160" height="160" loading="lazy">
-                <p id="customer-qr-error" role="status" hidden>Your QR code could not load. <button type="button" id="customer-qr-retry">Try again</button></p>
-                <p>Save your QR code to use when ordering again.</p>
-                <a class="mob-itm" href="../download_qr.php?user_id=<?php echo rawurlencode((string)$_SESSION['customer_user_id']); ?>">
-                    <i class="fas fa-download" aria-hidden="true"></i> Download QR Code
-                </a>
-            </section>
+            <section id="customer-qr-panel" aria-label="Customer access pass" hidden><?php require __DIR__ . '/customer-access-pass.php'; ?></section>
             <?php endif; ?>
             <?php if($tracking_info): ?>
             <div class="mob-orders-panel" id="mob-orders-panel">
@@ -1169,6 +1168,9 @@ function compactTransactionId(string $id): string {
                 trackingPhone.addEventListener('input', function() { this.setCustomValidity(''); });
             </script>
         </div>
+        <?php if (!$tracking_info && $matched_customer): ?>
+        <div class="tracking-no-orders"><p>Your account is ready. You have no orders yet. Save your access pass to log in with your mobile number or QR code anytime.</p><?php require __DIR__ . '/customer-access-pass.php'; ?></div>
+        <?php endif; ?>
     </div>
 </section>
 
@@ -1560,24 +1562,13 @@ const mobOrdersPanel = document.getElementById('mob-orders-panel');
 const mobOrdersToggle = document.querySelector('[data-toggle-orders]');
 const customerQrToggle = document.getElementById('customer-qr-toggle');
 const customerQrPanel = document.getElementById('customer-qr-panel');
-const customerQrImage = document.getElementById('customer-qr-image');
-const customerQrError = document.getElementById('customer-qr-error');
+
+
 customerQrToggle?.addEventListener('click', () => {
     const expanded = customerQrToggle.getAttribute('aria-expanded') !== 'true';
     customerQrToggle.setAttribute('aria-expanded', String(expanded));
     customerQrToggle.classList.toggle('is-active', expanded);
     customerQrPanel.hidden = !expanded;
-});
-customerQrImage?.addEventListener('error', () => {
-    customerQrImage.hidden = true;
-    customerQrError.hidden = false;
-});
-customerQrImage?.addEventListener('load', () => {
-    customerQrImage.hidden = false;
-    customerQrError.hidden = true;
-});
-document.getElementById('customer-qr-retry')?.addEventListener('click', () => {
-    customerQrImage.src = customerQrImage.src.split('&retry=')[0] + '&retry=' + Date.now();
 });
 function openMob()  { document.body.classList.add('mob-open');    if(mobIco) mobIco.className='fas fa-xmark'; mobTog?.setAttribute('aria-expanded','true'); mobTog?.setAttribute('aria-label','Close menu'); }
 function closeMob() { document.body.classList.remove('mob-open'); if(mobIco) mobIco.className='fas fa-bars';  mobTog?.setAttribute('aria-expanded','false'); mobTog?.setAttribute('aria-label','Open menu'); }
