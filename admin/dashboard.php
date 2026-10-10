@@ -6,7 +6,6 @@ require_once '../config/cap_request.php';
 require_once '../config/storage_service.php';
 
 $systemLogo = system_logo_path($conn);
-$containerPrices = system_container_prices($conn);
 if (empty($_SESSION['system_logo_csrf'])) $_SESSION['system_logo_csrf'] = bin2hex(random_bytes(32));
 
 function format_currency($amount) {
@@ -106,19 +105,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         echo json_encode(['success' => false, 'message' => 'Refresh the page before saving settings.']);
         exit;
     }
-    try {
-        $validatedPrices = validate_container_prices($settings['containerPrices'] ?? null);
-        $capPrice = validate_cap_price($settings['capPrice'] ?? '0');
-        $refillMode = $settings['refillPricingMode'] ?? system_refill_pricing_mode($conn);
-        if (!in_array($refillMode, ['quantity', 'per_gallon'], true)) {
-            throw new InvalidArgumentException('Select a valid refill pricing method.');
-        }
-    } catch (InvalidArgumentException $e) {
-        http_response_code(422);
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-        exit;
-    }
-
     // Save settings
     // The settings object contains profile PII too, so protect the JSON blob.
     $settings_json = $conn->real_escape_string(encrypt_sensitive(json_encode($settings)));
@@ -171,10 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $passwordMessage = ' Password updated.';
     }
     
-    $pricesSaved = set_system_setting($conn, 'container_bundle_prices', json_encode($validatedPrices), (string)$_SESSION['admin_id']);
-    $capSaved = set_system_setting($conn, 'gallon_cap_unit_price', number_format($capPrice,2,'.',''), (string)$_SESSION['admin_id']);
-    $refillSaved = set_system_setting($conn, 'refill_pricing_mode', $refillMode, (string)$_SESSION['admin_id']);
-    if ($pricesSaved && $capSaved && $refillSaved && $conn->query($sql)) {
+    if ($conn->query($sql)) {
         echo json_encode(['success' => true, 'message' => 'Settings saved.' . $passwordMessage]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Error saving settings']);
@@ -845,8 +828,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
 
     <!-- Tabs -->
     <div class="drawer-tabs">
-        <div class="drawer-tab active" onclick="switchDrawerTab(this,'tab-pricing')"><i class="fas fa-sliders"></i> Container Pricing</div>
-        <div class="drawer-tab" onclick="switchDrawerTab(this,'tab-appearance')"><i class="fas fa-palette"></i> Appearance</div>
+        <div class="drawer-tab active" onclick="switchDrawerTab(this,'tab-appearance')"><i class="fas fa-palette"></i> Appearance</div>
         <div class="drawer-tab" onclick="switchDrawerTab(this,'tab-payment-qr')"><i class="fas fa-qrcode"></i> Payment QR</div>
         <div class="drawer-tab" onclick="switchDrawerTab(this,'tab-account')"><i class="fas fa-user"></i> Account</div>
     </div>
@@ -855,34 +837,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
     <div class="drawer-body">
 
         <!-- ── Container Pricing Tab ── -->
-        <div class="tab-panel active" id="tab-pricing">
-            <div class="settings-section">
-                <div class="settings-section-title">Container pricing</div><div class="settings-row"><label class="settings-row-info" for="capPrice"><span class="settings-row-label">Gallon cap price (PHP)</span><span class="settings-row-desc">Per cap. Price changes apply to new or resubmitted orders.</span></label><input id="capPrice" class="settings-select" type="number" min="0" max="99999.99" step="0.01" value="<?= number_format(cap_unit_price($conn),2,'.','') ?>" style="width:112px"></div>
-                <div class="settings-row">
-                    <label class="settings-row-info" for="refillPricingMode"><span class="settings-row-label">Regular refill pricing</span><span class="settings-row-desc" style="display:block">Choose Per gallon to use the refill prices below.</span></label>
-                    <select id="refillPricingMode" class="settings-select">
-                        <option value="quantity" <?= system_refill_pricing_mode($conn) === 'quantity' ? 'selected' : '' ?>>Quantity pricing</option>
-                        <option value="per_gallon" <?= system_refill_pricing_mode($conn) === 'per_gallon' ? 'selected' : '' ?>>Per gallon</option>
-                    </select>
-                </div>
-                <p class="settings-row-desc">Quantity pricing: PHP 80 total for 1&ndash;4 gallons; PHP 15 each for 5 or more. Per gallon: the selected container's refill price multiplied by quantity. New container prices include water. Delivery is charged separately. Changes apply to new or resubmitted orders.</p>
-                <?php foreach (['2.5gal-slim' => '9.5 Liters Half Slim (2.5 Gallon)', '5gal-slim' => '19 Liters Slim (5 Gallon)', '5gal-round' => '19 Liters Round (5 Gallon)'] as $size => $label): ?>
-                    <?php foreach (['water' => 'Regular refill per gallon', 'container' => 'New container including water'] as $kind => $priceLabel): ?>
-                    <div class="settings-row">
-                        <label class="settings-row-info" for="price-<?php echo $size . '-' . $kind; ?>">
-                            <span class="settings-row-label"><?php echo $label; ?></span>
-                            <span class="settings-row-desc" style="display:block"><?php echo $priceLabel; ?> (PHP)</span>
-                        </label>
-                        <input class="settings-select container-price-input" id="price-<?php echo $size . '-' . $kind; ?>" data-size="<?php echo $size; ?>" data-kind="<?php echo $kind; ?>" type="number" min="0" max="99999.99" step="0.01" required value="<?php echo number_format($containerPrices[$size][$kind], 2, '.', ''); ?>" style="width:112px">
-                    </div>
-                    <?php endforeach; ?>
-                <?php endforeach; ?>
-            </div>
-
-        </div>
-
-        <!-- ── Appearance Tab ── -->
-        <div class="tab-panel" id="tab-appearance">
+        <div class="tab-panel active" id="tab-appearance">
             <div class="settings-section">
                 <div class="settings-section-title">Color Mode</div>
                 <div class="settings-row">
@@ -1165,6 +1120,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                     <a href="reports.php" class="nav-item"><i class="fas fa-chart-bar"></i> Reports</a>
                     <a href="feedback.php" class="nav-item"><i class="fas fa-comments"></i> Customer Feedback</a>
                     <a href="inventory.php" class="nav-item"><i class="fas fa-boxes-stacked"></i> Inventory</a>
+<a href="pricing.php" class="nav-item"><i class="fas fa-tags"></i> Container Pricing</a>
 <a href="rewards.php" class="nav-item"><i class="fas fa-gift"></i> Rewards &amp; Loyalty</a>
                 </div>
             </div>
@@ -1454,11 +1410,6 @@ function applyThemeColor(color) {
 }
 
 function saveSettings() {
-    const containerPrices = <?php echo json_encode($containerPrices); ?>;
-    for (const input of document.querySelectorAll('.container-price-input')) {
-        if (!input.reportValidity()) return;
-        (containerPrices[input.dataset.size] ??= {})[input.dataset.kind] = input.value;
-    }
     // Collect all settings from the form
     const passwordInputs = document.querySelectorAll('#tab-account .settings-section:nth-of-type(3) input[type="password"]');
     
@@ -1474,9 +1425,6 @@ function saveSettings() {
         confirmPassword: passwordInputs[2]?.value || '',
         twoFactor: document.getElementById('tog-two-factor')?.checked ?? false,
         sessionTimeout: document.getElementById('sel-session-timeout')?.value || '1 hour',
-        containerPrices,
-        refillPricingMode: document.getElementById('refillPricingMode').value,
-        capPrice: document.getElementById('capPrice').value,
     };
     
     const btn = document.querySelector('.btn-save');

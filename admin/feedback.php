@@ -41,6 +41,7 @@ function feedback_escape($value) { return htmlspecialchars((string)$value, ENT_Q
                     <a href="reports.php" class="nav-item" style="position:relative;"><i class="fas fa-chart-bar"></i> Reports</a>
                     <a href="feedback.php" class="nav-item active" aria-current="page"><i class="fas fa-comments"></i> Customer Feedback</a>
                     <a href="inventory.php" class="nav-item"><i class="fas fa-boxes-stacked"></i> Inventory</a>
+<a href="pricing.php" class="nav-item"><i class="fas fa-tags"></i> Container Pricing</a>
 <a href="rewards.php" class="nav-item"><i class="fas fa-gift"></i> Rewards &amp; Loyalty</a>
                 </div>
             </div>

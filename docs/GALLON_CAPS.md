@@ -2,7 +2,7 @@
 
 Customers select **Request a gallon cap** and enter a positive whole-number quantity on order review. The configured cap price and subtotal appear in the receipt and confirmation; checkout totals and server totals include the caps.
 
-Administrators set **Gallon cap price (PHP)** in Settings under Container pricing. Zero means free caps. Prices are validated to two decimal places. The setting uses the existing `system_settings` table; no new columns or migration are needed.
+Administrators set **Gallon cap price (PHP)** on the **Container Pricing** page in the admin sidebar and click **Save Prices**. Zero means free caps. Prices are validated to two decimal places. The setting uses the existing `system_settings` table; no new columns or migration are needed.
 
 Each order saves the cap quantity, charged unit price, and subtotal as generated lines in its existing customer instructions. Staff and riders see these instructions. Later price changes do not alter saved order amounts or cap monitoring; resubmitting an edited pending order uses current prices. Earlier requests without a saved price count as free.
 

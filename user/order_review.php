@@ -5,6 +5,7 @@ require_once '../config/cap_request.php';
 $systemLogo = system_logo_path($conn);
 $containerPrices = system_container_prices($conn);
 $refillMode = system_refill_pricing_mode($conn);
+$pricingRules = system_order_pricing_rules($conn);
 $container_price_map = array_map(static fn($price) => $price['container'], $containerPrices);
 
 $user_id = null;
@@ -700,11 +701,11 @@ $container_image_map = [
             function updateSummary() {
                 const pickupBase = pickupBaseMap[containerSize];
                 const newContainer = containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : 0;
-                const water = containerStatus === 'new' ? 0 : (refillUnitPrice !== null ? Math.round(refillUnitPrice * quantity * 100) / 100 : (quantity <= 4 ? 80 : 15 * quantity));
+                const water = containerStatus === 'new' ? 0 : (refillUnitPrice !== null ? Math.round(refillUnitPrice * quantity * 100) / 100 : (quantity <= <?= json_encode($pricingRules['flat_max']) ?> ? <?= json_encode($pricingRules['flat_total']) ?> : Math.round(<?= json_encode($pricingRules['bulk_unit']) ?> * quantity * 100) / 100));
 
                 const discountCount = Math.floor(quantity / 5);
                 const discount = 0;
-                const deliveryFee = fulfillmentMethod === 'delivery' && !hasFreeDeliveryReward ? 10 * quantity : 0;
+                const deliveryFee = fulfillmentMethod === 'delivery' && !hasFreeDeliveryReward ? <?= json_encode($pricingRules['delivery_unit']) ?> * quantity : 0;
                 const capCount = document.getElementById('requestGallonCap').checked ? Number(document.getElementById('capsRequested').value) || 0 : 0;
                 const capPrice = <?= json_encode($cap_price) ?>;
                 const capsTotal = Math.max(0, capCount) * Math.round(capPrice * 100) / 100;
@@ -785,7 +786,7 @@ $container_image_map = [
                 document.getElementById('confirmItemLabel').textContent = containerStatus === 'new' ? 'Container + water' : 'Water refill';
                 document.getElementById('confirmItemSubtotal').textContent = '\u20B1' + (containerStatus === 'new' ? containerTotal.textContent : waterTotal.textContent);
                 document.getElementById('confirmDeliveryRow').style.display = fulfillmentMethod === 'delivery' ? 'flex' : 'none';
-                document.getElementById('confirmDeliveryFee').textContent = hasFreeDeliveryReward ? 'Free (reward applied)' : '\u20B1' + (10 * quantity).toFixed(2);
+                document.getElementById('confirmDeliveryFee').textContent = hasFreeDeliveryReward ? 'Free (reward applied)' : '\u20B1' + (<?= json_encode($pricingRules['delivery_unit']) ?> * quantity).toFixed(2);
                 document.getElementById('confirmCapsRequested').textContent = 'Caps requested: ' + capsInput.value + ' x PHP <?= number_format($cap_price,2) ?> = PHP ' + (Number(capsInput.value) * <?= json_encode(round($cap_price*100)) ?> / 100).toFixed(2);
                 document.getElementById('confirmCapRequest').hidden = !document.getElementById('requestGallonCap').checked;
                 document.getElementById('confirmTotal').textContent = '\u20B1' + reviewTotal.textContent;

@@ -11,6 +11,7 @@ ensure_inventory_schema($conn);
 $systemLogo = system_logo_path($conn);
 $containerPrices = system_container_prices($conn);
 $refillMode = system_refill_pricing_mode($conn);
+$pricingRules = system_order_pricing_rules($conn);
 $container_price_map = array_map(static fn($price) => $price['container'], $containerPrices);
 
 function savePurchasePaymentProof($fieldName, $paymentId) {
@@ -174,9 +175,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         $error = 'Please select a valid container and order type.';
         $price_per_unit = 0;
     } else {
-        $price_per_unit = $container_status === 'new' ? $container_price_map[$container_size] : water_order_total($quantity, $refillUnitPrice) / max(1, $quantity);
+        $price_per_unit = $container_status === 'new' ? $container_price_map[$container_size] : water_order_total($quantity, $refillUnitPrice, $pricingRules) / max(1, $quantity);
     }
-    $total_amount = $container_status === 'new' ? ($container_price_map[$container_size] ?? 0) * $quantity : water_order_total($quantity, $refillUnitPrice);
+    $total_amount = $container_status === 'new' ? ($container_price_map[$container_size] ?? 0) * $quantity : water_order_total($quantity, $refillUnitPrice, $pricingRules);
     $discount = 0;
     // Points are awarded only after staff approves the pending order.
     $loyalty_points = 0;
@@ -192,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
             $free_delivery_redemption_id = (string)$reward_claim['transaction_id'];
         }
     }
-    $delivery_fee = $fulfillment_method === 'delivery' && $free_delivery_claim_id === 0 ? 10 * $quantity : 0;
+    $delivery_fee = $fulfillment_method === 'delivery' && $free_delivery_claim_id === 0 ? $pricingRules['delivery_unit'] * $quantity : 0;
     $final_amount = round($total_amount + $cap_subtotal + $delivery_fee - $discount,2);
     $change = $amount_tendered - $final_amount;
     
@@ -1382,7 +1383,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">9.5 Liters</div>
                                             <div class="container-type">Half Slim (2.5 Gallon)</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['2.5gal-slim']['water'], 2) . ' each' : 'Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each'; ?></span>
+                                                <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['2.5gal-slim']['water'], 2) . ' each' : htmlspecialchars(quantity_pricing_description($pricingRules)); ?></span>
                                                 <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['2.5gal-slim']['container'], 2); ?></span>
                                             </div>
                                         </div>
@@ -1398,7 +1399,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">19 Liters</div>
                                             <div class="container-type">Slim (5 Gallon)</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['5gal-slim']['water'], 2) . ' each' : 'Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each'; ?></span>
+                                                <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['5gal-slim']['water'], 2) . ' each' : htmlspecialchars(quantity_pricing_description($pricingRules)); ?></span>
                                                 <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['5gal-slim']['container'], 2); ?></span>
                                             </div>
                                         </div>
@@ -1414,7 +1415,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">19 Liters</div>
                                             <div class="container-type">Round (5 Gallon)</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['5gal-round']['water'], 2) . ' each' : 'Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each'; ?></span>
+                                                <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['5gal-round']['water'], 2) . ' each' : htmlspecialchars(quantity_pricing_description($pricingRules)); ?></span>
                                                 <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['5gal-round']['container'], 2); ?></span>
                                             </div>
                                         </div>
@@ -1476,14 +1477,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             const containerPriceMap = <?php echo json_encode($container_price_map); ?>;
             const refillPriceMap = <?php echo json_encode(array_map(static fn($price) => $price['water'], $containerPrices)); ?>;
             const refillUnitPrice = <?php echo $refillMode === 'per_gallon' ? 'refillPriceMap[containerSize]' : 'null'; ?>;
-            const subtotal = containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : waterOrderTotal(quantity, refillUnitPrice);
+            const subtotal = containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : waterOrderTotal(quantity, refillUnitPrice, <?php echo json_encode($pricingRules); ?>);
             const price = subtotal / Math.max(1, quantity);
             
             // The quantity-based water price already includes volume pricing.
             let discount = 0;
             let loyaltyPoints = quantity;
             
-            const deliveryFee = fulfillmentMethod === 'delivery' ? 10 * quantity : 0;
+            const deliveryFee = fulfillmentMethod === 'delivery' ? <?= json_encode($pricingRules['delivery_unit']) ?> * quantity : 0;
             const finalAmount = subtotal + deliveryFee - discount;
             
             // Update display

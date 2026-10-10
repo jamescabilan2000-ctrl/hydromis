@@ -7,6 +7,7 @@ ensure_inventory_schema($conn);
 $systemLogo = system_logo_path($conn);
 $containerPrices = system_container_prices($conn);
 $refillMode = system_refill_pricing_mode($conn);
+$pricingRules = system_order_pricing_rules($conn);
 $container_price_map = array_map(static fn($price) => $price['container'], $containerPrices);
 
 $user_id = null;
@@ -143,12 +144,12 @@ $user_contact = isset($scanned_data['contact_number']) ? $scanned_data['contact_
 
 $new_container = $container_status === 'new' ? $container_price_map[$container_size] * $quantity : 0;
 $refillUnitPrice = $refillMode === 'per_gallon' ? $containerPrices[$container_size]['water'] : null;
-$water_total = $container_status === 'new' ? 0 : water_order_total($quantity, $refillUnitPrice);
+$water_total = $container_status === 'new' ? 0 : water_order_total($quantity, $refillUnitPrice, $pricingRules);
 $price_per_unit = $container_status === 'new' ? $container_price_map[$container_size] : $water_total / max(1, $quantity);
 $item_total = $water_total + $new_container;
 
 $discount = 0;
-$delivery_fee = $fulfillment_method === 'delivery' && !$free_delivery_reward ? 10 * $quantity : 0;
+$delivery_fee = $fulfillment_method === 'delivery' && !$free_delivery_reward ? $pricingRules['delivery_unit'] * $quantity : 0;
 $final_total = $item_total + $delivery_fee - $discount;
 $cap_requested = isset($_POST['request_gallon_cap']);
 try { $caps_requested = cap_request_quantity($cap_requested, $_POST['caps_requested'] ?? '1'); }
@@ -1659,9 +1660,9 @@ $final_total += $cap_subtotal;
             document.getElementById('qtyDisplay').textContent = currentQuantity;
             document.getElementById('hiddenQuantity').value = currentQuantity;
 
-            const newTotal = <?php echo $container_status === 'new' ? json_encode($container_price_map[$container_size]) . ' * currentQuantity' : 'waterOrderTotal(currentQuantity, ' . json_encode($refillUnitPrice) . ')'; ?>;
+            const newTotal = <?php echo $container_status === 'new' ? json_encode($container_price_map[$container_size]) . ' * currentQuantity' : 'waterOrderTotal(currentQuantity, ' . json_encode($refillUnitPrice) . ', ' . json_encode($pricingRules) . ')'; ?>;
             const discount = 0;
-            const deliveryFee = isDelivery && !<?php echo $free_delivery_reward ? 'true' : 'false'; ?> ? 10 * currentQuantity : 0;
+            const deliveryFee = isDelivery && !<?php echo $free_delivery_reward ? 'true' : 'false'; ?> ? <?= json_encode($pricingRules['delivery_unit']) ?> * currentQuantity : 0;
             const capsTotal = <?= json_encode($cap_subtotal) ?>;
             const finalAmount = newTotal + capsTotal + deliveryFee - discount;
             document.getElementById('summaryDeliveryFee').textContent = deliveryFee > 0 ? '\u20b1' + deliveryFee.toFixed(2) : 'Free';

@@ -82,8 +82,45 @@ function system_refill_pricing_mode($conn): string {
     return ($row['setting_value'] ?? '') === 'per_gallon' ? 'per_gallon' : 'quantity';
 }
 
-function water_order_total(int $quantity, ?float $unitPrice = null): float {
+function order_pricing_defaults(): array {
+    return ['flat_max' => 4, 'flat_total' => 80.0, 'bulk_unit' => 15.0, 'delivery_unit' => 10.0];
+}
+
+function validate_order_pricing_rules($rules): array {
+    if (!is_array($rules)) throw new InvalidArgumentException('Enter all quantity and delivery prices.');
+    if (!preg_match('/\A(?:[1-9]|[12][0-9]|30)\z/', (string)($rules['flat_max'] ?? ''))) {
+        throw new InvalidArgumentException('The fixed-price quantity must be a whole number from 1 to 30.');
+    }
+    $validated = ['flat_max' => (int)$rules['flat_max']];
+    foreach (['flat_total', 'bulk_unit', 'delivery_unit'] as $key) {
+        $value = $rules[$key] ?? null;
+        if ((!is_string($value) && !is_int($value) && !is_float($value))
+            || !preg_match('/\A\d{1,6}(?:\.\d{1,2})?\z/', (string)$value) || (float)$value > 99999.99) {
+            throw new InvalidArgumentException('Prices must be between 0 and 99,999.99 pesos, with up to two decimal places.');
+        }
+        $validated[$key] = round((float)$value, 2);
+    }
+    return $validated;
+}
+
+function system_order_pricing_rules($conn): array {
+    ensure_system_settings_schema($conn);
+    $result = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='order_pricing_rules' LIMIT 1");
+    if ($result && ($row = $result->fetch_assoc())) {
+        try { return validate_order_pricing_rules(json_decode($row['setting_value'], true)); }
+        catch (InvalidArgumentException $e) {}
+    }
+    return order_pricing_defaults();
+}
+
+function quantity_pricing_description(array $rules): string {
+    return 'Water: 1–' . $rules['flat_max'] . ' gallons PHP ' . number_format($rules['flat_total'], 2)
+        . ' total; ' . ($rules['flat_max'] + 1) . '+ PHP ' . number_format($rules['bulk_unit'], 2) . ' each';
+}
+
+function water_order_total(int $quantity, ?float $unitPrice = null, ?array $rules = null): float {
     if ($quantity < 1) return 0.0;
     if ($unitPrice !== null) return round($unitPrice * $quantity, 2);
-    return $quantity <= 4 ? 80.0 : 15.0 * $quantity;
+    $rules ??= order_pricing_defaults();
+    return $quantity <= $rules['flat_max'] ? $rules['flat_total'] : round($rules['bulk_unit'] * $quantity, 2);
 }
