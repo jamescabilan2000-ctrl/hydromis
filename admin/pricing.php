@@ -133,11 +133,7 @@ $systemLogo = system_logo_path($conn);
         </form>
         <section class="preview-card" aria-labelledby="price-list-title">
             <div class="preview-heading"><span class="card-icon"><i class="fas fa-list" aria-hidden="true"></i></span><div><h2 id="price-list-title">Live price preview</h2><p>All quantities from 1 to 30 gallons</p></div><span class="live-badge">Live</span></div>
-            <div class="preview-controls"><label class="field-label" for="preview-container">Preview container</label><select class="price-input" id="preview-container">
-                <option value="2.5gal-slim">9.5 Liters ? Half Slim</option>
-                <option value="5gal-slim">19 Liters ? Slim</option>
-                <option value="5gal-round">19 Liters ? Round</option>
-            </select></div>
+            <input type="hidden" id="preview-container" value="2.5gal-slim">
             <div class="preview-example"><div><span>5-gallon order</span><strong id="preview-example-total">?</strong></div><p id="preview-example-detail">Refill + standard delivery</p></div>
             <div class="preview-table-wrap" tabindex="0" role="region" aria-label="Price list for 1 to 30 gallons">
                 <table class="preview-table"><thead><tr><th scope="col">Gallons</th><th scope="col">Refill</th><th scope="col">Delivery</th><th scope="col">Total</th></tr></thead><tbody id="pricing-preview"></tbody></table>

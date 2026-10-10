@@ -2,12 +2,8 @@
 if (!isset($containerPrices, $capPrice, $refillMode, $pricingRules)) { http_response_code(404); exit; }
 ?>
 <section class="price-card" aria-labelledby="refill-heading">
-    <div class="card-heading"><span class="card-icon"><i class="fas fa-droplet" aria-hidden="true"></i></span><div><h2 id="refill-heading">Refill pricing</h2><p>Choose how regular water refills are charged.</p></div></div>
-    <label class="field-label" for="refillPricingMode">Pricing method</label>
-    <select name="refillPricingMode" id="refillPricingMode" class="price-input">
-        <option value="quantity" <?= $refillMode === 'quantity' ? 'selected' : '' ?>>Quantity pricing ? fixed range + bulk rate</option>
-        <option value="per_gallon" <?= $refillMode === 'per_gallon' ? 'selected' : '' ?>>Per gallon ? price by container type</option>
-    </select>
+    <div class="card-heading"><span class="card-icon"><i class="fas fa-droplet" aria-hidden="true"></i></span><div><h2 id="refill-heading">Refill pricing</h2><p>Edit the rates used for regular water refills.</p></div></div>
+    <input type="hidden" name="refillPricingMode" id="refillPricingMode" value="<?= htmlspecialchars($refillMode) ?>">
     <div id="quantity-rule-fields" class="rule-grid">
         <?php foreach (['flat_max' => ['Fixed range ends at', 'gallons'], 'flat_total' => ['Fixed range total', 'PHP'], 'bulk_unit' => ['Above the range', 'PHP / gallon']] as $key => [$label, $unit]): ?>
         <div class="price-field">

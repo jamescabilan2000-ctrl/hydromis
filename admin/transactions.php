@@ -428,6 +428,14 @@ html, body {
     transition: border-color 0.2s;
     cursor: pointer;
 }
+.filter-actions { display:flex;align-items:center;gap:10px; }
+.filter-action { display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 18px;border:1px solid var(--border2);border-radius:12px;font:600 12px 'Plus Jakarta Sans',sans-serif;line-height:1.3;text-decoration:none;cursor:pointer;transition:background .18s,border-color .18s,color .18s; }
+.filter-apply { background:var(--aqua);border-color:var(--aqua);color:#082f2a; }
+.filter-apply:hover { background:#5eead4;border-color:#5eead4; }
+.filter-reset,.filter-reset:visited { background:var(--bg3);color:var(--muted); }
+.filter-reset:hover { color:var(--text);border-color:var(--aqua); }
+.filter-action:focus-visible { outline:2px solid var(--aqua);outline-offset:3px; }
+@media(max-width:600px){.filter-actions{width:100%}.filter-action{flex:1}}
 .filter-date-input:hover,
 .filter-date-input:focus { border-color: var(--aqua); }
 .filter-date-input::-webkit-calendar-picker-indicator {
@@ -604,7 +612,11 @@ html, body {
             <form method="get" class="filter-bar" style="flex-wrap:wrap">
                 <label>From <input class="filter-date-input" type="date" name="from" value="<?= htmlspecialchars($date_from) ?>"></label><label>To <input class="filter-date-input" type="date" name="to" value="<?= htmlspecialchars($date_to) ?>"></label>
                 <label>Status <select class="filter-date-input" name="status"><?php foreach(['all'=>'All','pending'=>'Pending','approved'=>'Approved','denied'=>'Denied','cancelled'=>'Cancelled','customer_cancelled'=>'Cancelled by customer','delivered'=>'Delivered'] as $value=>$label): ?><option <?= $value===$monitor_status?'selected':'' ?> value="<?= $value ?>"><?= $label ?></option><?php endforeach; ?></select></label>
-                <label>Caps <select class="filter-date-input" name="caps"><?php foreach(['all'=>'All orders','yes'=>'Caps requested','no'=>'No caps'] as $value=>$label): ?><option <?= $value===$monitor_caps?'selected':'' ?> value="<?= $value ?>"><?= $label ?></option><?php endforeach; ?></select></label><button type="submit" class="btn">Apply</button><a href="transactions.php">Reset</a>
+                <label>Caps <select class="filter-date-input" name="caps"><?php foreach(['all'=>'All orders','yes'=>'Caps requested','no'=>'No caps'] as $value=>$label): ?><option <?= $value===$monitor_caps?'selected':'' ?> value="<?= $value ?>"><?= $label ?></option><?php endforeach; ?></select></label>
+                <div class="filter-actions">
+                    <button type="submit" class="filter-action filter-apply"><i class="fas fa-filter" aria-hidden="true"></i> Apply</button>
+                    <a href="transactions.php" class="filter-action filter-reset"><i class="fas fa-rotate-left" aria-hidden="true"></i> Reset</a>
+                </div>
             </form>
             <div class="card" style="padding:16px;margin-bottom:16px">Caps requested: <strong><?= $cap_totals['requested'] ?></strong> &middot; Caps fulfilled: <strong><?= $cap_totals['fulfilled'] ?></strong> &middot; Paid cap sales: <strong>PHP <?= number_format($cap_totals['sales'],2) ?></strong><div style="font-size:11px;margin-top:6px;color:var(--muted)">Totals for the selected dates and payment method. Cancelled and denied orders are excluded.</div></div>
             <!-- Filter Bar -->
