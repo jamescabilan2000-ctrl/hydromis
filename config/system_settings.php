@@ -75,7 +75,15 @@ function set_system_setting($conn, string $key, string $value, string $updatedBy
 }
 
 // Quantity is the number of gallon containers ordered.
-function water_order_total(int $quantity): float {
+function system_refill_pricing_mode($conn): string {
+    ensure_system_settings_schema($conn);
+    $result = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='refill_pricing_mode' LIMIT 1");
+    $row = $result ? $result->fetch_assoc() : null;
+    return ($row['setting_value'] ?? '') === 'per_gallon' ? 'per_gallon' : 'quantity';
+}
+
+function water_order_total(int $quantity, ?float $unitPrice = null): float {
     if ($quantity < 1) return 0.0;
+    if ($unitPrice !== null) return round($unitPrice * $quantity, 2);
     return $quantity <= 4 ? 80.0 : 15.0 * $quantity;
 }

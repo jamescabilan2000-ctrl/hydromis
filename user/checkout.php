@@ -6,6 +6,7 @@ require_once '../config/inventory_service.php';
 ensure_inventory_schema($conn);
 $systemLogo = system_logo_path($conn);
 $containerPrices = system_container_prices($conn);
+$refillMode = system_refill_pricing_mode($conn);
 $container_price_map = array_map(static fn($price) => $price['container'], $containerPrices);
 
 $user_id = null;
@@ -118,14 +119,14 @@ if ($edit_transaction_id !== '') {
 }
 
 $size_map = [
-    '5gal-round' => '5 Gallon',
-    '2.5gal-slim' => '2.5 Gallon',
-    '5gal-slim' => '5 Gallon'
+    '5gal-round' => '19 Liters (5 Gallon)',
+    '2.5gal-slim' => '9.5 Liters (2.5 Gallon)',
+    '5gal-slim' => '19 Liters (5 Gallon)'
 ];
 
 $type_map = [
     '5gal-round' => 'round',
-    '2.5gal-slim' => 'slim',
+    '2.5gal-slim' => 'half slim',
     '5gal-slim' => 'slim'
 ];
 
@@ -141,7 +142,8 @@ $user_address = isset($scanned_data['address']) ? $scanned_data['address'] : 'No
 $user_contact = isset($scanned_data['contact_number']) ? $scanned_data['contact_number'] : '';
 
 $new_container = $container_status === 'new' ? $container_price_map[$container_size] * $quantity : 0;
-$water_total = $container_status === 'new' ? 0 : water_order_total($quantity);
+$refillUnitPrice = $refillMode === 'per_gallon' ? $containerPrices[$container_size]['water'] : null;
+$water_total = $container_status === 'new' ? 0 : water_order_total($quantity, $refillUnitPrice);
 $price_per_unit = $container_status === 'new' ? $container_price_map[$container_size] : $water_total / max(1, $quantity);
 $item_total = $water_total + $new_container;
 
@@ -1657,7 +1659,7 @@ $final_total += $cap_subtotal;
             document.getElementById('qtyDisplay').textContent = currentQuantity;
             document.getElementById('hiddenQuantity').value = currentQuantity;
 
-            const newTotal = <?php echo $container_status === 'new' ? json_encode($container_price_map[$container_size]) . ' * currentQuantity' : 'waterOrderTotal(currentQuantity)'; ?>;
+            const newTotal = <?php echo $container_status === 'new' ? json_encode($container_price_map[$container_size]) . ' * currentQuantity' : 'waterOrderTotal(currentQuantity, ' . json_encode($refillUnitPrice) . ')'; ?>;
             const discount = 0;
             const deliveryFee = isDelivery && !<?php echo $free_delivery_reward ? 'true' : 'false'; ?> ? 10 * currentQuantity : 0;
             const capsTotal = <?= json_encode($cap_subtotal) ?>;

@@ -4,6 +4,7 @@ require_once '../config/system_settings.php';
 require_once '../config/cap_request.php';
 $systemLogo = system_logo_path($conn);
 $containerPrices = system_container_prices($conn);
+$refillMode = system_refill_pricing_mode($conn);
 $container_price_map = array_map(static fn($price) => $price['container'], $containerPrices);
 
 $user_id = null;
@@ -69,14 +70,14 @@ if ($edit_transaction_id !== '' && !isset($_POST['cap_selection_present'])) {
     $cap_requested = $caps_requested > 0;
 }
 $size_map = [
-    '5gal-round' => '5 Gallon',
-    '2.5gal-slim' => '2.5 Gallon',
-    '5gal-slim' => '5 Gallon'
+    '5gal-round' => '19 Liters (5 Gallon)',
+    '2.5gal-slim' => '9.5 Liters (2.5 Gallon)',
+    '5gal-slim' => '19 Liters (5 Gallon)'
 ];
 
 $type_map = [
     '5gal-round' => 'round',
-    '2.5gal-slim' => 'slim',
+    '2.5gal-slim' => 'half slim',
     '5gal-slim' => 'slim'
 ];
 
@@ -642,6 +643,7 @@ $container_image_map = [
             const hasFreeDeliveryReward = <?php echo $has_free_delivery_reward ? 'true' : 'false'; ?>;
 
             const containerSize = <?php echo json_encode($container_size); ?>;
+            const refillUnitPrice = <?php echo json_encode($refillMode === 'per_gallon' ? $containerPrices[$container_size]['water'] : null); ?>;
             let containerStatus = <?php echo json_encode($container_status); ?>;
             let fulfillmentMethod = <?php echo json_encode($fulfillment_method); ?>;
             let quantity = <?php echo $quantity; ?>;
@@ -698,7 +700,7 @@ $container_image_map = [
             function updateSummary() {
                 const pickupBase = pickupBaseMap[containerSize];
                 const newContainer = containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : 0;
-                const water = containerStatus === 'new' ? 0 : (quantity <= 4 ? 80 : 15 * quantity);
+                const water = containerStatus === 'new' ? 0 : (refillUnitPrice !== null ? Math.round(refillUnitPrice * quantity * 100) / 100 : (quantity <= 4 ? 80 : 15 * quantity));
 
                 const discountCount = Math.floor(quantity / 5);
                 const discount = 0;

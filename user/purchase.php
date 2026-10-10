@@ -10,6 +10,7 @@ require_once '../config/system_settings.php';
 ensure_inventory_schema($conn);
 $systemLogo = system_logo_path($conn);
 $containerPrices = system_container_prices($conn);
+$refillMode = system_refill_pricing_mode($conn);
 $container_price_map = array_map(static fn($price) => $price['container'], $containerPrices);
 
 function savePurchasePaymentProof($fieldName, $paymentId) {
@@ -168,13 +169,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     }
     
     $water_price_map = array_map(static fn($price) => $price['water'], $containerPrices);
+    $refillUnitPrice = $refillMode === 'per_gallon' ? ($water_price_map[$container_size] ?? 0) : null;
     if (!isset($water_price_map[$container_size]) || !in_array($container_status, ['new', 'existing'], true) || !in_array($fulfillment_method, ['delivery', 'pickup'], true)) {
         $error = 'Please select a valid container and order type.';
         $price_per_unit = 0;
     } else {
-        $price_per_unit = $container_status === 'new' ? $container_price_map[$container_size] : water_order_total($quantity) / max(1, $quantity);
+        $price_per_unit = $container_status === 'new' ? $container_price_map[$container_size] : water_order_total($quantity, $refillUnitPrice) / max(1, $quantity);
     }
-    $total_amount = $container_status === 'new' ? ($container_price_map[$container_size] ?? 0) * $quantity : water_order_total($quantity);
+    $total_amount = $container_status === 'new' ? ($container_price_map[$container_size] ?? 0) * $quantity : water_order_total($quantity, $refillUnitPrice);
     $discount = 0;
     // Points are awarded only after staff approves the pending order.
     $loyalty_points = 0;
@@ -201,9 +203,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     } elseif (empty($error)) {
         $transaction_id = $is_editing_order ? $edit_transaction_id : generateID('TXN');
         $db_container_map = [
-            '5gal-round' => '5 Gallon (Round)',
-            '2.5gal-slim' => '2.5 Gallon (Slim)',
-            '5gal-slim' => '5 Gallon (Slim)'
+            '5gal-round' => '19 Liters (5 Gallon Round)',
+            '2.5gal-slim' => '9.5 Liters (2.5 Gallon Half Slim)',
+            '5gal-slim' => '19 Liters (5 Gallon Slim)'
         ];
         $container_label = $db_container_map[$container_size] ?? $container_size;
         $container_label_text = $container_status === 'new' ? 'New Container' : 'Customer Container';
@@ -1270,9 +1272,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                             <div class="receipt-item-row">
                                 <span class="receipt-item-desc"><?php 
                                     $container_map = [
-                                        '5gal-round' => '5 Gallon (Round)',
-                                        '2.5gal-slim' => '2.5 Gallon (Slim)',
-                                        '5gal-slim' => '5 Gallon (Slim)'
+                                        '5gal-round' => '19 Liters (5 Gallon Round)',
+                                        '2.5gal-slim' => '9.5 Liters (2.5 Gallon Half Slim)',
+                                        '5gal-slim' => '19 Liters (5 Gallon Slim)'
                                     ];
                                     echo $container_map[$transaction_data['container_size']] ?? 'Container';
                                 ?></span>
@@ -1374,13 +1376,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                     <label class="container-card">
                                         <input type="radio" name="container_size" value="2.5gal-slim" <?php echo $selected_container_size === '2.5gal-slim' ? 'checked' : ''; ?> onchange="calculatePrice()">
                                         <div class="container-image">
-                                            <img src="../imagess/water3.jpg" alt="2.5 Gallon Slim">
+                                            <img src="../imagess/water3.jpg" alt="9.5 Liters Half Slim (2.5 Gallon)">
                                         </div>
                                         <div class="container-info">
-                                            <div class="container-size">2.5 Gallon</div>
-                                            <div class="container-type">slim</div>
+                                            <div class="container-size">9.5 Liters</div>
+                                            <div class="container-type">Half Slim (2.5 Gallon)</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip">Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each</span>
+                                                <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['2.5gal-slim']['water'], 2) . ' each' : 'Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each'; ?></span>
                                                 <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['2.5gal-slim']['container'], 2); ?></span>
                                             </div>
                                         </div>
@@ -1390,13 +1392,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                     <label class="container-card">
                                         <input type="radio" name="container_size" value="5gal-slim" <?php echo $selected_container_size === '5gal-slim' ? 'checked' : ''; ?> onchange="calculatePrice()">
                                         <div class="container-image">
-                                            <img src="../imagess/water4.webp" alt="5 Gallon Slim">
+                                            <img src="../imagess/water4.webp" alt="19 Liters Slim (5 Gallon)">
                                         </div>
                                         <div class="container-info">
-                                            <div class="container-size">5 Gallon</div>
-                                            <div class="container-type">slim</div>
+                                            <div class="container-size">19 Liters</div>
+                                            <div class="container-type">Slim (5 Gallon)</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip">Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each</span>
+                                                <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['5gal-slim']['water'], 2) . ' each' : 'Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each'; ?></span>
                                                 <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['5gal-slim']['container'], 2); ?></span>
                                             </div>
                                         </div>
@@ -1406,13 +1408,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                     <label class="container-card">
                                         <input type="radio" name="container_size" value="5gal-round" <?php echo $selected_container_size === '5gal-round' ? 'checked' : ''; ?> onchange="calculatePrice()">
                                         <div class="container-image">
-                                            <img src="../imagess/water5.webp" alt="5 Gallon Round">
+                                            <img src="../imagess/water5.webp" alt="19 Liters Round (5 Gallon)">
                                         </div>
                                         <div class="container-info">
-                                            <div class="container-size">5 Gallon</div>
-                                            <div class="container-type">round</div>
+                                            <div class="container-size">19 Liters</div>
+                                            <div class="container-type">Round (5 Gallon)</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip">Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each</span>
+                                                <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['5gal-round']['water'], 2) . ' each' : 'Water: 1&ndash;4 gallons &#8369;80 total; 5+ &#8369;15 each'; ?></span>
                                                 <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['5gal-round']['container'], 2); ?></span>
                                             </div>
                                         </div>
@@ -1472,7 +1474,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             
             // Price mapping based on container size and status
             const containerPriceMap = <?php echo json_encode($container_price_map); ?>;
-            const subtotal = containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : waterOrderTotal(quantity);
+            const refillPriceMap = <?php echo json_encode(array_map(static fn($price) => $price['water'], $containerPrices)); ?>;
+            const refillUnitPrice = <?php echo $refillMode === 'per_gallon' ? 'refillPriceMap[containerSize]' : 'null'; ?>;
+            const subtotal = containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : waterOrderTotal(quantity, refillUnitPrice);
             const price = subtotal / Math.max(1, quantity);
             
             // The quantity-based water price already includes volume pricing.
