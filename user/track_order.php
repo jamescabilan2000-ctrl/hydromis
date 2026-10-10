@@ -1,4 +1,9 @@
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+if (empty($_SESSION['customer_user_id'])) {
+    header('Location: scan_qr.php?next=tracking');
+    exit;
+}
 require_once '../config/database.php';
 require_once '../config/cap_request.php';
 require_once '../config/inventory_service.php';

@@ -11,6 +11,7 @@ $transaction_success = false;
 $transaction_data = null;
 $profile_success = '';
 $mobile_login_value = '';
+$tracking_login = ($_POST['next'] ?? $_GET['next'] ?? '') === 'tracking';
 
 if (isset($_GET['approval_required'])) {
     $requiredStatus = strtolower(trim((string)$_GET['approval_required']));
@@ -71,7 +72,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mobile_login'])) {
     }
 }
 
-if ($scanned_data) { $_SESSION['customer_user_id'] = (string)$scanned_data['user_id']; }
+if ($scanned_data) {
+    $_SESSION['customer_user_id'] = (string)$scanned_data['user_id'];
+    if ($tracking_login) {
+        header('Location: track_order.php', true, 303);
+        exit;
+    }
+}
 
 // Transaction and profile handling moved to purchase.php
 // Redirect to purchase page when user is scanned
@@ -2226,12 +2233,13 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                     </style>
                     <form method="POST" class="login-form" id="mobileLoginForm" style="margin-bottom: 12px;">
                         <input type="hidden" name="mobile_login" value="1">
+                        <?php if ($tracking_login): ?><input type="hidden" name="next" value="tracking"><?php endif; ?>
                         <label for="mobile_number" style="color: #1f2937; font-weight: 700; margin-bottom: 10px; display: block; font-size: 15px;">Mobile Number</label>
                         <div class="mobile-field"><span class="country-code">+63</span><input type="tel" id="mobile_number" name="mobile_number" pattern="9[0-9]{9}" minlength="10" maxlength="10" title="Enter 10 digits starting with 9. Do not include 0 or +63." class="form-control" placeholder="9123456789" autocomplete="tel" inputmode="numeric" value="<?php echo htmlspecialchars($mobile_login_value); ?>" style="border-radius: 12px; border: 1px solid #d1d5db; background: #ffffff; margin-bottom: 10px;" required></div>
                         <p class="login-helper" style="color: #475569; font-size: 13px; margin-bottom: 16px;"><i class="fas fa-circle-info"></i> Enter 10 digits starting with 9 (for example, 950 785 3937). Do not include 0 or +63.</p>
 
                         <button type="submit" class="btn-toggle" style="margin-bottom: 0; width: 100%;">
-                            <i class="fas fa-sign-in-alt mr-2"></i> Login & Go to Purchase
+                            <i class="fas fa-sign-in-alt mr-2"></i> <?php echo $tracking_login ? 'Login & Track Order' : 'Login & Go to Purchase'; ?>
                         </button>
                     </form>
 
@@ -2300,6 +2308,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 <div class="scanner-trust"><span><i class="fas fa-lock"></i> Encrypted access</span><span><i class="fas fa-camera"></i> Camera stays private</span></div>
 
                 <form id="qr-form" method="POST" style="display: none;">
+                    <?php if ($tracking_login): ?><input type="hidden" name="next" value="tracking"><?php endif; ?>
                     <div class="form-group">
                         <label>QR Data:</label>
                         <textarea name="qr_data" id="qr_data"></textarea>
@@ -2700,7 +2709,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
 
         // Navigate to order tracking page
         function goToTrackOrder() {
-            window.location.href = './track_order.php';
+            window.location.href = './scan_qr.php?next=tracking';
         }
 
         function confirmRewardConvert(rewardTitle, requiredPoints, currentPoints) {
@@ -2760,7 +2769,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 window.addEventListener('pageshow', function(event) {
                     if (event.persisted) {
                         submitting = false;
-                        submit.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> Login &amp; Go to Purchase';
+                        submit.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> ' + <?php echo json_encode($tracking_login ? 'Login & Track Order' : 'Login & Go to Purchase'); ?>;
                     }
                     updateLoginButton();
                 });

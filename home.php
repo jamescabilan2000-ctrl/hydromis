@@ -1467,7 +1467,7 @@ if ($db_initialized) {
                 <a href="#home" class="btn-ghost active">Home</a>
                 <a href="#features"    class="btn-ghost">Features</a>
                 <a href="#how"         class="btn-ghost">How it works</a>
-                <a href="user/track_order.php" class="btn-ghost">Track Order</a>
+                <a href="user/scan_qr.php?next=tracking" class="btn-ghost">Track Order</a>
                 <details class="account-menu">
                     <summary><i class="fas fa-circle-user"></i> Account <i class="fas fa-chevron-down"></i></summary>
                     <div class="account-popover">
@@ -1504,7 +1504,7 @@ if ($db_initialized) {
             <div class="mobile-nav-label">Explore</div>
             <a href="#features"            class="mobile-nav-item"><i class="fas fa-star"></i> Features</a>
             <a href="#how"                 class="mobile-nav-item"><i class="fas fa-route"></i> How it works</a>
-            <a href="user/track_order.php" class="mobile-nav-item"><i class="fas fa-location-dot"></i> Track order</a>
+            <a href="user/scan_qr.php?next=tracking" class="mobile-nav-item"><i class="fas fa-location-dot"></i> Track order</a>
         </aside>
     </div>
 
