@@ -969,7 +969,7 @@ function compactTransactionId(string $id): string {
             <button type="button" class="mob-itm mob-btn" id="customer-qr-toggle" aria-expanded="false" aria-controls="customer-qr-panel">
                 <i class="fas fa-qrcode" aria-hidden="true"></i> Your QR Code
             </button>
-            <section id="customer-qr-panel" aria-label="Customer access pass" hidden><?php require __DIR__ . '/customer-access-pass.php'; ?></section>
+            <section id="customer-qr-panel" aria-label="Customer access pass" hidden><?php $hide_access_pass_login = true; require __DIR__ . '/customer-access-pass.php'; unset($hide_access_pass_login); ?></section>
             <?php endif; ?>
             <?php if($tracking_info): ?>
             <div class="mob-orders-panel" id="mob-orders-panel">

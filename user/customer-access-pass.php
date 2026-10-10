@@ -12,5 +12,7 @@ if (empty($access_customer) || !hash_equals((string)($_SESSION['customer_user_id
     <p class="access-pass-hint"><i class="fas fa-expand" aria-hidden="true"></i> Keep the full code visible when scanning</p>
     <p data-pass-error role="status" hidden>QR code could not load. <button type="button" data-pass-retry>Try again</button></p>
     <button type="button" class="access-pass-download" data-pass-download data-customer-name="<?= htmlspecialchars($access_customer['full_name'], ENT_QUOTES) ?>" data-contact-number="<?= htmlspecialchars($access_customer['contact_number'], ENT_QUOTES) ?>" data-user-id="<?= htmlspecialchars($access_customer['user_id'], ENT_QUOTES) ?>"><i class="fas fa-download" aria-hidden="true"></i> Download access pass</button>
+    <?php if (empty($hide_access_pass_login)): ?>
     <a href="scan_qr.php" class="access-pass-signin">Customer login <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+    <?php endif; ?>
 </div>
