@@ -15,10 +15,10 @@
     function updatePriceList() {
         const perGallon = document.getElementById('refillPricingMode').value === 'per_gallon';
         document.getElementById('quantity-rule-fields').classList.toggle('is-inactive', perGallon);
-        document.querySelectorAll('.refill-field').forEach(field => field.classList.toggle('is-inactive', !perGallon));
+        document.querySelectorAll('.refill-field').forEach(field => field.classList.toggle('is-inactive', !perGallon && field.querySelector('[data-size]').dataset.size !== '2.5gal-slim'));
         document.getElementById('refill-price-help').textContent = perGallon
             ? 'Regular refill prices are active. Each refill is charged by container type.'
-            : 'Regular refill prices are saved for Per gallon mode. Quantity pricing is currently active.';
+            : 'Half Slim (9.5 L) uses its regular refill price per container. The 19 L containers use quantity pricing.';
         const rules = {};
         for (const key of ['flat_max', 'flat_total', 'bulk_unit', 'delivery_unit']) {
             const input = document.getElementById('rule-' + key);
@@ -28,13 +28,14 @@
             }
             rules[key] = Number(input.value);
         }
+        const perContainer = perGallon || type.value === '2.5gal-slim';
         const priceInput = document.getElementById('price-' + type.value + '-water');
-        if (perGallon && (!priceInput.checkValidity() || priceInput.value === '')) {
+        if (perContainer && (!priceInput.checkValidity() || priceInput.value === '')) {
             clearPreview();
             return;
         }
-        const unit = perGallon ? Number(priceInput.value) : null;
-        formula.textContent = perGallon
+        const unit = perContainer ? Number(priceInput.value) : null;
+        formula.textContent = perContainer
             ? 'Refill total = the selected container’s refill price × quantity.'
             : '1–' + rules.flat_max + ' gallons: ' + money(rules.flat_total / rules.flat_max) + ' each. ' + (rules.flat_max + 1) + '+ gallons: ' + money(rules.bulk_unit) + ' each.';
         const sampleRefill = waterOrderTotal(5, unit, rules);

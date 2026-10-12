@@ -143,7 +143,7 @@ $user_address = isset($scanned_data['address']) ? $scanned_data['address'] : 'No
 $user_contact = isset($scanned_data['contact_number']) ? $scanned_data['contact_number'] : '';
 
 $new_container = $container_status === 'new' ? $container_price_map[$container_size] * $quantity : 0;
-$refillUnitPrice = $refillMode === 'per_gallon' ? $containerPrices[$container_size]['water'] : null;
+$refillUnitPrice = refill_unit_price($container_size, $containerPrices, $refillMode);
 $water_total = $container_status === 'new' ? 0 : water_order_total($quantity, $refillUnitPrice, $pricingRules);
 $price_per_unit = $container_status === 'new' ? $container_price_map[$container_size] : $water_total / max(1, $quantity);
 $item_total = $water_total + $new_container;

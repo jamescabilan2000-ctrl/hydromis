@@ -86,6 +86,12 @@ function order_pricing_defaults(): array {
     return ['flat_max' => 4, 'flat_total' => 80.0, 'bulk_unit' => 15.0, 'delivery_unit' => 10.0];
 }
 
+// Half Slim refills always use their own rate, including quantity pricing mode.
+function refill_unit_price(string $size, array $prices, string $mode): ?float {
+    return $mode === 'per_gallon' || $size === '2.5gal-slim'
+        ? (float)($prices[$size]['water'] ?? 0) : null;
+}
+
 function validate_order_pricing_rules($rules): array {
     if (!is_array($rules)) throw new InvalidArgumentException('Enter all quantity and delivery prices.');
     if (!preg_match('/\A(?:[1-9]|[12][0-9]|30)\z/', (string)($rules['flat_max'] ?? ''))) {

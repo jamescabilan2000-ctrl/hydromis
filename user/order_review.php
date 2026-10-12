@@ -646,7 +646,7 @@ $container_image_map = [
             const hasFreeDeliveryReward = <?php echo $has_free_delivery_reward ? 'true' : 'false'; ?>;
 
             const containerSize = <?php echo json_encode($container_size); ?>;
-            const refillUnitPrice = <?php echo json_encode($refillMode === 'per_gallon' ? $containerPrices[$container_size]['water'] : null); ?>;
+            const refillUnitPrice = <?php echo json_encode(refill_unit_price($container_size, $containerPrices, $refillMode)); ?>;
             let containerStatus = <?php echo json_encode($container_status); ?>;
             let fulfillmentMethod = <?php echo json_encode($fulfillment_method); ?>;
             let quantity = <?php echo $quantity; ?>;

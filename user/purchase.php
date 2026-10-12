@@ -170,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     }
     
     $water_price_map = array_map(static fn($price) => $price['water'], $containerPrices);
-    $refillUnitPrice = $refillMode === 'per_gallon' ? ($water_price_map[$container_size] ?? 0) : null;
+    $refillUnitPrice = refill_unit_price($container_size, $containerPrices, $refillMode);
     if (!isset($water_price_map[$container_size]) || !in_array($container_status, ['new', 'existing'], true) || !in_array($fulfillment_method, ['delivery', 'pickup'], true)) {
         $error = 'Please select a valid container and order type.';
         $price_per_unit = 0;
@@ -1383,7 +1383,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                             <div class="container-size">9.5 Liters</div>
                                             <div class="container-type">Half Slim</div>
                                             <div class="container-pricing">
-                                                <span class="price-chip"><?php echo $refillMode === 'per_gallon' ? 'Regular refill: &#8369;' . number_format($containerPrices['2.5gal-slim']['water'], 2) . ' each' : htmlspecialchars(quantity_pricing_description($pricingRules)); ?></span>
+                                                <span class="price-chip"><?php echo 'Regular refill: &#8369;' . number_format($containerPrices['2.5gal-slim']['water'], 2) . ' each'; ?></span>
                                                 <span class="price-chip">New container + water: ₱<?php echo number_format($containerPrices['2.5gal-slim']['container'], 2); ?></span>
                                             </div>
                                         </div>
@@ -1476,7 +1476,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
             // Price mapping based on container size and status
             const containerPriceMap = <?php echo json_encode($container_price_map); ?>;
             const refillPriceMap = <?php echo json_encode(array_map(static fn($price) => $price['water'], $containerPrices)); ?>;
-            const refillUnitPrice = <?php echo $refillMode === 'per_gallon' ? 'refillPriceMap[containerSize]' : 'null'; ?>;
+            const refillUnitPrice = (<?= json_encode($refillMode === 'per_gallon') ?> || containerSize === '2.5gal-slim') ? refillPriceMap[containerSize] : null;
             const subtotal = containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : waterOrderTotal(quantity, refillUnitPrice, <?php echo json_encode($pricingRules); ?>);
             const price = subtotal / Math.max(1, quantity);
             
