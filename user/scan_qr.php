@@ -2253,7 +2253,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                     <p style="color: #475569; font-size: 14px; margin-bottom: 18px; text-align: center;">Use your account QR code to continue</p>
                     <div class="station-login-note" role="note">
                         <i class="fas fa-store"></i>
-                        <span><strong>QR orders receive priority.</strong> Scan your HydroMIS customer QR code. Your next order goes ahead of mobile-login orders; QR orders are served oldest first.</span>
+                        <span><strong>Order with your QR code.</strong> Scan your HydroMIS customer QR code to access your account and place an order.</span>
                     </div>
                     <button type="button" class="btn-toggle" onclick="showScanner();" style="margin-bottom: 12px; width: 100%;">
                         <i class="fas fa-camera mr-2"></i> Start Camera

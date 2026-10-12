@@ -145,5 +145,6 @@ $systemLogo = system_logo_path($conn);
 </div>
 <script src="../js/water-pricing.js"></script>
 <script src="../js/admin-pricing.js"></script>
+<?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
 </body>
 </html>

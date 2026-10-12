@@ -71,15 +71,15 @@ if ($edit_transaction_id !== '' && !isset($_POST['cap_selection_present'])) {
     $cap_requested = $caps_requested > 0;
 }
 $size_map = [
-    '5gal-round' => '19 Liters (5 Gallon)',
-    '2.5gal-slim' => '9.5 Liters (2.5 Gallon)',
-    '5gal-slim' => '19 Liters (5 Gallon)'
+    '5gal-round' => '19 Liters',
+    '2.5gal-slim' => '9.5 Liters',
+    '5gal-slim' => '19 Liters'
 ];
 
 $type_map = [
-    '5gal-round' => 'round',
-    '2.5gal-slim' => 'half slim',
-    '5gal-slim' => 'slim'
+    '5gal-round' => 'Round',
+    '2.5gal-slim' => 'Half Slim',
+    '5gal-slim' => 'Slim'
 ];
 
 $pickup_base_map = array_map(static fn($price) => $price['water'], $containerPrices);
@@ -547,7 +547,8 @@ $container_image_map = [
                     <div class="item-meta">
                         <img class="item-thumb" src="<?php echo htmlspecialchars($container_image_map[$container_size]); ?>" alt="Selected container image">
                         <div class="item-copy">
-                            <h1 class="item-title" id="itemTitle"><?php echo htmlspecialchars($size_map[$container_size] . ' - ' . ucfirst($type_map[$container_size])); ?></h1>
+                            <h1 class="item-title" id="itemTitle"><?php echo htmlspecialchars($size_map[$container_size]); ?></h1>
+                            <div class="item-container-type" style="margin-top:6px;color:#71869a;font-size:12px;"><?php echo htmlspecialchars($type_map[$container_size]); ?></div>
                         </div>
                     </div>
                     <div class="qty-box">
@@ -724,7 +725,7 @@ $container_image_map = [
                 discountLine.style.display = discount > 0 ? 'flex' : 'none';
                 continueBtn.disabled = false;
 
-                itemTitle.textContent = sizeMap[containerSize] + ' - ' + typeMap[containerSize].charAt(0).toUpperCase() + typeMap[containerSize].slice(1);
+                itemTitle.textContent = sizeMap[containerSize];
 
                 finalStatus.value = containerStatus;
                 finalFulfillment.value = fulfillmentMethod;
@@ -779,7 +780,7 @@ $container_image_map = [
                 event.preventDefault();
                 const containerChoice = containerStatus === 'new' ? 'Buy new container' : 'I have a container';
                 const fulfillmentChoice = fulfillmentMethod === 'delivery' ? 'Delivery' : 'Self pickup';
-                document.getElementById('confirmOrder').textContent = quantity + ' x ' + itemTitle.textContent;
+                document.getElementById('confirmOrder').textContent = quantity + ' x ' + itemTitle.textContent + ' - ' + typeMap[containerSize];
                 document.getElementById('confirmContainer').textContent = containerChoice;
                 document.getElementById('confirmWaterIncluded').hidden = containerStatus !== 'new';
                 document.getElementById('confirmFulfillment').textContent = fulfillmentChoice;
