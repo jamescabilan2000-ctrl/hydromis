@@ -1,5 +1,7 @@
 <?php
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+header('Cache-Control: no-store');
+header('Referrer-Policy: no-referrer');
 require_once '../config/database.php';
 require_once '../config/cap_request.php';
 require_once '../config/inventory_service.php';
@@ -81,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search_submit'])) {
     $tracking_mobile = trim((string)($_POST['search_value'] ?? ''));
     if (preg_match('/\A09[0-9]{9}\z/', $tracking_mobile)) {
         $lookup = sensitive_lookup($tracking_mobile);
-        $customer = $conn->prepare('SELECT user_id, full_name, contact_number FROM users WHERE contact_lookup = ? LIMIT 1');
+        $customer = $conn->prepare("SELECT user_id, full_name, contact_number FROM users WHERE customer_type='registered' AND contact_lookup = ? LIMIT 1");
         $customer->bind_param('s', $lookup);
         $customer->execute();
         $matched_customer = $customer->get_result()->fetch_assoc();
@@ -122,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_order'])) {
         $contact_lookup = tracking_contact_lookup($search_value);
         $conn->begin_transaction();
         $stmt = $conn->prepare("SELECT t.* FROM transactions t
-            JOIN users u ON t.user_id = u.user_id
+            JOIN order_customers u ON t.user_id = u.user_id
             WHERE t.transaction_id = ? AND t.user_id = ?
               AND (u.contact_lookup = ? OR u.user_id = ?)
               AND t.transaction_id NOT LIKE 'RWD-%'
@@ -301,10 +303,10 @@ if (
     if ($is_mobile_search && !preg_match('/\A09[0-9]{9}\z/', htmlspecialchars_decode($search_value))) {
         $error = 'Enter a valid 11-digit mobile number starting with 09 (example: 09123456789).';
     } elseif (!empty($search_value)) {
-        $sql = "SELECT t.*, {$transaction_rider_expr} AS effective_rider_id, u.full_name, u.address, u.contact_number, u.loyalty_points, u.user_id,
+        $sql = "SELECT t.*, {$transaction_rider_expr} AS effective_rider_id, COALESCE(t.customer_name,u.full_name) AS full_name, COALESCE(t.customer_address,u.address) AS address, COALESCE(t.customer_contact,u.contact_number) AS contact_number, u.loyalty_points, u.user_id,
                    ru.full_name AS rider_name, ru.contact_number AS rider_contact_number
                 FROM transactions t
-                JOIN users u ON t.user_id = u.user_id
+                JOIN order_customers u ON t.user_id = u.user_id
                 LEFT JOIN rider_users ru ON {$transaction_rider_expr} = ru.rider_id
                 WHERE t.user_id = '$customer_scope' AND (u.contact_lookup = '$search_contact_lookup' OR u.user_id = '$search_value')
                   AND t.transaction_id NOT LIKE 'RWD-%'
@@ -330,10 +332,10 @@ if (
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_feedback']) && $search_value !== '') {
     $search_contact_lookup = tracking_contact_lookup($search_value);
-    $sql = "SELECT t.*, {$transaction_rider_expr} AS effective_rider_id, u.full_name, u.address, u.contact_number, u.loyalty_points, u.user_id,
+    $sql = "SELECT t.*, {$transaction_rider_expr} AS effective_rider_id, COALESCE(t.customer_name,u.full_name) AS full_name, COALESCE(t.customer_address,u.address) AS address, COALESCE(t.customer_contact,u.contact_number) AS contact_number, u.loyalty_points, u.user_id,
                ru.full_name AS rider_name, ru.contact_number AS rider_contact_number
             FROM transactions t
-            JOIN users u ON t.user_id = u.user_id
+            JOIN order_customers u ON t.user_id = u.user_id
             LEFT JOIN rider_users ru ON {$transaction_rider_expr} = ru.rider_id
             WHERE t.user_id = '$customer_scope' AND (u.contact_lookup = '$search_contact_lookup' OR u.user_id = '$search_value')
               AND t.transaction_id NOT LIKE 'RWD-%'
@@ -375,7 +377,7 @@ if ($tracking_info) {
 
 $access_customer = $matched_customer;
 if (!$access_customer && !empty($_SESSION['customer_user_id'])) {
-    $access_query = $conn->prepare('SELECT user_id, full_name, contact_number FROM users WHERE user_id = ? LIMIT 1');
+    $access_query = $conn->prepare('SELECT user_id, full_name, contact_number FROM order_customers WHERE user_id = ? LIMIT 1');
     $access_query->bind_param('s', $_SESSION['customer_user_id']);
     $access_query->execute();
     $access_customer = $access_query->get_result()->fetch_assoc();
@@ -965,7 +967,7 @@ function compactTransactionId(string $id): string {
             </a>
             <?php endif; ?>
             <?php endif; ?>
-            <?php if ($access_customer): ?>
+            <?php if ($access_customer && !guest_order_identity((string)$access_customer['user_id'])): ?>
             <button type="button" class="mob-itm mob-btn" id="customer-qr-toggle" aria-expanded="false" aria-controls="customer-qr-panel">
                 <i class="fas fa-qrcode" aria-hidden="true"></i> Your QR Code
             </button>
@@ -1177,6 +1179,12 @@ function compactTransactionId(string $id): string {
 <!-- ══ PAGE 2: RESULTS ══ -->
 <section id="pg-results" class="pg <?php echo $view==='results'?'on':''; ?>">
 <div class="r-wrap">
+    <?php if ($access_customer && guest_order_identity((string)$access_customer['user_id'])): ?>
+    <div class="tracking-no-orders" style="margin:16px 0;padding:16px">
+        <strong><?= htmlspecialchars($access_customer['full_name']) ?> · Guest order</strong>
+        <?php require __DIR__ . '/customer-access-pass.php'; ?>
+    </div>
+    <?php endif; ?>
     <?php if (!$tracking_info && $access_customer): ?>
     <div class="tracking-no-orders" style="max-width:460px;margin:24px auto;">
         <h2 style="margin-bottom:12px;">Welcome, <?= htmlspecialchars($access_customer['full_name']) ?></h2>

@@ -37,10 +37,10 @@ if ($search !== '') {
 
 $all_trans = $conn->query("
     SELECT p.payment_id, p.transaction_id, p.amount, p.payment_method,
-           p.payment_status, p.created_at, u.full_name, t.status, t.cancellation_reason
+           p.payment_status, p.created_at, COALESCE(t.customer_name,u.full_name) AS full_name, t.status, t.cancellation_reason
     FROM payments p
     JOIN transactions t ON t.transaction_id = p.transaction_id
-    JOIN users u ON t.user_id = u.user_id
+    JOIN order_customers u ON t.user_id = u.user_id
     $where
     ORDER BY p.created_at DESC
 ");

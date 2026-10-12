@@ -96,11 +96,11 @@ function getRiderLocation() {
                 t.rider_id,
                 t.delivery_status,
                 t.status,
-                u.address as destination,
+                COALESCE(t.customer_address,u.address) as destination,
                 t.created_at,
-                u.full_name as customer_name,
-                u.contact_number,
-                u.address,
+                COALESCE(t.customer_name,u.full_name) as customer_name,
+                COALESCE(t.customer_contact,u.contact_number) AS contact_number,
+                COALESCE(t.customer_address,u.address) AS address,
                 ru.full_name as rider_name,
                 ru.contact_number as rider_contact_number,
                 r.rider_latitude,
@@ -109,7 +109,7 @@ function getRiderLocation() {
                 r.last_update,
                 t.updated_at
             FROM transactions t
-            JOIN users u ON t.user_id = u.user_id
+            JOIN order_customers u ON t.user_id = u.user_id
             LEFT JOIN rider_users ru ON {$riderExpr} = ru.rider_id
             LEFT JOIN rider_locations r ON r.id = (
                 SELECT rl.id FROM rider_locations rl
@@ -170,16 +170,16 @@ function getDeliveryDetails() {
     $riderExpr = riderJoinExpr();
     $sql = "SELECT 
                 t.*,
-                u.full_name,
-                u.contact_number,
-                u.address,
+                COALESCE(t.customer_name,u.full_name) AS full_name,
+                COALESCE(t.customer_contact,u.contact_number) AS contact_number,
+                COALESCE(t.customer_address,u.address) AS address,
                 ru.full_name as rider_name,
                 ru.contact_number as rider_contact_number,
                 COALESCE(r.rider_latitude, 12.8797) as rider_latitude,
                 COALESCE(r.rider_longitude, 121.7740) as rider_longitude,
                 COALESCE(r.last_update, NOW()) as rider_last_update
             FROM transactions t
-            JOIN users u ON t.user_id = u.user_id
+            JOIN order_customers u ON t.user_id = u.user_id
             LEFT JOIN rider_users ru ON {$riderExpr} = ru.rider_id
             LEFT JOIN rider_locations r ON t.transaction_id = r.transaction_id
             WHERE t.transaction_id = '$transaction_id'";
@@ -211,16 +211,16 @@ function getAllDeliveries() {
                 t.user_id,
                 t.delivery_status,
                 t.status,
-                u.address as destination,
-                u.full_name,
-                u.contact_number,
+                COALESCE(t.customer_address,u.address) as destination,
+                COALESCE(t.customer_name,u.full_name) AS full_name,
+                COALESCE(t.customer_contact,u.contact_number) AS contact_number,
                 ru.full_name as rider_name,
                 ru.contact_number as rider_contact_number,
                 COALESCE(r.rider_latitude, 12.8797) as rider_latitude,
                 COALESCE(r.rider_longitude, 121.7740) as rider_longitude,
                 COALESCE(r.last_update, NOW()) as last_update
             FROM transactions t
-            JOIN users u ON t.user_id = u.user_id
+            JOIN order_customers u ON t.user_id = u.user_id
             LEFT JOIN rider_users ru ON {$riderExpr} = ru.rider_id
             LEFT JOIN rider_locations r ON t.transaction_id = r.transaction_id
             WHERE t.delivery_status IN ('assigned', 'pending', 'on_way')

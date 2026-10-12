@@ -3,6 +3,10 @@ if (empty($access_customer) || !hash_equals((string)($_SESSION['customer_user_id
     http_response_code(403);
     exit;
 }
+if (str_starts_with((string)$access_customer['user_id'], 'GUEST-')) {
+    echo '<p>Guest orders do not earn loyalty points. <a href="ordering.php?token=' . htmlspecialchars($_SESSION['guest_tracking_token'] ?? '', ENT_QUOTES) . '">Save this private tracking link</a> to return later.</p>';
+    return;
+}
 ?>
 <div class="tracking-access-pass" data-access-pass>
     <div class="access-pass-top"><span><img src="../imagess/hydromis-logo-v2.png" alt="HydroMIS logo" data-pass-logo> HydroMIS</span><small>Customer Access Pass</small></div>

@@ -44,9 +44,9 @@ if ($period !== 'all') {
 }
 // Names and addresses are encrypted in storage. Search after fetch_assoc()
 // decrypts them rather than comparing the search text to encrypted SQL values.
-$sql = "SELECT t.transaction_id, t.amount, t.updated_at, COALESCE(u.full_name, 'Unknown Customer') AS customer, COALESCE(u.address, 'No address provided') AS address
+$sql = "SELECT t.transaction_id, t.amount, t.updated_at, COALESCE(COALESCE(t.customer_name,u.full_name), 'Unknown Customer') AS customer, COALESCE(COALESCE(t.customer_address,u.address), 'No address provided') AS address
         FROM transactions t
-        LEFT JOIN users u ON u.user_id = t.user_id
+        LEFT JOIN order_customers u ON u.user_id = t.user_id
         WHERE t.status = 'approved' AND t.delivery_status = 'delivered' AND {$rider_where}{$filters}
         ORDER BY t.updated_at DESC";
 $stmt = $conn->prepare($sql);

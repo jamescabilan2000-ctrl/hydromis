@@ -10,9 +10,9 @@ if ($transactionId === '' || $userId === '') {
     exit;
 }
 
-$stmt = $conn->prepare("SELECT t.transaction_id,t.delivery_status,t.status,t.user_id,t.delivery_latitude,t.delivery_longitude,u.address,ru.full_name AS rider_name,ru.contact_number AS rider_contact
+$stmt = $conn->prepare("SELECT t.transaction_id,t.delivery_status,t.status,t.user_id,t.delivery_latitude,t.delivery_longitude,COALESCE(t.customer_address,u.address) AS address,ru.full_name AS rider_name,ru.contact_number AS rider_contact
     FROM transactions t
-    JOIN users u ON u.user_id=t.user_id
+    JOIN order_customers u ON u.user_id=t.user_id
     LEFT JOIN rider_users ru ON ru.rider_id=t.rider_id
     WHERE t.transaction_id=? AND t.user_id=? AND t.status='approved' AND COALESCE(t.fulfillment_method,'delivery')='delivery' LIMIT 1");
 $stmt->bind_param('ss', $transactionId, $userId);

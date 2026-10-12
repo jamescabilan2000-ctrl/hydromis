@@ -1,6 +1,8 @@
 <?php
 function require_customer_order_access(string $userId): void {
     if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+    header('Cache-Control: no-store');
+    header('Referrer-Policy: no-referrer');
     if (empty($_SESSION['customer_user_id'])) {
         header('Location: scan_qr.php'); exit;
     }

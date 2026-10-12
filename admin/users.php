@@ -20,6 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     $csrfToken = (string)($_POST['csrf_token'] ?? '');
     if (!hash_equals($_SESSION['user_status_csrf'], $csrfToken)) {
         $error = 'Your session token expired. Refresh the page and try again.';
+    } elseif (guest_order_identity($user_id)) {
+        $error = 'Guest contacts do not have account or portal access.';
     } elseif ($action === 'toggle_existing_portal') {
         $accountType = (string)($_POST['account_type'] ?? '');
         $recordId = (int)($_POST['record_id'] ?? 0);
@@ -799,7 +801,7 @@ html, body {
                         <tbody>
                             <?php while ($row = $users->fetch_assoc()): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($row['full_name']); ?></td>
+                                <td><?php echo htmlspecialchars($row['full_name']); ?><?php if (($row['customer_type'] ?? '') === 'guest'): ?><small> ? Guest</small><?php endif; ?></td>
                                 <td><?php echo htmlspecialchars($row['contact_number']); ?></td>
                                 <td>
                                     <span style="display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:rgba(20,184,166,.12);color:#2dd4bf;font-size:13px;font-weight:700;white-space:nowrap;">
@@ -807,11 +809,11 @@ html, body {
                                         <?php echo number_format((int)($row['loyalty_points'] ?? 0)); ?> pts
                                     </span>
                                 </td>
-                                <td><span class="badge badge-<?php echo $row['status']; ?>"><?php echo ucfirst($row['status']); ?></span></td>
+                                <td><span class="badge badge-<?php echo $row['status']; ?>"><?php echo ($row['customer_type'] ?? 'registered') === 'guest' ? 'Guest (no account)' : ucfirst($row['status']); ?></span></td>
                                 <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
                                 <td>
                                     <div style="display: flex; gap: 6px;">
-                                        <?php if ($row['status'] !== 'approved'): ?>
+                                        <?php if (($row['customer_type'] ?? 'registered') === 'registered' && $row['status'] !== 'approved'): ?>
                                             <form method="POST" style="display: inline;" onsubmit="return confirm('Approve this customer account?');">
                                                 <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($row['user_id']); ?>">
                                                 <input type="hidden" name="action" value="approve">
@@ -821,7 +823,7 @@ html, body {
                                                 </button>
                                             </form>
                                         <?php endif; ?>
-                                        <?php if ($row['status'] !== 'denied'): ?>
+                                        <?php if (($row['customer_type'] ?? 'registered') === 'registered' && $row['status'] !== 'denied'): ?>
                                             <form method="POST" style="display: inline;" onsubmit="return confirm('Deny this customer account?');">
                                                 <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($row['user_id']); ?>">
                                                 <input type="hidden" name="action" value="deny">

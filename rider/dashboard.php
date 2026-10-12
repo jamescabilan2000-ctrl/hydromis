@@ -164,22 +164,22 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'delivery_info') {
 
     if ($transactions_has_assigned_rider) {
         $stmt = $conn->prepare("SELECT t.transaction_id, t.amount, t.delivery_status, t.description, t.water_type, t.quantity, t.price_per_unit, t.payment_method, t.notes, t.user_id,
-            COALESCE(u.full_name, 'Unknown Customer') AS customer_name,
-            COALESCE(u.contact_number, '-') AS contact_number,
+            COALESCE(COALESCE(t.customer_name,u.full_name), 'Unknown Customer') AS customer_name,
+            COALESCE(COALESCE(t.customer_contact,u.contact_number), '-') AS contact_number,
             COALESCE(u.email, '-') AS email,
-            COALESCE(u.address, 'No address provided') AS address
+            COALESCE(COALESCE(t.customer_address,u.address), 'No address provided') AS address
             FROM transactions t
-            LEFT JOIN users u ON t.user_id = u.user_id
+            LEFT JOIN order_customers u ON t.user_id = u.user_id
             WHERE t.transaction_id = ? AND (t.rider_id = ? OR t.assigned_rider = ?) LIMIT 1");
         $stmt->bind_param('sss', $transaction_id, $rider_id, $rider_id);
     } else {
         $stmt = $conn->prepare("SELECT t.transaction_id, t.amount, t.delivery_status, t.description, t.water_type, t.quantity, t.price_per_unit, t.payment_method, t.notes, t.user_id,
-            COALESCE(u.full_name, 'Unknown Customer') AS customer_name,
-            COALESCE(u.contact_number, '-') AS contact_number,
+            COALESCE(COALESCE(t.customer_name,u.full_name), 'Unknown Customer') AS customer_name,
+            COALESCE(COALESCE(t.customer_contact,u.contact_number), '-') AS contact_number,
             COALESCE(u.email, '-') AS email,
-            COALESCE(u.address, 'No address provided') AS address
+            COALESCE(COALESCE(t.customer_address,u.address), 'No address provided') AS address
             FROM transactions t
-            LEFT JOIN users u ON t.user_id = u.user_id
+            LEFT JOIN order_customers u ON t.user_id = u.user_id
             WHERE t.transaction_id = ? AND t.rider_id = ? LIMIT 1");
         $stmt->bind_param('ss', $transaction_id, $rider_id);
     }
@@ -414,12 +414,12 @@ $sql = "SELECT
         t.user_id,
         t.created_at,
         t.updated_at,
-        COALESCE(u.full_name, 'Unknown Customer') AS full_name,
-        COALESCE(u.contact_number, '-') AS contact_number,
+        COALESCE(COALESCE(t.customer_name,u.full_name), 'Unknown Customer') AS full_name,
+        COALESCE(COALESCE(t.customer_contact,u.contact_number), '-') AS contact_number,
         COALESCE(u.email, '-') AS email,
-        COALESCE(u.address, 'No address provided') AS address
+        COALESCE(COALESCE(t.customer_address,u.address), 'No address provided') AS address
     FROM transactions t
-    LEFT JOIN users u ON t.user_id = u.user_id
+    LEFT JOIN order_customers u ON t.user_id = u.user_id
     WHERE t.status = 'approved'
       AND {$rider_where}
       AND COALESCE(NULLIF(t.delivery_status, ''), 'assigned') IN ('assigned', 'pending', 'on_way', 'delivered')

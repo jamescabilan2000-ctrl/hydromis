@@ -25,9 +25,9 @@ if (!$is_staff && !$is_admin) {
 $pending_sql = "
     SELECT t.transaction_id, t.user_id, t.amount, t.description, t.water_type, t.quantity, 
            t.container_size, t.container_status, t.fulfillment_method, t.payment_method, 
-           t.payment_status, t.created_at, u.full_name, u.contact_number
+           t.payment_status, t.created_at, COALESCE(t.customer_name,u.full_name) AS full_name, COALESCE(t.customer_contact,u.contact_number) AS contact_number
     FROM transactions t
-    LEFT JOIN users u ON t.user_id = u.user_id
+    LEFT JOIN order_customers u ON t.user_id = u.user_id
     WHERE t.status = 'pending'
     ORDER BY t.created_at DESC, t.id DESC
     LIMIT 10

@@ -24,9 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['tra
 }
 
 $pending_trans = $conn->query("
-    SELECT t.*, u.full_name, u.contact_number, u.qr_code_path
+    SELECT t.*, COALESCE(t.customer_name,u.full_name) AS full_name, COALESCE(t.customer_contact,u.contact_number) AS contact_number, u.qr_code_path
     FROM transactions t
-    JOIN users u ON t.user_id = u.user_id
+    JOIN order_customers u ON t.user_id = u.user_id
     WHERE t.status = 'pending'
     ORDER BY t.qr_priority DESC, t.created_at ASC, t.id ASC
 ");
@@ -769,7 +769,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                     <?php while ($row = $pending_trans->fetch_assoc()): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($row['transaction_id']); ?></td>
-                                        <td><?php echo htmlspecialchars($row['full_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['full_name']); ?><?php if (($row['customer_type'] ?? '') === 'guest'): ?><small> · Guest (no points)</small><?php endif; ?></td>
                                         <td><?php echo htmlspecialchars($row['contact_number']); ?></td>
                                         <td>
                                             ₱<?php echo number_format((float)$row['amount'], 2); ?>
