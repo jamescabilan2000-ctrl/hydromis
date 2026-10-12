@@ -36,7 +36,7 @@
         const unit = perGallon ? Number(priceInput.value) : null;
         formula.textContent = perGallon
             ? 'Refill total = the selected container’s refill price × quantity.'
-            : '1–' + rules.flat_max + ' gallons: ' + money(rules.flat_total) + ' total. ' + (rules.flat_max + 1) + '+ gallons: ' + money(rules.bulk_unit) + ' each.';
+            : '1–' + rules.flat_max + ' gallons: ' + money(rules.flat_total / rules.flat_max) + ' each. ' + (rules.flat_max + 1) + '+ gallons: ' + money(rules.bulk_unit) + ' each.';
         const sampleRefill = waterOrderTotal(5, unit, rules);
         const sampleDelivery = Math.round(rules.delivery_unit * 5 * 100) / 100;
         example.textContent = money(sampleRefill + sampleDelivery);

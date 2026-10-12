@@ -1223,7 +1223,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
     </style>
 <script src="../js/ui-protection.js" defer></script>
-<script src="../js/water-pricing.js"></script>
+<script src="../js/water-pricing.js?v=<?= filemtime(__DIR__ . '/../js/water-pricing.js') ?>"></script>
 </head>
 <body class="public-ui">
     <div class="container-main">

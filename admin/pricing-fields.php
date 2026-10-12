@@ -5,7 +5,7 @@ if (!isset($containerPrices, $capPrice, $refillMode, $pricingRules)) { http_resp
     <div class="card-heading"><span class="card-icon"><i class="fas fa-droplet" aria-hidden="true"></i></span><div><h2 id="refill-heading">Refill pricing</h2><p>Edit the rates used for regular water refills.</p></div></div>
     <input type="hidden" name="refillPricingMode" id="refillPricingMode" value="<?= htmlspecialchars($refillMode) ?>">
     <div id="quantity-rule-fields" class="rule-grid">
-        <?php foreach (['flat_max' => ['Fixed range ends at', 'gallons'], 'flat_total' => ['Fixed range total', 'PHP'], 'bulk_unit' => ['Above the range', 'PHP / gallon']] as $key => [$label, $unit]): ?>
+        <?php foreach (['flat_max' => ['Regular range ends at', 'gallons'], 'flat_total' => ['Total at range limit', 'PHP'], 'bulk_unit' => ['Above the range', 'PHP / gallon']] as $key => [$label, $unit]): ?>
         <div class="price-field">
             <label class="field-label" for="rule-<?= $key ?>"><?= $label ?></label>
             <div class="input-wrap"><input class="price-input" id="rule-<?= $key ?>" name="rules[<?= $key ?>]" type="number" min="<?= $key === 'flat_max' ? '1' : '0' ?>" max="<?= $key === 'flat_max' ? '30' : '99999.99' ?>" step="<?= $key === 'flat_max' ? '1' : '0.01' ?>" required value="<?= $key === 'flat_max' ? $pricingRules[$key] : number_format($pricingRules[$key], 2, '.', '') ?>"><span class="input-unit"><?= $unit ?></span></div>

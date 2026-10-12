@@ -1210,7 +1210,7 @@ $final_total += $cap_subtotal;
     </style>
     <script src="../js/ui-protection.js" defer></script>
 <script src="../js/customer-home.js?v=20260911" data-hide-home="true" defer></script>
-<script src="../js/water-pricing.js"></script>
+<script src="../js/water-pricing.js?v=<?= filemtime(__DIR__ . '/../js/water-pricing.js') ?>"></script>
 </head>
 <body class="public-ui">
     <nav class="navbar">

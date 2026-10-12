@@ -143,8 +143,8 @@ $systemLogo = system_logo_path($conn);
         </div>
     </main>
 </div>
-<script src="../js/water-pricing.js"></script>
-<script src="../js/admin-pricing.js"></script>
+<script src="../js/water-pricing.js?v=<?= filemtime(__DIR__ . '/../js/water-pricing.js') ?>"></script>
+<script src="../js/admin-pricing.js?v=<?= filemtime(__DIR__ . '/../js/admin-pricing.js') ?>"></script>
 <?php require_once __DIR__ . '/../config/logout_dialog.php'; ?>
 </body>
 </html>

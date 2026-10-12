@@ -636,6 +636,7 @@ $container_image_map = [
         </div>
     </div>
 
+    <script src="../js/water-pricing.js?v=<?= filemtime(__DIR__ . '/../js/water-pricing.js') ?>"></script>
     <script>
         (function() {
             const containerPriceMap = <?php echo json_encode($container_price_map); ?>;
@@ -702,7 +703,7 @@ $container_image_map = [
             function updateSummary() {
                 const pickupBase = pickupBaseMap[containerSize];
                 const newContainer = containerStatus === 'new' ? containerPriceMap[containerSize] * quantity : 0;
-                const water = containerStatus === 'new' ? 0 : (refillUnitPrice !== null ? Math.round(refillUnitPrice * quantity * 100) / 100 : (quantity <= <?= json_encode($pricingRules['flat_max']) ?> ? <?= json_encode($pricingRules['flat_total']) ?> : Math.round(<?= json_encode($pricingRules['bulk_unit']) ?> * quantity * 100) / 100));
+                const water = containerStatus === 'new' ? 0 : waterOrderTotal(quantity, refillUnitPrice, <?= json_encode($pricingRules) ?>);
 
                 const discountCount = Math.floor(quantity / 5);
                 const discount = 0;

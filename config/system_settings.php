@@ -114,13 +114,14 @@ function system_order_pricing_rules($conn): array {
 }
 
 function quantity_pricing_description(array $rules): string {
-    return 'Water: 1–' . $rules['flat_max'] . ' gallons PHP ' . number_format($rules['flat_total'], 2)
-        . ' total; ' . ($rules['flat_max'] + 1) . '+ PHP ' . number_format($rules['bulk_unit'], 2) . ' each';
+    return 'Water: 1–' . $rules['flat_max'] . ' gallons PHP ' . number_format($rules['flat_total'] / $rules['flat_max'], 2)
+        . ' each; ' . ($rules['flat_max'] + 1) . '+ PHP ' . number_format($rules['bulk_unit'], 2) . ' each';
 }
 
 function water_order_total(int $quantity, ?float $unitPrice = null, ?array $rules = null): float {
     if ($quantity < 1) return 0.0;
     if ($unitPrice !== null) return round($unitPrice * $quantity, 2);
     $rules ??= order_pricing_defaults();
-    return $quantity <= $rules['flat_max'] ? $rules['flat_total'] : round($rules['bulk_unit'] * $quantity, 2);
+    $unit = $quantity <= $rules['flat_max'] ? $rules['flat_total'] / $rules['flat_max'] : $rules['bulk_unit'];
+    return round($unit * $quantity, 2);
 }
