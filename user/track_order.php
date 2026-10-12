@@ -1180,9 +1180,8 @@ function compactTransactionId(string $id): string {
     <?php if (!$tracking_info && $access_customer): ?>
     <div class="tracking-no-orders" style="max-width:460px;margin:24px auto;">
         <h2 style="margin-bottom:12px;">Welcome, <?= htmlspecialchars($access_customer['full_name']) ?></h2>
-        <p>You have no orders yet. You can access your QR pass anytime and place your first order below.</p>
+        <p>You have no orders yet. You can access and download your QR pass anytime.</p>
         <?php require __DIR__ . '/customer-access-pass.php'; ?>
-        <a class="btn-primary" href="purchase.php?user_id=<?= rawurlencode($access_customer['user_id']) ?>" style="text-decoration:none;display:flex;justify-content:center;align-items:center;gap:8px;"><i class="fas fa-cart-shopping" aria-hidden="true"></i> Place an Order</a>
     </div>
     <?php endif; ?>
 
