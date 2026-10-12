@@ -73,12 +73,11 @@ if (!$user_id) {
     exit;
 }
 
-require_once '../config/order_contact.php';
 require_once '../config/customer_order_access.php';
 require_customer_order_access((string)$user_id);
 if (isset($_POST['user_id'])) require_customer_order_access((string)$_POST['user_id']);
 // Fetch user data
-$sql = "SELECT * FROM order_customers WHERE user_id = '$user_id'";
+$sql = "SELECT * FROM users WHERE user_id = '$user_id'";
 $result = $conn->query($sql);
 if ($result->num_rows > 0) {
     $scanned_data = $result->fetch_assoc();
@@ -130,8 +129,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
     // Coordinates are optional; deliveries without a pin use the saved address.
     $delivery_lat_sql = $destination === null ? 'NULL' : sprintf('%.8F', $destination[0]);
     $delivery_lng_sql = $destination === null ? 'NULL' : sprintf('%.8F', $destination[1]);
-    $orderContact = order_checkout_contact($scanned_data, $_POST, $fulfillment_method);
-    if ($orderContact['errors']) $error = implode(' ', $orderContact['errors']);
     $amount_tendered = floatval($_POST['amount_tendered']);
     $raw_notes = is_string($_POST['customer_notes'] ?? null) ? $_POST['customer_notes'] : '';
     try { $caps_requested = cap_request_quantity(isset($_POST['request_gallon_cap']), $_POST['caps_requested'] ?? '1'); }
@@ -306,13 +303,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         if (!empty($error)) {
             // Stock validation already supplied the customer-facing message.
         } elseif ($conn->query($sql) === TRUE) {
-            $source = $_SESSION['ordering_source'] ?? (guest_order_identity((string)$user_id) ? 'public_qr' : 'customer');
-            $staffCreator = $_SESSION['ordering_staff_id'] ?? null;
-            if (!order_contact_snapshot($conn, $transaction_id, $scanned_data, $orderContact['data'], $source, $staffCreator)) {
-                $conn->rollback();
-                http_response_code(500);
-                exit('Unable to save order contact details. Please return to checkout and try again.');
-            }
             unset($_SESSION['qr_priority_user']);
             if ($inventory_transaction_open) {
                 $conn->commit();
@@ -362,10 +352,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
                 'payment_method' => $payment_method
             ];
             // Get updated scanned data
-            $sql = "SELECT * FROM order_customers WHERE user_id = '$user_id'";
+            $sql = "SELECT * FROM users WHERE user_id = '$user_id'";
             $result = $conn->query($sql);
             if ($result->num_rows > 0) {
-                $scanned_data = array_merge($result->fetch_assoc(), $orderContact['data']);
+                $scanned_data = $result->fetch_assoc();
             }
         } else {
             if ($inventory_transaction_open) $conn->rollback();
@@ -375,7 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
 }
 
 // Handle Profile Update
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit']) && !guest_order_identity((string)$user_id)) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
     $user_id = sanitize($_POST['user_id']);
     $full_name = sanitize(trim($_POST['full_name']));
     $contact_number = sanitize(trim($_POST['contact_number']));
@@ -418,7 +408,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit']) && !
         }
     }
 
-    $sql = "SELECT * FROM order_customers WHERE user_id = '$user_id'";
+    $sql = "SELECT * FROM users WHERE user_id = '$user_id'";
     $result = $conn->query($sql);
     if ($result && $result->num_rows > 0) {
         $scanned_data = $result->fetch_assoc();
@@ -1349,10 +1339,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit']) && !
                     <div class="order-success-panel">
                         <div class="order-success-icon"><i class="fas fa-check"></i></div>
                         <h2>Order received</h2>
-                        <?php if (guest_order_identity((string)$user_id)): ?><p>Guest orders earn no points. Save the private Track Order link below to return later.</p><?php endif; ?>
                         <p>Your order is pending staff confirmation. Follow its progress from the tracking page.</p>
                         <div class="confirmation-actions">
-                            <a class="confirmation-action track" href="<?= guest_order_identity((string)$user_id) ? 'ordering.php?token=' . rawurlencode($_SESSION['guest_tracking_token'] ?? '') : 'track_order.php?user_id=' . rawurlencode($transaction_data['user_id']) ?>">
+                            <a class="confirmation-action track" href="track_order.php?user_id=<?php echo urlencode($transaction_data['user_id']); ?>">
                                 <i class="fas fa-location-dot"></i> Track Order
                             </a>
                             <a class="confirmation-action home" href="../home.php">
@@ -1366,7 +1355,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit']) && !
                         <?php
                             $selected_container_size = $editing_order['container_size'] ?? '2.5gal-slim';
                             $selected_container_status = $editing_order['container_status'] ?? 'new';
-                            $selected_fulfillment = $editing_order['fulfillment_method'] ?? ($_SESSION['guest_fulfillment'] ?? 'delivery');
+                            $selected_fulfillment = $editing_order['fulfillment_method'] ?? 'delivery';
                             $selected_quantity = max(1, (int)($editing_order['quantity'] ?? 1));
                         ?>
                         <div class="purchase-heading"><div class="purchase-heading-main"><div class="purchase-heading-icon"><i class="fas fa-bag-shopping"></i></div><div><h6><?php echo $editing_order ? 'Edit your order' : 'Build your order'; ?></h6><p>Choose a container and delivery option.</p></div></div><span class="purchase-step">Step 1 of 2</span></div>

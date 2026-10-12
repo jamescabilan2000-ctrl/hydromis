@@ -317,14 +317,14 @@ $approved_trans = $conn->query("
     SELECT 
         t.*,
         {$transaction_rider_expr} AS effective_rider_id,
-        COALESCE(t.customer_name,u.full_name) AS full_name, COALESCE(t.customer_contact,u.contact_number) AS contact_number, COALESCE(t.customer_address,u.address) AS address,
+        u.full_name, u.contact_number, u.address,
         ru.full_name AS rider_name, ru.age AS rider_age,
         ru.address AS rider_address, ru.contact_number AS rider_contact,
         COALESCE(rl.rider_latitude, 0) as rider_latitude,
         COALESCE(rl.rider_longitude, 0) as rider_longitude,
         rl.last_update as gps_last_update
     FROM transactions t
-    JOIN order_customers u ON t.user_id = u.user_id
+    JOIN users u ON t.user_id = u.user_id
     LEFT JOIN rider_users ru ON {$transaction_rider_expr} = ru.rider_id
     LEFT JOIN rider_locations rl ON t.transaction_id = rl.transaction_id
     WHERE t.status = 'approved'
@@ -337,9 +337,9 @@ $approved_trans = $conn->query("
 $approved_operations = $approved_trans ? $approved_trans->num_rows : 0;
 
 $pickup_trans = $conn->query("
-    SELECT t.*, COALESCE(t.customer_name,u.full_name) AS full_name, COALESCE(t.customer_contact,u.contact_number) AS contact_number, u.email, COALESCE(t.customer_address,u.address) AS address
+    SELECT t.*, u.full_name, u.contact_number, u.email, u.address
     FROM transactions t
-    JOIN order_customers u ON t.user_id = u.user_id
+    JOIN users u ON t.user_id = u.user_id
     WHERE t.status = 'approved'
       AND t.fulfillment_method = 'pickup'
       AND COALESCE(t.delivery_status, 'pending') <> 'delivered'
@@ -350,9 +350,9 @@ $pickup_trans = $conn->query("
 $avg_feedback  = (float)$scalar_value("SELECT COALESCE(AVG(rating),0) AS avg_rating FROM feedback_ratings", 'avg_rating', 0);
 $feedback_count = (int)$scalar_value("SELECT COUNT(*) AS count FROM feedback_ratings", 'count', 0);
 $recent_feedback = $conn->query("
-    SELECT fr.*, COALESCE(t.customer_name,u.full_name) AS full_name, t.transaction_id
+    SELECT fr.*, u.full_name, t.transaction_id
     FROM feedback_ratings fr
-    JOIN order_customers u ON fr.user_id = u.user_id
+    JOIN users u ON fr.user_id = u.user_id
     JOIN transactions t ON fr.transaction_id = t.transaction_id
     ORDER BY fr.updated_at DESC, fr.created_at DESC
     LIMIT 6

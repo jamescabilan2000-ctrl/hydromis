@@ -4,7 +4,6 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 require_once '../config/database.php';
 require_once '../config/storage_service.php';
-require_once '../config/guest_ordering.php';
 
 $success = false;
 $error = '';
@@ -18,9 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $contact_number = sanitize($_POST['contact_number']);
     
     // Validate form
-    if (!in_array(htmlspecialchars_decode($barangay), ordering_barangays(), true)) {
-        $error = 'Select a valid barangay.';
-    } elseif (empty($full_name) || empty($barangay) || empty($street_number) || empty($contact_number)) {
+    if (empty($full_name) || empty($barangay) || empty($street_number) || empty($contact_number)) {
         $error = 'All fields are required!';
     } elseif (strlen($contact_number) < 10) {
         $error = 'Contact number should be at least 10 digits!';
@@ -428,8 +425,41 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <div class="form-group">
                         <label for="barangay"><i class="fas fa-map-marker-alt mr-2"></i>Barangay *</label>
                         <select class="form-control" name="barangay" id="barangay" required>
-                            <option value="">Select your barangay</option>
-                            <?php foreach (ordering_barangays() as $choice): ?><option value="<?= htmlspecialchars($choice) ?>" <?= ($_POST['barangay'] ?? '') === $choice ? 'selected' : '' ?>><?= htmlspecialchars($choice) ?></option><?php endforeach; ?>
+                            <option value="">-- Select Your Barangay --</option>
+                            <option value="BagongBanwa Island">BagongBanwa Island</option>
+                            <option value="Banlasan">Banlasan</option>
+                            <option value="Batasan Island">Batasan Island</option>
+                            <option value="BilangBilangan Island">BilangBilangan Island</option>
+                            <option value="Bosongon">Bosongon</option>
+                            <option value="Buenos Aires">Buenos Aires</option>
+                            <option value="Bunacan">Bunacan</option>
+                            <option value="Cabulijan">Cabulijan</option>
+                            <option value="Cahayag">Cahayag</option>
+                            <option value="Cawayanan">Cawayanan</option>
+                            <option value="Centro">Centro</option>
+                            <option value="Genonocan">Genonocan</option>
+                            <option value="Guiwanon">Guiwanon</option>
+                            <option value="Ilijan Norte">Ilijan Norte</option>
+                            <option value="Ilijan Sur">Ilijan Sur</option>
+                            <option value="Libertad">Libertad</option>
+                            <option value="Macaas">Macaas</option>
+                            <option value="Matabao">Matabao</option>
+                            <option value="Mocaboc Island">Mocaboc Island</option>
+                            <option value="Panadtaran">Panadtaran</option>
+                            <option value="Panaytayon">Panaytayon</option>
+                            <option value="Pandan">Pandan</option>
+                            <option value="Pangapasan Island">Pangapasan Island</option>
+                            <option value="Pinayagan Norte">Pinayagan Norte</option>
+                            <option value="Pinayagan Sur">Pinayagan Sur</option>
+                            <option value="Pooc Occidental">Pooc Occidental</option>
+                            <option value="Pooc Oriental">Pooc Oriental</option>
+                            <option value="Potohan">Potohan</option>
+                            <option value="Talenceras">Talenceras</option>
+                            <option value="Tan-awan">Tan-awan</option>
+                            <option value="Tinangnan">Tinangnan</option>
+                            <option value="Ubojan">Ubojan</option>
+                            <option value="Ubay Island">Ubay Island</option>
+                            <option value="Villanueva">Villanueva</option>
                         </select>
                     </div>
 

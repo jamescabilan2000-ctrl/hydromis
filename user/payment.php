@@ -102,7 +102,7 @@ $transaction = loadTransactionForPayment($requestedTransactionId, $requestedUser
 
 if ($transaction) {
     $payment_transaction_id = $transaction['transaction_id'];
-    $userResult = $conn->query("SELECT * FROM order_customers WHERE user_id = '" . sanitize($transaction['user_id']) . "' LIMIT 1");
+    $userResult = $conn->query("SELECT * FROM users WHERE user_id = '" . sanitize($transaction['user_id']) . "' LIMIT 1");
     if ($userResult && $userResult->num_rows > 0) {
         $user = $userResult->fetch_assoc();
     }

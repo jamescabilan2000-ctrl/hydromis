@@ -95,7 +95,7 @@ function approve_or_cancel_order_for_stock($conn, string $transactionId, string 
     $fulfillment=(string)($order['fulfillment_method']??'delivery');
     $nextDeliveryStatus=$fulfillment==='pickup'?'ready_for_pickup':'pending';
     $pointsPerGallon=system_int_setting($conn,'points_per_gallon',1,0,100);
-    $earnedPoints=($order['customer_type'] ?? 'registered') === 'guest' || str_starts_with((string)$order['user_id'], 'GUEST-') ? 0 : max(0,(int)($order['quantity']??0))*$pointsPerGallon;
+    $earnedPoints=max(0,(int)($order['quantity']??0))*$pointsPerGallon;
     if($earnedPoints>0){
         $safeUserId=$conn->real_escape_string((string)$order['user_id']);
         if(!$conn->query("UPDATE users SET loyalty_points=COALESCE(loyalty_points,0)+$earnedPoints WHERE user_id='$safeUserId'")){

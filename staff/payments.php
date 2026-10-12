@@ -87,10 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     exit();
 }
 
-$payments = $conn->query("SELECT p.payment_id, p.transaction_id, p.transaction_id AS order_id, p.amount, p.payment_status AS status, p.created_at, p.payment_method, p.payment_reference, p.payment_proof, p.gcash_number, p.maya_number, p.notes, COALESCE(t.customer_name,u.full_name) AS full_name, COALESCE(t.customer_contact,u.contact_number) AS contact_number
+$payments = $conn->query("SELECT p.payment_id, p.transaction_id, p.transaction_id AS order_id, p.amount, p.payment_status AS status, p.created_at, p.payment_method, p.payment_reference, p.payment_proof, p.gcash_number, p.maya_number, p.notes, u.full_name, u.contact_number
     FROM payments p
-    LEFT JOIN transactions t ON t.transaction_id = p.transaction_id
-    LEFT JOIN order_customers u ON p.user_id = u.user_id
+    LEFT JOIN users u ON p.user_id = u.user_id
     WHERE p.transaction_id NOT LIKE 'RWD-%' AND p.transaction_id NOT LIKE 'DEMO-%'
     ORDER BY p.created_at DESC");
 

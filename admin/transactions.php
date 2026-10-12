@@ -12,9 +12,6 @@ require_once '../config/order_status.php';
 $filter_date = isset($_GET['date']) ? $_GET['date'] : '';
 $filter_method = isset($_GET['method']) ? $_GET['method'] : 'all';
 
-$customer_type_filter = in_array($_GET['customer_type'] ?? '', ['guest','registered'], true) ? $_GET['customer_type'] : 'all';
-$order_source_filter = in_array($_GET['order_source'] ?? '', ['public_qr','account_qr','staff_guest','staff_account_qr','customer'], true) ? $_GET['order_source'] : 'all';
-
 // Build WHERE clauses
 $where = [];
 $stat_where = [];
@@ -36,21 +33,14 @@ foreach (['from'=>$date_from,'to'=>$date_to] as $direction=>$date) {
 }
 $monitor_status = in_array($_GET['status'] ?? '', ['pending','approved','denied','cancelled','customer_cancelled','delivered'],true) ? $_GET['status'] : 'all';
 $monitor_caps = in_array($_GET['caps'] ?? '', ['yes','no'],true) ? $_GET['caps'] : 'all';
-foreach (['customer_type'=>$customer_type_filter,'order_source'=>$order_source_filter] as $column=>$value) {
-    if ($value !== 'all') {
-        $safe_value = $conn->real_escape_string($value);
-        $where[] = "t.$column = '$safe_value'";
-        $stat_where[] = "$column = '$safe_value'";
-    }
-}
 $where_sql = count($where) > 0 ? ' AND ' . implode(' AND ', $where) : '';
 $stat_where_sql = count($stat_where) > 0 ? ' AND ' . implode(' AND ', $stat_where) : '';
 
 // Get filtered transactions
 $transactions = $conn->query("
-    SELECT t.*, COALESCE(t.customer_name,u.full_name) AS full_name, COALESCE(t.customer_contact,u.contact_number) AS contact_number
+    SELECT t.*, u.full_name, u.contact_number
     FROM transactions t 
-    JOIN order_customers u ON t.user_id = u.user_id
+    JOIN users u ON t.user_id = u.user_id 
     WHERE 1=1 $where_sql
     ORDER BY t.created_at DESC
 ");
@@ -623,8 +613,6 @@ html, body {
                 <label>From <input class="filter-date-input" type="date" name="from" value="<?= htmlspecialchars($date_from) ?>"></label><label>To <input class="filter-date-input" type="date" name="to" value="<?= htmlspecialchars($date_to) ?>"></label>
                 <label>Status <select class="filter-date-input" name="status"><?php foreach(['all'=>'All','pending'=>'Pending','approved'=>'Approved','denied'=>'Denied','cancelled'=>'Cancelled','customer_cancelled'=>'Cancelled by customer','delivered'=>'Delivered'] as $value=>$label): ?><option <?= $value===$monitor_status?'selected':'' ?> value="<?= $value ?>"><?= $label ?></option><?php endforeach; ?></select></label>
                 <label>Caps <select class="filter-date-input" name="caps"><?php foreach(['all'=>'All orders','yes'=>'Caps requested','no'=>'No caps'] as $value=>$label): ?><option <?= $value===$monitor_caps?'selected':'' ?> value="<?= $value ?>"><?= $label ?></option><?php endforeach; ?></select></label>
-                <label>Customer <select class="filter-date-input" name="customer_type"><?php foreach(['all'=>'All','guest'=>'Guest','registered'=>'Registered'] as $value=>$label): ?><option value="<?= $value ?>" <?= $value === $customer_type_filter ? 'selected' : '' ?>><?= $label ?></option><?php endforeach; ?></select></label>
-                <label>Source <select class="filter-date-input" name="order_source"><?php foreach(['all'=>'All','public_qr'=>'Public QR','account_qr'=>'Account QR','staff_guest'=>'Staff guest order','staff_account_qr'=>'Staff account QR','customer'=>'Customer ordering'] as $value=>$label): ?><option value="<?= $value ?>" <?= $value === $order_source_filter ? 'selected' : '' ?>><?= $label ?></option><?php endforeach; ?></select></label>
                 <div class="filter-actions">
                     <button type="submit" class="filter-action filter-apply"><i class="fas fa-filter" aria-hidden="true"></i> Apply</button>
                     <a href="transactions.php" class="filter-action filter-reset"><i class="fas fa-rotate-left" aria-hidden="true"></i> Reset</a>
@@ -739,7 +727,7 @@ html, body {
                             <?php foreach ($monitor_orders as $row): $saved_caps=saved_cap_details((string)($row['notes'] ?? '')); ?>
                             <tr>
                                 <td><strong><?php echo htmlspecialchars($row['transaction_id']); ?></strong></td>
-                                <td><?php echo htmlspecialchars($row['full_name']); ?><br><small><?= htmlspecialchars(ucfirst($row['customer_type'] ?? 'registered')) ?> · <?= htmlspecialchars(str_replace('_', ' ', $row['order_source'] ?? 'customer')) ?></small></td>
+                                <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                 <td><?php echo htmlspecialchars($row['contact_number']); ?></td><td><?= (int)($row['quantity'] ?? 0) ?></td><td><?= $saved_caps['quantity'] ?></td><td>PHP <?= number_format($saved_caps['subtotal'],2) ?><div style="font-size:11px">PHP <?= number_format($saved_caps['price'],2) ?> each</div></td>
                                 <td>
                                     ₱ <?php echo number_format($row['amount'], 2); ?>
@@ -757,7 +745,6 @@ html, body {
                                 </td>
                                 <td>
                                     <?php echo htmlspecialchars($row['description']); ?>
-                                    <div style="margin-top:5px;font-size:11px">Address: <?= htmlspecialchars($row['customer_address'] ?? '') ?: 'Not provided (pickup)' ?><br>Points earned: <?= (int)($row['loyalty_points_earned'] ?? 0) ?><?php if (!empty($row['created_by_staff_id'])): ?><br>Created by staff: <?= htmlspecialchars($row['created_by_staff_id']) ?><?php endif; ?></div>
                                     <?php if (!empty($row['container_size'])): ?>
                                     <div style="margin-top:5px;font-size:10px;color:var(--muted);">
                                         <i class="fas fa-box"></i> <?php echo ($row['container_status'] ?? '') === 'new' ? 'New container' : 'Customer container'; ?>

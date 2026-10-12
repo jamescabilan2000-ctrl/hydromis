@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qr_data'])) {
     if ($qr_decoded && isset($qr_decoded['user_id'])) {
         // Get user from database
         $user_id = sanitize($qr_decoded['user_id']);
-        $sql = "SELECT * FROM users WHERE customer_type='registered' AND user_id = '$user_id'";
+        $sql = "SELECT * FROM users WHERE user_id = '$user_id'";
         $result = $conn->query($sql);
         
         if ($result->num_rows > 0) {
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mobile_login'])) {
         $mobileDigits = '0' . $mobileDigits;
         $safeMobile = $conn->real_escape_string($mobileDigits);
         $contact_lookup = sensitive_lookup($safeMobile);
-        $sql = "SELECT * FROM users WHERE customer_type='registered' AND contact_lookup = '$contact_lookup' LIMIT 1";
+        $sql = "SELECT * FROM users WHERE contact_lookup = '$contact_lookup' LIMIT 1";
         $result = $conn->query($sql);
 
         if ($result && $result->num_rows > 0) {
@@ -73,9 +73,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mobile_login'])) {
 }
 
 if ($scanned_data) {
-    session_regenerate_id(true);
-    $_SESSION['customer_order_csrf'] = bin2hex(random_bytes(32));
-    unset($_SESSION['ordering_staff_id'], $_SESSION['ordering_source'], $_SESSION['guest_tracking_token'], $_SESSION['guest_fulfillment']);
     $_SESSION['customer_user_id'] = (string)$scanned_data['user_id'];
     if ($tracking_login) {
         header('Location: track_order.php', true, 303);

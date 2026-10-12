@@ -494,10 +494,6 @@ class DBCompatConnection {
     }
 }
 
-// Allows isolated database integration tests to instantiate the adapter without
-// connecting to or migrating the configured application database.
-if (defined('HYDROMIS_DATABASE_LIBRARY_ONLY') && HYDROMIS_DATABASE_LIBRARY_ONLY) return;
-
 if (!extension_loaded('mysqli')) {
     die('XAMPP/MySQL requires the mysqli PHP extension. Enable it in C:/xampp/php/php.ini and restart Apache.');
 }
@@ -518,8 +514,6 @@ $conn->set_charset('utf8mb4');
 
 require_once __DIR__ . '/loyalty_service.php';
 enforce_annual_loyalty_reset($conn);
-require_once __DIR__ . '/guest_ordering.php';
-ensure_guest_ordering_schema($conn);
 
 require_once __DIR__ . '/activity_logger.php';
 auto_log_system_request($conn);

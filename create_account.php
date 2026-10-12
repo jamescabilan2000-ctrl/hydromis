@@ -2,7 +2,6 @@
 session_start();
 require_once 'config/database.php';
 require_once 'config/storage_service.php';
-require_once 'config/guest_ordering.php';
 
 $error = '';
 $success = false;
@@ -17,9 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
     $contact_input = trim((string)($_POST['contact_number'] ?? ''));
     $contact_number = $contact_input;
     
-    if (!in_array(htmlspecialchars_decode($barangay), ordering_barangays(), true)) {
-        $error = 'Select a valid barangay.';
-    } elseif (empty($full_name) || empty($barangay) || empty($street_number) || empty($contact_number)) {
+    if (empty($full_name) || empty($barangay) || empty($street_number) || empty($contact_number)) {
         $error = 'All fields are required!';
     } elseif (!preg_match('/^[\p{L} ]+$/u', $full_name)) {
         $error = 'Full name can contain letters and spaces only.';
@@ -575,7 +572,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                         <label for="barangay"><i class="fas fa-map-marker-alt mr-2"></i>Barangay *</label>
                         <select class="form-control" name="barangay" id="barangay" required>
                             <option value="">Select your barangay</option>
-                            <?php foreach (ordering_barangays() as $choice): ?><option value="<?= htmlspecialchars($choice) ?>" <?= ($_POST['barangay'] ?? '') === $choice ? 'selected' : '' ?>><?= htmlspecialchars($choice) ?></option><?php endforeach; ?>
+                            <option value="BagongBanwa Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'BagongBanwa Island') ? 'selected' : ''; ?>>BagongBanwa Island</option>
+                            <option value="Banlasan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Banlasan') ? 'selected' : ''; ?>>Banlasan</option>
+                            <option value="Batasan Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Batasan Island') ? 'selected' : ''; ?>>Batasan Island</option>
+                            <option value="BilangBilangan Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'BilangBilangan Island') ? 'selected' : ''; ?>>BilangBilangan Island</option>
+                            <option value="Bosongon" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Bosongon') ? 'selected' : ''; ?>>Bosongon</option>
+                            <option value="Buenos Aires" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Buenos Aires') ? 'selected' : ''; ?>>Buenos Aires</option>
+                            <option value="Bunacan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Bunacan') ? 'selected' : ''; ?>>Bunacan</option>
+                            <option value="Cabulijan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Cabulijan') ? 'selected' : ''; ?>>Cabulijan</option>
+                            <option value="Cahayag" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Cahayag') ? 'selected' : ''; ?>>Cahayag</option>
+                            <option value="Cawayanan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Cawayanan') ? 'selected' : ''; ?>>Cawayanan</option>
+                            <option value="Centro" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Centro') ? 'selected' : ''; ?>>Centro</option>
+                            <option value="Genonocan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Genonocan') ? 'selected' : ''; ?>>Genonocan</option>
+                            <option value="Guiwanon" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Guiwanon') ? 'selected' : ''; ?>>Guiwanon</option>
+                            <option value="Ilijan Norte" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Ilijan Norte') ? 'selected' : ''; ?>>Ilijan Norte</option>
+                            <option value="Ilijan Sur" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Ilijan Sur') ? 'selected' : ''; ?>>Ilijan Sur</option>
+                            <option value="Libertad" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Libertad') ? 'selected' : ''; ?>>Libertad</option>
+                            <option value="Macaas" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Macaas') ? 'selected' : ''; ?>>Macaas</option>
+                            <option value="Matabao" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Matabao') ? 'selected' : ''; ?>>Matabao</option>
+                            <option value="Mocaboc Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Mocaboc Island') ? 'selected' : ''; ?>>Mocaboc Island</option>
+                            <option value="Panadtaran" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Panadtaran') ? 'selected' : ''; ?>>Panadtaran</option>
+                            <option value="Panaytayon" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Panaytayon') ? 'selected' : ''; ?>>Panaytayon</option>
+                            <option value="Pandan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pandan') ? 'selected' : ''; ?>>Pandan</option>
+                            <option value="Pangapasan Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pangapasan Island') ? 'selected' : ''; ?>>Pangapasan Island</option>
+                            <option value="Pinayagan Norte" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pinayagan Norte') ? 'selected' : ''; ?>>Pinayagan Norte</option>
+                            <option value="Pinayagan Sur" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pinayagan Sur') ? 'selected' : ''; ?>>Pinayagan Sur</option>
+                            <option value="Pooc Occidental" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pooc Occidental') ? 'selected' : ''; ?>>Pooc Occidental</option>
+                            <option value="Pooc Oriental" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pooc Oriental') ? 'selected' : ''; ?>>Pooc Oriental</option>
+                            <option value="Potohan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Potohan') ? 'selected' : ''; ?>>Potohan</option>
+                            <option value="Talenceras" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Talenceras') ? 'selected' : ''; ?>>Talenceras</option>
+                            <option value="Tan-awan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Tan-awan') ? 'selected' : ''; ?>>Tan-awan</option>
+                            <option value="Tinangnan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Tinangnan') ? 'selected' : ''; ?>>Tinangnan</option>
+                            <option value="Ubojan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Ubojan') ? 'selected' : ''; ?>>Ubojan</option>
+                            <option value="Ubay Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Ubay Island') ? 'selected' : ''; ?>>Ubay Island</option>
+                            <option value="Villanueva" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Villanueva') ? 'selected' : ''; ?>>Villanueva</option>
                         </select>
                     </div>
 

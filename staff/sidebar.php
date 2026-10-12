@@ -44,7 +44,6 @@ body.staff-light .staff-sidebar-profile{border-color:#d6e0ec;background:#f5f8fc}
     <div class="staff-sidebar-brand"><b><img src="<?php echo htmlspecialchars(hydromis_asset_url($systemLogo, '../')); ?>" alt="HydroMIS logo" style="width:30px;height:30px;object-fit:contain;"></b><div>HydroMIS<span>Water Refilling</span></div></div>
     <nav class="staff-sidebar-nav">
         <span>Main</span>
-        <a href="qr_ordering.php"><i class="fas fa-qrcode"></i>QR Ordering</a>
         <a class="<?php echo $staff_active === 'dashboard' ? 'active' : ''; ?>" href="dashboard.php"><i class="fas fa-home"></i>Dashboard</a>
         <div class="staff-delivery-menu" id="staffDeliveryMenu">
             <a class="<?php echo $staff_active === 'deliveries' ? 'active' : ''; ?>" href="dashboard.php?view=deliveries"><i class="fas fa-truck-fast"></i>Delivery Operations<span class="staff-nav-redmark" style="<?= $delivery_nav + $pickup_nav > 0 ? '' : 'display:none' ?>"><?= $delivery_nav + $pickup_nav ?></span></a>

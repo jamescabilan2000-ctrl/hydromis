@@ -2,8 +2,6 @@
 $exportFilters = http_build_query([
     'date' => $filter_date ?? '',
     'method' => $filter_method ?? 'all',
-    'customer_type' => $customer_type_filter ?? 'all',
-    'order_source' => $order_source_filter ?? 'all',
 ]);
 ?>
 <div style="display:flex;flex-wrap:wrap;gap:10px;margin:0 0 20px;">

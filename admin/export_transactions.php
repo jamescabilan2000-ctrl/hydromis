@@ -19,9 +19,6 @@ if ($date !== '') {
     }
 }
 
-$customerType = $_GET['customer_type'] ?? 'all';
-$orderSource = $_GET['order_source'] ?? 'all';
-if (!in_array($customerType, ['all','guest','registered'], true) || !in_array($orderSource, ['all','public_qr','account_qr','staff_guest','staff_account_qr','customer'], true)) { http_response_code(400); exit('Invalid customer filters.'); }
 $conditions = ['1=1'];
 $params = [];
 if ($type === 'sales') {
@@ -35,12 +32,9 @@ if ($method !== 'all') {
     $conditions[] = 't.payment_method = ?';
     $params[] = $method;
 }
-foreach (['customer_type'=>$customerType,'order_source'=>$orderSource] as $column=>$value) {
-    if ($value !== 'all') { $conditions[] = "t.$column = ?"; $params[] = $value; }
-}
-$stmt = $conn->prepare('SELECT t.transaction_id, COALESCE(t.customer_name,u.full_name) AS full_name, t.amount,
-    t.description, t.payment_method, t.status, t.created_at, t.customer_type, t.order_source, t.created_by_staff_id, COALESCE(t.customer_contact,u.contact_number) AS contact_number, COALESCE(t.customer_address,u.address) AS address, t.loyalty_points_earned
-    FROM transactions t LEFT JOIN order_customers u ON t.user_id = u.user_id
+$stmt = $conn->prepare('SELECT t.transaction_id, u.full_name, t.amount,
+    t.description, t.payment_method, t.status, t.created_at
+    FROM transactions t LEFT JOIN users u ON t.user_id = u.user_id
     WHERE ' . implode(' AND ', $conditions) . ' ORDER BY t.created_at DESC');
 if ($params) {
     $stmt->bind_param(str_repeat('s', count($params)), ...$params);
@@ -53,7 +47,7 @@ header('Content-Disposition: attachment; filename="' . $type . '-' . date('Y-m-d
 header('Cache-Control: no-store');
 $output = fopen('php://output', 'w');
 fwrite($output, "\xEF\xBB\xBF");
-fputcsv($output, ['Transaction ID', 'Customer', 'Amount (PHP)', 'Description', 'Payment Method', 'Status', 'Date', 'Customer Type', 'Order Source', 'Staff Creator', 'Contact Number', 'Address', 'Points Earned'], ',', '"', '');
+fputcsv($output, ['Transaction ID', 'Customer', 'Amount (PHP)', 'Description', 'Payment Method', 'Status', 'Date'], ',', '"', '');
 while ($row = $rows->fetch_assoc()) {
     $row['amount'] = number_format((float)$row['amount'], 2, '.', '');
     // Keep user-entered text from being interpreted as spreadsheet formulas.

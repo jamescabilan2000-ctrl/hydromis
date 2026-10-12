@@ -23,9 +23,9 @@ fputcsv($output, ['=== TRANSACTIONS DATA ===']);
 fputcsv($output, ['Transaction ID', 'Customer Name', 'Amount', 'Description', 'Status', 'Created At']);
 
 $trans = $conn->query("
-    SELECT t.transaction_id, COALESCE(t.customer_name,u.full_name) AS full_name, t.amount, t.description, t.status, t.created_at
+    SELECT t.transaction_id, u.full_name, t.amount, t.description, t.status, t.created_at
     FROM transactions t
-    JOIN order_customers u ON t.user_id = u.user_id
+    JOIN users u ON t.user_id = u.user_id
     ORDER BY t.created_at DESC
 ");
 if ($trans) {

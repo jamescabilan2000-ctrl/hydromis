@@ -24,7 +24,7 @@ if (!$user_id) {
 
 require_once '../config/customer_order_access.php';
 require_customer_order_access((string)$user_id);
-$sql = "SELECT * FROM order_customers WHERE user_id = '$user_id'";
+$sql = "SELECT * FROM users WHERE user_id = '$user_id'";
 $result = $conn->query($sql);
 if (!$result || $result->num_rows === 0) {
     header('Location: scan_qr.php');
@@ -1259,7 +1259,7 @@ $final_total += $cap_subtotal;
                         <div class="address-box filled" id="addressBox" style="cursor: default; background: #ecfdf5; border: 1px solid #0d9488;">
                             <i class="fas fa-map-pin" style="color: #0d9488;"></i>
                             <div style="flex: 1;">
-                                <span class="address-text" id="addressDisplay"><?php echo htmlspecialchars($user_address !== '' ? $user_address : 'Enter your delivery address in customer details below.'); ?></span>
+                                <span class="address-text" id="addressDisplay"><?php echo htmlspecialchars($user_address); ?></span>
                                 <?php if ($user_contact): ?>
                                 <div style="font-size: 12px; color: #6b7280; margin-top: 4px;"><?php echo htmlspecialchars($user_contact); ?></div>
                                 <?php endif; ?>
@@ -1363,7 +1363,6 @@ $final_total += $cap_subtotal;
             <input type="hidden" name="delivery_time" id="hiddenTime" value="">
             <input type="hidden" name="payment_method" id="hiddenPaymentMethod" value="">
 
-            <?php require __DIR__ . '/order-contact-fields.php'; ?>
             <!-- Payment Method Section -->
             <div class="payment-method-section">
                 <div class="payment-method-label">

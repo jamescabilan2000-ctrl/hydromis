@@ -29,7 +29,7 @@ if ($contents === null) {
     // Older accounts or a deployment may not have a saved PNG. Recreate a
     // scannable code using the customer ID, without sending personal details.
     require_once __DIR__ . '/config/database.php';
-    $customer = $conn->prepare("SELECT user_id FROM users WHERE customer_type='registered' AND user_id = ? LIMIT 1");
+    $customer = $conn->prepare('SELECT user_id FROM users WHERE user_id = ? LIMIT 1');
     $customer->bind_param('s', $userId);
     $customer->execute();
     if (!$customer->get_result()->fetch_assoc()) {

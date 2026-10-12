@@ -54,7 +54,7 @@ $loyalty_reset_at = loyalty_points_reset_at($conn);
 
 function load_user_by_id($conn, $user_id) {
     $safe_user_id = sanitize($user_id);
-    $sql = "SELECT * FROM users WHERE customer_type='registered' AND user_id = '$safe_user_id' LIMIT 1";
+    $sql = "SELECT * FROM users WHERE user_id = '$safe_user_id' LIMIT 1";
     $result = $conn->query($sql);
 
     if ($result && $result->num_rows > 0) {
@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mobile_lookup_submit'
         $error = 'Please enter your mobile number.';
     } else {
         $contact_lookup = sensitive_lookup(htmlspecialchars_decode($mobile_lookup));
-        $sql = "SELECT * FROM users WHERE customer_type='registered' AND contact_lookup = '$contact_lookup' LIMIT 1";
+        $sql = "SELECT * FROM users WHERE contact_lookup = '$contact_lookup' LIMIT 1";
         $result = $conn->query($sql);
 
         if ($result && $result->num_rows > 0) {
