@@ -1,4 +1,7 @@
 <?php
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+$rewardConversionFlash = $_SESSION['reward_conversion_flash'] ?? null;
+unset($_SESSION['reward_conversion_flash']);
 require_once '../config/database.php';
 require_once '../config/system_settings.php';
 
@@ -46,6 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acknowledge_reward_up
 $error = '';
 $success = '';
 $redemption_details = null;
+if (is_array($rewardConversionFlash)) {
+    $success = (string)($rewardConversionFlash['success'] ?? 'Conversion successful. Your points have been deducted.');
+    $redemption_details = is_array($rewardConversionFlash['details'] ?? null) ? $rewardConversionFlash['details'] : null;
+}
 $selected_user = null;
 $user_id = '';
 $mobile_lookup = '';
@@ -139,9 +146,18 @@ if (!$selected_user) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
     $posted_user_id = trim($_POST['user_id'] ?? '');
     $reward_code = trim($_POST['reward_code'] ?? '');
+    $postedNonce = trim((string)($_POST['redeem_nonce'] ?? ''));
+    $nonceRecord = $_SESSION['reward_redeem_nonces'][$postedNonce] ?? null;
+    $validNonce = is_array($nonceRecord)
+        && hash_equals((string)($nonceRecord['user_id'] ?? ''), $posted_user_id)
+        && hash_equals((string)($nonceRecord['reward_code'] ?? ''), $reward_code)
+        && (time() - (int)($nonceRecord['created_at'] ?? 0)) <= 3600;
+    if ($postedNonce !== '') unset($_SESSION['reward_redeem_nonces'][$postedNonce]);
 
     if (empty($posted_user_id) || empty($reward_code)) {
         $error = 'Invalid redemption request.';
+    } elseif (!$validNonce) {
+        $error = 'This conversion request was already processed or expired. Refresh rewards and try again.';
     } elseif (!isset($reward_by_code[$reward_code])) {
         $error = 'Selected reward is not available.';
     } elseif (empty($reward_enabled[$reward_code])) {
@@ -160,9 +176,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
                 $error = 'Not enough points for this reward.';
             } else {
                 $safe_user_id = sanitize($posted_user_id);
-                $sql_deduct = "UPDATE users SET loyalty_points = loyalty_points - $required_points WHERE user_id = '$safe_user_id'";
+                $conn->begin_transaction();
+                $sql_deduct = "UPDATE users SET loyalty_points = loyalty_points - $required_points WHERE user_id = '$safe_user_id' AND loyalty_points >= $required_points";
 
-                if ($conn->query($sql_deduct) === TRUE) {
+                if ($conn->query($sql_deduct) === TRUE && $conn->affected_rows === 1) {
                     $redemption_id = generate_reward_id($conn);
                     $reward_title = sanitize($reward['title']);
                     $reward_tag = sanitize($reward['tag']);
@@ -172,29 +189,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_submit'])) {
 
                     $sql_log = "INSERT INTO transactions (transaction_id, user_id, amount, description, water_type, quantity, price_per_unit, discount, loyalty_points_earned, notes, status, created_at) VALUES ('$redemption_id', '$safe_user_id', 0, '$log_description', 'regular', 0, 0, 0, 0, '$log_notes', 'approved', NOW())";
 
-                    if ($conn->query($sql_log) !== TRUE) {
-                        $fallback_log = "INSERT INTO activity_logs (admin_id, action, description, timestamp) VALUES ('SYSTEM', 'reward_redeem', '$log_description', NOW())";
-                        $conn->query($fallback_log);
-                    }
                     $safe_reward_code = sanitize($reward['code']);
                     $safe_reward_claim_title = sanitize($reward['title']);
-                    $conn->query("INSERT INTO reward_claims (transaction_id, user_id, reward_code, reward_title, points_used, claim_status, created_at) VALUES ('$redemption_id', '$safe_user_id', '$safe_reward_code', '$safe_reward_claim_title', $required_points, 'pending', NOW())");
+                    $savedTransaction = $conn->query($sql_log) === TRUE;
+                    $savedClaim = $savedTransaction && $conn->query("INSERT INTO reward_claims (transaction_id, user_id, reward_code, reward_title, points_used, claim_status, created_at) VALUES ('$redemption_id', '$safe_user_id', '$safe_reward_code', '$safe_reward_claim_title', $required_points, 'pending', NOW())") === TRUE;
+                    if (!$savedClaim) {
+                        $conn->rollback();
+                        $error = 'Unable to complete the conversion. No points were deducted; please try again.';
+                    } else {
+                        $conn->commit();
 
-                    $selected_user = load_user_by_id($conn, $posted_user_id);
-                    $remaining_points = intval($selected_user['loyalty_points'] ?? 0);
+                        $selected_user = load_user_by_id($conn, $posted_user_id);
+                        $remaining_points = intval($selected_user['loyalty_points'] ?? 0);
 
-                    $redemption_details = [
-                        'id' => $redemption_id,
-                        'reward_title' => $reward['title'],
-                        'used_points' => $required_points,
-                        'remaining_points' => $remaining_points,
-                        'time' => date('M d, Y h:i A')
-                    ];
+                        $redemption_details = [
+                            'id' => $redemption_id,
+                            'reward_title' => $reward['title'],
+                            'used_points' => $required_points,
+                            'remaining_points' => $remaining_points,
+                            'time' => date('M d, Y h:i A')
+                        ];
 
-                    $success = 'Conversion successful. Your points have been deducted.';
-                    $redemption_history = load_redemption_history($conn, $posted_user_id);
+                        $_SESSION['reward_conversion_flash'] = [
+                            'success' => 'Conversion successful. Your points have been deducted.',
+                            'details' => $redemption_details
+                        ];
+                        header('Location: rewards.php?user_id=' . rawurlencode((string)$selected_user['user_id']));
+                        exit;
+                    }
                 } else {
-                    $error = 'Unable to process conversion right now. Please try again.';
+                    $conn->rollback();
+                    $error = 'Not enough points for this reward, or the request was already processed.';
                 }
             }
         }
@@ -1314,6 +1339,22 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
 
                 <div class="rewards-grid">
                     <?php foreach ($reward_catalog as $reward): ?>
+                        <?php
+                            if (!isset($_SESSION['reward_redeem_nonces']) || !is_array($_SESSION['reward_redeem_nonces'])) {
+                                $_SESSION['reward_redeem_nonces'] = [];
+                            }
+                            foreach ($_SESSION['reward_redeem_nonces'] as $existingNonce => $existingRecord) {
+                                if (!is_array($existingRecord) || time() - (int)($existingRecord['created_at'] ?? 0) > 3600) {
+                                    unset($_SESSION['reward_redeem_nonces'][$existingNonce]);
+                                }
+                            }
+                            $redeemNonce = bin2hex(random_bytes(24));
+                            $_SESSION['reward_redeem_nonces'][$redeemNonce] = [
+                                'user_id' => (string)$user_id,
+                                'reward_code' => (string)$reward['code'],
+                                'created_at' => time()
+                            ];
+                        ?>
                         <?php $is_unlocked = $available_points >= $reward['points']; ?>
                         <?php $is_enabled = !empty($reward_enabled[$reward['code']]); ?>
                         <?php
@@ -1338,6 +1379,7 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
                                     <input type="hidden" name="redeem_submit" value="1">
                                     <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user_id); ?>">
                                     <input type="hidden" name="reward_code" value="<?php echo htmlspecialchars($reward['code']); ?>">
+                                    <input type="hidden" name="redeem_nonce" value="<?php echo htmlspecialchars($redeemNonce); ?>">
                                     <button type="submit" class="convert-pill-btn" <?php echo ($is_unlocked && $is_enabled) ? '' : 'disabled'; ?>>
                                         <i class="fas <?php echo !$is_enabled ? 'fa-pause' : ($is_unlocked ? 'fa-gift' : 'fa-lock'); ?>"></i>
                                         <?php if (!$is_enabled): ?>Temporarily unavailable<?php else: ?><?php echo $is_unlocked ? 'Redeem for ' : 'Need '; ?><?php echo intval($reward['points']); ?> pts<?php endif; ?>

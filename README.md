@@ -14,6 +14,7 @@ hosting credentials in `config/database.local.php` (see
 - [System module map](PROJECT_STRUCTURE.md) - every feature grouped by module
 - [Quick start](QUICK_START.md) - local setup and first run
 - [Database schema](database/schema.sql) - primary database structure
+- [Database schema guide](docs/DATABASE_SCHEMA.md) - table purposes, relationships, and runtime-managed tables
 
 ## Main application modules
 
