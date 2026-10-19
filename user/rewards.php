@@ -847,6 +847,17 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
             color: #15803d;
             font-weight: 700;
         }
+        .conversion-success-overlay{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,35,52,.62);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);animation:successFadeIn .2s ease both}
+        .conversion-success-dialog{width:min(100%,430px);max-height:calc(100dvh - 36px);overflow:auto;padding:27px 22px 22px;border:1px solid rgba(255,255,255,.88);border-radius:22px;background:#fff;box-shadow:0 28px 75px rgba(5,35,52,.32);animation:dialogEnter .24s ease both}
+        .conversion-success-icon{display:grid;place-items:center;width:58px;height:58px;margin:0 auto 13px;border-radius:19px;background:linear-gradient(145deg,#d9f8f2,#e8f8ff);color:#0bac92;font-size:24px}
+        .conversion-success-dialog h3{margin:0 0 5px;color:#173247;font-size:21px;font-weight:800;text-align:center}
+        .conversion-success-subtitle{margin:0 0 19px;color:#6b8292;font-size:12px;text-align:center}
+        .conversion-success-dialog .receipt{margin:0;padding:15px;border-radius:16px;box-shadow:none}
+        .conversion-success-dialog .receipt h5{margin-bottom:12px}
+        .conversion-success-actions{margin-top:16px}
+        .conversion-success-close{width:100%;min-height:48px;border:0;border-radius:13px;background:linear-gradient(135deg,#0cae91,#0aa5be);color:#fff;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 10px 20px rgba(10,169,161,.2)}
+        @keyframes successFadeIn{from{opacity:0}to{opacity:1}}
+        @media(max-width:460px){.conversion-success-dialog{padding:23px 17px 18px;border-radius:20px}.conversion-success-dialog .receipt{padding:13px}.conversion-success-dialog .receipt-row{font-size:12px;overflow-wrap:anywhere}.conversion-success-dialog .receipt-row strong{text-align:right}}
 
         .history-block {
             margin-top: 28px;
@@ -1391,14 +1402,22 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
                 </div>
 
                 <?php if ($redemption_details): ?>
-                    <div class="receipt">
-                        <h5><i class="fas fa-check-circle"></i> Successful Conversion</h5>
-                        <div class="receipt-row"><span>Redemption ID</span><strong><?php echo htmlspecialchars($redemption_details['id']); ?></strong></div>
-                        <div class="receipt-row"><span>Reward</span><strong><?php echo htmlspecialchars($redemption_details['reward_title']); ?></strong></div>
-                        <div class="receipt-row"><span>Points Used</span><strong><?php echo intval($redemption_details['used_points']); ?> pts</strong></div>
-                        <div class="receipt-row"><span>Remaining Points</span><strong><?php echo intval($redemption_details['remaining_points']); ?> pts</strong></div>
-                        <div class="receipt-row"><span>Converted At</span><strong><?php echo htmlspecialchars($redemption_details['time']); ?></strong></div>
-                        <div class="reward-collection-note"><i class="fas fa-store"></i><span>Please visit the HydroMIS shop and show this conversion record to the cashier to claim your reward.</span></div>
+                    <div class="conversion-success-overlay" id="conversionSuccessOverlay" role="presentation">
+                        <section class="conversion-success-dialog" role="dialog" aria-modal="true" aria-labelledby="conversionSuccessTitle">
+                            <div class="conversion-success-icon"><i class="fas fa-clipboard-check" aria-hidden="true"></i></div>
+                            <h3 id="conversionSuccessTitle">Successful Conversion</h3>
+                            <p class="conversion-success-subtitle">Your reward conversion is complete.</p>
+                            <div class="receipt">
+                                <h5><i class="fas fa-check-circle"></i> Conversion details</h5>
+                                <div class="receipt-row"><span>Redemption ID</span><strong><?php echo htmlspecialchars($redemption_details['id']); ?></strong></div>
+                                <div class="receipt-row"><span>Reward</span><strong><?php echo htmlspecialchars($redemption_details['reward_title']); ?></strong></div>
+                                <div class="receipt-row"><span>Points Used</span><strong><?php echo intval($redemption_details['used_points']); ?> pts</strong></div>
+                                <div class="receipt-row"><span>Remaining Points</span><strong><?php echo intval($redemption_details['remaining_points']); ?> pts</strong></div>
+                                <div class="receipt-row"><span>Converted At</span><strong><?php echo htmlspecialchars($redemption_details['time']); ?></strong></div>
+                                <div class="reward-collection-note"><i class="fas fa-store"></i><span>Please visit the HydroMIS shop and show this conversion record to the cashier to claim your reward.</span></div>
+                            </div>
+                            <div class="conversion-success-actions"><button type="button" class="conversion-success-close" id="conversionSuccessClose">Done</button></div>
+                        </section>
                     </div>
                 <?php endif; ?>
 
@@ -1552,6 +1571,24 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
         document.addEventListener('keydown', event => {
             if (event.key === 'Escape' && historyModal?.classList.contains('open')) setHistoryModal(false);
         });
+
+        const conversionSuccessOverlay = document.getElementById('conversionSuccessOverlay');
+        const conversionSuccessClose = document.getElementById('conversionSuccessClose');
+        if (conversionSuccessOverlay) {
+            document.body.style.overflow = 'hidden';
+            conversionSuccessClose?.focus();
+            const closeConversionSuccess = () => {
+                conversionSuccessOverlay.remove();
+                document.body.style.overflow = '';
+            };
+            conversionSuccessClose?.addEventListener('click', closeConversionSuccess);
+            conversionSuccessOverlay.addEventListener('click', event => {
+                if (event.target === conversionSuccessOverlay) closeConversionSuccess();
+            });
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape' && conversionSuccessOverlay.isConnected) closeConversionSuccess();
+            });
+        }
 
         function showConfirmModal(rewardTitle, requiredPoints) {
             confirmMessage.textContent = 'Convert ' + requiredPoints + ' points for "' + rewardTitle + '"?';
