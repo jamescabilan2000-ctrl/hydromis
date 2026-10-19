@@ -800,7 +800,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php echo htmlspecialchars($row['description']); ?>
+                                            <?php echo htmlspecialchars(str_ireplace('2.5 Gallon Half Slim', 'Half Slim', (string)$row['description'])); ?>
                                             <?php if (!empty($row['container_size'])): ?>
                                             <div style="margin-top:5px;font-size:10px;color:var(--muted);">
                                                 <i class="fas fa-box"></i> <?php echo ($row['container_status'] ?? '') === 'new' ? 'New container' : 'Customer container'; ?>
