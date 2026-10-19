@@ -1581,41 +1581,41 @@ if ($db_initialized) {
                 <div class="role-card blue fade-up">
                     <div class="role-icon icon-blue"><i class="fas fa-users"></i></div>
                     <h3>Customer Portal</h3>
-                    <p class="subtitle">Order and track with ease</p>
+                    <p class="subtitle">Order and manage your water deliveries</p>
                     <ul class="feature-list">
-                        <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> No password — just scan your QR</li>
-                        <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> Place orders in seconds</li>
-                        <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> Real-time delivery tracking</li>
-                        <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> Rate your service experience</li>
-                        <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> Order history & receipts</li>
+                        <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> Place water refill orders easily</li>
+                        <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> Log in using your mobile number or QR code</li>
+                        <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> Track order and delivery status</li>
+                        <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> Submit gallon cap replacement requests</li>
+                        <li><span class="check-icon check-blue"><i class="fas fa-check"></i></span> View order history and rate the service</li>
                     </ul>
                 </div>
 
                 <!-- Sign In -->
                 <div class="role-card green fade-up">
                     <div class="role-icon icon-green"><i class="fas fa-qrcode"></i></div>
-                    <h3>Sign In</h3>
-                    <p class="subtitle">Quick & passwordless access</p>
+                    <h3>Customer Login</h3>
+                    <p class="subtitle">Quick and convenient account access</p>
                     <ul class="feature-list">
                         <li><span class="check-icon check-green"><i class="fas fa-check"></i></span> Scan your unique QR code</li>
-                        <li><span class="check-icon check-green"><i class="fas fa-check"></i></span> Login with mobile number</li>
-                        <li><span class="check-icon check-green"><i class="fas fa-check"></i></span> No password required</li>
-                        <li><span class="check-icon check-green"><i class="fas fa-check"></i></span> Instant account access</li>
-                        <li><span class="check-icon check-green"><i class="fas fa-check"></i></span> Secure & private session</li>
+                        <li><span class="check-icon check-green"><i class="fas fa-check"></i></span> Log in using your registered mobile number</li>
+                        <li><span class="check-icon check-green"><i class="fas fa-check"></i></span> Access your customer account</li>
+                        <li><span class="check-icon check-green"><i class="fas fa-check"></i></span> Manage your water refill requests</li>
+                        <li><span class="check-icon check-green"><i class="fas fa-check"></i></span> Enjoy convenient and secure access</li>
                     </ul>
                 </div>
 
                 <!-- Order Tracking -->
                 <div class="role-card purple fade-up">
                     <div class="role-icon icon-purple"><i class="fas fa-map-location-dot"></i></div>
-                    <h3>Order Tracking</h3>
-                    <p class="subtitle">Know where your water is</p>
+                    <h3>Order Management &amp; Tracking</h3>
+                    <p class="subtitle">Monitor your water refill orders</p>
                     <ul class="feature-list">
-                        <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> Live delivery status updates</li>
-                        <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> Order confirmed & dispatched</li>
-                        <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> Out-for-delivery alerts</li>
-                        <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> Full order history</li>
-                        <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> Rate after delivery</li>
+                        <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> View order request updates</li>
+                        <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> Track order confirmation and processing</li>
+                        <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> Monitor delivery status</li>
+                        <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> Review previous orders</li>
+                        <li><span class="check-icon check-purple"><i class="fas fa-check"></i></span> Rate the service after delivery</li>
                     </ul>
                 </div>
             </div>
