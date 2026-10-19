@@ -12,6 +12,8 @@ function caps_requested_from_notes(string $notes): int {
     return str_contains($notes, 'Please include a gallon cap if available.') ? 1 : 0;
 }
 function notes_without_cap_request(string $notes): string {
+    // Normalize escaped newlines that can appear in older saved customer notes.
+    $notes = str_replace(["\\r\\n", "\\n", "\\r"], "\n", $notes);
     return trim(preg_replace('/(?:^|\R)Caps requested: [1-9][0-9]{0,4} \(if available\)\.(?=\R|$)/', '', preg_replace('/(?:^|\R)Cap price: PHP [0-9]+\.[0-9]{2}; cap subtotal: PHP [0-9]+\.[0-9]{2}\.(?=\R|$)/', '', str_replace('Please include a gallon cap if available.', '', $notes))));
 }
 function notes_with_cap_request(string $notes, int $quantity, float $unitPrice = 0): string {

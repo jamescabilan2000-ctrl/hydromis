@@ -1327,11 +1327,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                         <div class="receipt-line"></div>
                         <?php endif; ?>
                         
-                        <?php if (!empty($transaction_data['customer_notes'])): ?>
+                        <?php $receiptInstructions = notes_without_cap_request((string)($transaction_data['customer_notes'] ?? '')); ?>
+                        <?php if ($receiptInstructions !== ''): ?>
                         <div class="receipt-section">
                             <div class="receipt-header-small" style="font-weight: 700; margin-bottom: 8px; color: #2563eb;"><i class="fas fa-comment-alt mr-1"></i> Special Instructions</div>
                             <div style="font-size: 13px; color: #1f2937; line-height: 1.5; padding: 8px 0; border-left: 3px solid #2563eb; padding-left: 10px;">
-                                <?php echo nl2br(htmlspecialchars($transaction_data['customer_notes'])); ?>
+                                <?php echo nl2br(htmlspecialchars($receiptInstructions)); ?>
                             </div>
                         </div>
                         <div class="receipt-line"></div>
