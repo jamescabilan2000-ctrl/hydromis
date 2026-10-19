@@ -1559,11 +1559,11 @@ if ($db_initialized) {
     <div class="trust-bar">
         <div class="trust-inner">
             <div class="trust-label">Built with</div>
-            <div class="trust-item"><i class="fas fa-qrcode"></i> QR Code Login</div>
-            <div class="trust-item"><i class="fas fa-bolt"></i> Real-Time Updates</div>
-            <div class="trust-item"><i class="fas fa-lock"></i> Passwordless Auth</div>
-            <div class="trust-item"><i class="fas fa-chart-bar"></i> Analytics & Reports</div>
-            <div class="trust-item"><i class="fas fa-mobile-alt"></i> Mobile Friendly</div>
+            <div class="trust-item"><i class="fas fa-qrcode"></i> QR Code &amp; Mobile Login</div>
+            <div class="trust-item"><i class="fas fa-bolt"></i> Order Status Tracking</div>
+            <div class="trust-item"><i class="fas fa-lock"></i> Convenient Customer Access</div>
+            <div class="trust-item"><i class="fas fa-chart-bar"></i> Sales &amp; Order Reports</div>
+            <div class="trust-item"><i class="fas fa-mobile-alt"></i> Mobile-Responsive System</div>
         </div>
     </div>
 

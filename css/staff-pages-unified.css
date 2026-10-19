@@ -12,6 +12,19 @@
 }
 
 html, body { min-height: 100%; max-width: 100%; overflow-x: hidden; }
+/* Keep staff pages scrollable while hiding the browser's visible scrollbar. */
+html, body, .staff-sidebar, .sidebar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.staff-sidebar::-webkit-scrollbar,
+.sidebar::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
 body {
     margin: 0 !important;
     padding: 0 !important;
