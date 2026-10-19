@@ -205,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['buy_submit'])) {
         $transaction_id = $is_editing_order ? $edit_transaction_id : generateID('TXN');
         $db_container_map = [
             '5gal-round' => '19 Liters (5 Gallon Round)',
-            '2.5gal-slim' => '9.5 Liters (2.5 Gallon Half Slim)',
+            '2.5gal-slim' => '9.5 Liters (Half Slim)',
             '5gal-slim' => '19 Liters (5 Gallon Slim)'
         ];
         $container_label = $db_container_map[$container_size] ?? $container_size;
@@ -1274,14 +1274,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                 <span class="receipt-item-desc"><?php 
                                     $container_map = [
                                         '5gal-round' => '19 Liters (5 Gallon Round)',
-                                        '2.5gal-slim' => '9.5 Liters (2.5 Gallon Half Slim)',
+                                        '2.5gal-slim' => '9.5 Liters (Half Slim)',
                                         '5gal-slim' => '19 Liters (5 Gallon Slim)'
                                     ];
                                     echo $container_map[$transaction_data['container_size']] ?? 'Container';
                                 ?></span>
                                 <span class="receipt-item-qty"><?php echo $transaction_data['quantity']; ?></span>
-                                <span class="receipt-item-unit">@ ₱<?php echo number_format($transaction_data['price_per_unit'], 2); ?></span>
-                                <span class="receipt-item-total">₱<?php echo number_format($transaction_data['total_amount'] - $cap_subtotal, 2); ?></span>
+                                <span class="receipt-item-unit">× ₱<?php echo number_format($transaction_data['price_per_unit'], 2); ?></span>
+                                <span class="receipt-item-total">= ₱<?php echo number_format($transaction_data['total_amount'] - $cap_subtotal, 2); ?></span>
                             </div>
                         </div>
                         
@@ -1377,7 +1377,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                                     <label class="container-card">
                                         <input type="radio" name="container_size" value="2.5gal-slim" <?php echo $selected_container_size === '2.5gal-slim' ? 'checked' : ''; ?> onchange="calculatePrice()">
                                         <div class="container-image">
-                                            <img src="../imagess/water3.jpg" alt="9.5 Liters Half Slim (2.5 Gallon)">
+                                            <img src="../imagess/water3.jpg" alt="9.5 Liters (Half Slim)">
                                         </div>
                                         <div class="container-info">
                                             <div class="container-size">9.5 Liters</div>

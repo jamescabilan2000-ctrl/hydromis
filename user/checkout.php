@@ -121,7 +121,7 @@ if ($edit_transaction_id !== '') {
 
 $size_map = [
     '5gal-round' => '19 Liters (5 Gallon)',
-    '2.5gal-slim' => '9.5 Liters (2.5 Gallon)',
+    '2.5gal-slim' => '9.5 Liters (Half Slim)',
     '5gal-slim' => '19 Liters (5 Gallon)'
 ];
 
