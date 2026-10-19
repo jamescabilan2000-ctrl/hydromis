@@ -17,22 +17,28 @@ function sanitize($input) {
 }
 
 function generateID($prefix) {
+    if (strtoupper((string)$prefix) === 'TXN') {
+        global $conn;
+        $updated = $conn->query("UPDATE order_id_sequence SET last_value=LAST_INSERT_ID(last_value+1) WHERE sequence_key=1");
+        $result = $conn->query('SELECT LAST_INSERT_ID() AS generated_id');
+        $row = $result ? $result->fetch_assoc() : null;
+        if (!$updated || !$row || (int)$row['generated_id'] < 1001) {
+            throw new RuntimeException('Unable to generate a sequential transaction ID.');
+        }
+        return (string)$row['generated_id'];
+    }
     return $prefix . '-' . strtoupper(bin2hex(random_bytes(8)));
 }
 
 function generateUserID() {
     global $conn;
-
-    for ($attempt = 0; $attempt < 10; $attempt++) {
-        $candidate = 'USR-' . strtoupper(bin2hex(random_bytes(4)));
-        $safeCandidate = $conn->real_escape_string($candidate);
-        $existing = $conn->query("SELECT id FROM users WHERE user_id = '$safeCandidate' LIMIT 1");
-        if (!$existing || $existing->num_rows === 0) {
-            return $candidate;
-        }
+    $updated = $conn->query("UPDATE customer_id_sequence SET last_value=LAST_INSERT_ID(last_value+1) WHERE sequence_key=1");
+    $result = $conn->query('SELECT LAST_INSERT_ID() AS generated_id');
+    $row = $result ? $result->fetch_assoc() : null;
+    if (!$updated || !$row || (int)$row['generated_id'] < 10001) {
+        throw new RuntimeException('Unable to generate a sequential customer ID.');
     }
-
-    throw new RuntimeException('Unable to generate a unique customer ID.');
+    return (string)$row['generated_id'];
 }
 
 
@@ -511,6 +517,10 @@ if ($conn->connect_error) {
 }
 
 $conn->set_charset('utf8mb4');
+
+require_once __DIR__ . '/transaction_id_migration.php';
+ensure_sequential_transaction_ids($conn);
+ensure_sequential_customer_ids($conn);
 
 require_once __DIR__ . '/loyalty_service.php';
 enforce_annual_loyalty_reset($conn);

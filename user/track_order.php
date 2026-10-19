@@ -416,6 +416,7 @@ function trackingDeliveryStatus($txn) {
 
 function compactTransactionId(string $id): string {
     if (str_starts_with($id, 'TXN-') && strlen($id) > 12) return 'TXN-' . substr($id, 4, 8);
+    if (ctype_digit($id)) return $id;
     return strlen($id) > 14 ? substr($id, 0, 14) : $id;
 }
 ?>

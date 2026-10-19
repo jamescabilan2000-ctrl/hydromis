@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qr_data'])) {
     
     if ($qr_decoded && isset($qr_decoded['user_id'])) {
         // Get user from database
-        $user_id = sanitize($qr_decoded['user_id']);
+        $user_id = sanitize(resolve_legacy_customer_id($conn, (string)$qr_decoded['user_id']));
         $sql = "SELECT * FROM users WHERE user_id = '$user_id'";
         $result = $conn->query($sql);
         
