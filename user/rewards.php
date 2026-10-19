@@ -857,7 +857,7 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
         .conversion-success-actions{margin-top:16px}
         .conversion-success-close{width:100%;min-height:48px;border:0;border-radius:13px;background:linear-gradient(135deg,#0cae91,#0aa5be);color:#fff;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 10px 20px rgba(10,169,161,.2)}
         @keyframes successFadeIn{from{opacity:0}to{opacity:1}}
-        @media(max-width:600px){.conversion-success-overlay{align-items:flex-start;justify-content:center;overflow-y:auto;overscroll-behavior:contain;padding:calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));}.conversion-success-dialog{width:min(100%,430px);max-height:none;margin:auto 0;overflow:visible;padding:22px 17px 17px;}.conversion-success-dialog .receipt-row{align-items:flex-start;line-height:1.45}.conversion-success-dialog .receipt-row span{flex:0 0 39%}.conversion-success-dialog .receipt-row strong{flex:1;min-width:0;text-align:right;overflow-wrap:anywhere}}
+        @media(max-width:600px){.conversion-success-overlay{align-items:center;justify-content:center;overflow-y:auto;overscroll-behavior:contain;padding:14px 14px calc(14px + env(safe-area-inset-bottom));}.conversion-success-dialog{width:min(100%,430px);max-height:calc(100vh - 28px);max-height:calc(100dvh - 28px);margin:auto 0;overflow:auto;overscroll-behavior:contain;padding:22px 17px 17px;}.conversion-success-dialog .receipt-row{align-items:flex-start;line-height:1.45}.conversion-success-dialog .receipt-row span{flex:0 0 39%}.conversion-success-dialog .receipt-row strong{flex:1;min-width:0;text-align:right;overflow-wrap:anywhere}}
         @media(max-width:460px){.conversion-success-dialog{border-radius:20px}.conversion-success-icon{width:50px;height:50px;margin-bottom:10px;font-size:21px}.conversion-success-dialog h3{font-size:19px}.conversion-success-subtitle{margin-bottom:14px;font-size:11px}.conversion-success-dialog .receipt{padding:12px}.conversion-success-dialog .receipt h5{font-size:14px}.conversion-success-dialog .receipt-row{font-size:12px}.conversion-success-dialog .reward-collection-note{font-size:11px}}
 
         .history-block {
@@ -1576,9 +1576,22 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
         const conversionSuccessOverlay = document.getElementById('conversionSuccessOverlay');
         const conversionSuccessClose = document.getElementById('conversionSuccessClose');
         if (conversionSuccessOverlay) {
+            const successDialog = conversionSuccessOverlay.querySelector('.conversion-success-dialog');
+            const updateSuccessViewport = () => {
+                if (!window.visualViewport || !successDialog) return;
+                const viewport = window.visualViewport;
+                conversionSuccessOverlay.style.top = viewport.offsetTop + 'px';
+                conversionSuccessOverlay.style.height = viewport.height + 'px';
+                successDialog.style.maxHeight = Math.max(180, viewport.height - 28) + 'px';
+            };
+            updateSuccessViewport();
+            window.visualViewport?.addEventListener('resize', updateSuccessViewport);
+            window.visualViewport?.addEventListener('scroll', updateSuccessViewport);
             document.body.style.overflow = 'hidden';
             conversionSuccessClose?.focus();
             const closeConversionSuccess = () => {
+                window.visualViewport?.removeEventListener('resize', updateSuccessViewport);
+                window.visualViewport?.removeEventListener('scroll', updateSuccessViewport);
                 conversionSuccessOverlay.remove();
                 document.body.style.overflow = '';
             };
