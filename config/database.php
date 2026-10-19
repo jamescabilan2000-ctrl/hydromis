@@ -519,8 +519,14 @@ if ($conn->connect_error) {
 $conn->set_charset('utf8mb4');
 
 require_once __DIR__ . '/transaction_id_migration.php';
-ensure_sequential_transaction_ids($conn);
-ensure_sequential_customer_ids($conn);
+try {
+    ensure_sequential_transaction_ids($conn);
+    ensure_sequential_customer_ids($conn);
+} catch (Throwable $migrationError) {
+    // A migration problem must not make the public landing page unavailable.
+    // The failed migration is logged and can be safely retried on a later request.
+    error_log('[HydroMIS] Sequential ID migration deferred: ' . $migrationError->getMessage());
+}
 
 require_once __DIR__ . '/loyalty_service.php';
 enforce_annual_loyalty_reset($conn);
