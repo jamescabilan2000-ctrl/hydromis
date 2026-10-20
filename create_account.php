@@ -33,16 +33,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
         if ($duplicateMobile->get_result()->num_rows > 0) {
             $error = 'This mobile number is already registered. Please log in instead.';
         } else {
-            $user_id = generateUserID();
-            $encrypted_name = encrypt_sensitive($full_name);
-            $encrypted_address = encrypt_sensitive($address);
-            $encrypted_contact = encrypt_sensitive($contact_number);
-            $insertUser = $conn->prepare("INSERT INTO users (user_id, full_name, address, contact_number, contact_lookup, status) VALUES (?, ?, ?, ?, ?, 'pending')");
-            if (!$insertUser) {
-                error_log('Customer registration prepare failed: ' . $conn->error);
-                $error = 'Account registration is temporarily unavailable. Please try again.';
-            } else {
-                $insertUser->bind_param('sssss', $user_id, $encrypted_name, $encrypted_address, $encrypted_contact, $contact_lookup);
+            try {
+                $user_id = generateUserID();
+                if (!preg_match('/\A[A-Z0-9-]{3,50}\z/i', $user_id)) {
+                    throw new RuntimeException('The generated customer ID has an invalid format.');
+                }
+            } catch (Throwable $idError) {
+                error_log('Customer ID generation failed: ' . $idError->getMessage());
+                $error = 'We could not assign your customer ID. Please try again in a moment.';
+            }
+
+            if ($error === '') {
+                $encrypted_name = encrypt_sensitive($full_name);
+                $encrypted_address = encrypt_sensitive($address);
+                $encrypted_contact = encrypt_sensitive($contact_number);
+                $insertUser = $conn->prepare("INSERT INTO users (user_id, full_name, address, contact_number, contact_lookup, status) VALUES (?, ?, ?, ?, ?, 'pending')");
+                if (!$insertUser) {
+                    error_log('Customer registration prepare failed: ' . $conn->error);
+                    $error = 'Account registration is temporarily unavailable. Please try again.';
+                } else {
+                    $insertUser->bind_param('sssss', $user_id, $encrypted_name, $encrypted_address, $encrypted_contact, $contact_lookup);
+                }
             }
         }
 
@@ -521,7 +532,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                     <div class="digital-pass">
                         <div class="pass-top"><div class="pass-brand"><span class="pass-logo"><img src="imagess/hydromis-logo-v2.png?v=20260802" alt="HydroMIS logo"></span> HydroMIS</div><span class="pass-type">Customer Access Pass</span></div>
                         <div class="pass-customer-name"><?php echo htmlspecialchars($_POST['full_name']); ?></div>
-                        <p class="pass-login-guide">Use this mobile number to log in<strong><?php echo htmlspecialchars($contact_number); ?></strong></p>
+                        <p class="pass-login-guide">Customer ID<strong><?php echo htmlspecialchars($new_user_id); ?></strong>Use this mobile number to log in<strong><?php echo htmlspecialchars($contact_number); ?></strong></p>
                         <div class="qr-frame">
                             <img id="customerQrImage" src="download_qr.php?inline=1&amp;user_id=<?php echo rawurlencode($new_user_id); ?>" alt="HydroMIS customer QR code for <?php echo htmlspecialchars($_POST['full_name']); ?>">
                         </div>
