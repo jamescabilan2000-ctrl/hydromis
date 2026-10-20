@@ -30,7 +30,7 @@ $statusLabel = in_array($status, ['on_way','on_the_way'], true) ? 'On the way' :
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Live Delivery Map - HydroMIS</title>
+<title>Real-time Delivery Map - HydroMIS</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
@@ -39,8 +39,8 @@ $statusLabel = in_array($status, ['on_way','on_the_way'], true) ? 'On the way' :
 </head>
 <body><main class="page">
 <header class="top"><a class="back" href="track_order.php?user_id=<?php echo urlencode($userId); ?>"><i class="fas fa-arrow-left"></i> Back to orders</a><span class="status" id="statusLabel"><?php echo htmlspecialchars($statusLabel); ?></span></header>
-<section class="heading"><h1>Live delivery map</h1><p>Order <?php echo htmlspecialchars($transactionId); ?> · Rider location refreshes automatically</p><p><?= $destination ? 'Orange pin: your delivery location. Green pin: live rider.' : 'No delivery pin was saved for this order. Only the live rider location is shown.' ?></p></section>
-<section class="map-wrap"><div id="map"></div><div class="live-card"><div class="rider"><span class="rider-icon"><i class="fas fa-motorcycle"></i></span><div><strong id="riderName">Your delivery rider</strong><small id="lastUpdate">Waiting for live location…</small></div></div><a class="call" id="callRider" href="#" hidden aria-label="Call rider"><i class="fas fa-phone"></i></a></div></section>
+<section class="heading"><h1>Real-time delivery map</h1><p>Order <?php echo htmlspecialchars($transactionId); ?> · Rider location refreshes automatically</p><p><?= $destination ? 'Orange pin: your delivery location. Green pin: live rider.' : 'No delivery pin was saved for this order. Only the live rider location is shown.' ?></p></section>
+<section class="map-wrap"><div id="map"></div><div class="live-card"><div class="rider"><span class="rider-icon"><i class="fas fa-motorcycle"></i></span><div><strong id="riderName">Your delivery rider</strong><small id="lastUpdate">Waiting for real-time location…</small></div></div><a class="call" id="callRider" href="#" hidden aria-label="Call rider"><i class="fas fa-phone"></i></a></div></section>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
