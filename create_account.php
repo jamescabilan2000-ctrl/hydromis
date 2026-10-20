@@ -10,7 +10,7 @@ $new_user_id = '';
 // Handle Account Creation
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
     $full_name = trim(preg_replace('/\s+/u', ' ', sanitize($_POST['full_name'] ?? '')));
-    $barangay = sanitize($_POST['barangay']);
+    $barangay = sanitize($_POST['barangay'] ?? '');
     $street_number = trim((string)($_POST['street_number'] ?? ''));
     $address = $street_number . ', ' . $barangay; // Combine for storage
     $contact_input = trim((string)($_POST['contact_number'] ?? ''));
@@ -38,33 +38,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
             $encrypted_address = encrypt_sensitive($address);
             $encrypted_contact = encrypt_sensitive($contact_number);
             $insertUser = $conn->prepare("INSERT INTO users (user_id, full_name, address, contact_number, contact_lookup, status) VALUES (?, ?, ?, ?, ?, 'pending')");
-            $insertUser->bind_param('sssss', $user_id, $encrypted_name, $encrypted_address, $encrypted_contact, $contact_lookup);
+            if (!$insertUser) {
+                error_log('Customer registration prepare failed: ' . $conn->error);
+                $error = 'Account registration is temporarily unavailable. Please try again.';
+            } else {
+                $insertUser->bind_param('sssss', $user_id, $encrypted_name, $encrypted_address, $encrypted_contact, $contact_lookup);
+            }
         }
 
-        if ($error === '' && $insertUser->execute()) {
-            $qr_data = json_encode([
-                'user_id' => $user_id,
-                'full_name' => $full_name,
-                'address' => $address,
-                'contact_number' => $contact_number
-            ]);
-            
-            $qr_code_url = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" . urlencode($qr_data);
-            
-            $qr_image_path = 'qrcodes/' . $user_id . '.png';
-            $qr_image_content = file_get_contents($qr_code_url);
-            if ($qr_image_content === false || !hydromis_store_bytes($qr_image_path, $qr_image_content, 'image/png')) {
-                throw new RuntimeException('Unable to store the customer QR code.');
-            }
-            
-            $sql = "UPDATE users SET qr_code_path = '$qr_image_path' WHERE user_id = '$user_id'";
-            $conn->query($sql);
-            
+        if ($error === '' && isset($insertUser) && $insertUser->execute()) {
+            // QR images are generated on demand by download_qr.php. This keeps
+            // account creation available when the external QR service is down.
             $success = true;
             $new_user_id = $user_id;
             $_SESSION['qr_download_user_id'] = $user_id;
         } elseif ($error === '') {
-            $error = 'Unable to create the account. Please try again.';
+            error_log('Customer registration insert failed: ' . ($insertUser->error ?? $conn->error));
+            $error = 'Unable to create the account. Please check the details and try again.';
         }
     }
 }

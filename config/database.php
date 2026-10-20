@@ -230,16 +230,23 @@ class DBCompatConnection {
         $this->query("CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id VARCHAR(50) UNIQUE NOT NULL,
-            username VARCHAR(100) UNIQUE NOT NULL,
-            password VARCHAR(255) NOT NULL,
-            full_name VARCHAR(255) NOT NULL,
-            email VARCHAR(255),
-            contact_number VARCHAR(20),
+            username VARCHAR(512) UNIQUE NULL,
+            password VARCHAR(512) NULL,
+            full_name VARCHAR(512) NOT NULL,
+            address VARCHAR(512) NULL,
+            email VARCHAR(512) NULL,
+            contact_number VARCHAR(512) NULL,
             qr_code_path VARCHAR(255),
             status VARCHAR(20) DEFAULT 'approved',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
+
+        // Customer QR/mobile accounts do not have portal passwords. Keep this
+        // bootstrap schema aligned with database/schema.sql and older setups.
+        $this->query("ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(512) NULL");
+        $this->query("ALTER TABLE users MODIFY COLUMN username VARCHAR(512) NULL");
+        $this->query("ALTER TABLE users MODIFY COLUMN password VARCHAR(512) NULL");
 
         $this->query("CREATE TABLE IF NOT EXISTS transactions (
             id INT AUTO_INCREMENT PRIMARY KEY,
