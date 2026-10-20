@@ -1442,6 +1442,23 @@ if ($db_initialized) {
             }
         }
 
+        /* Use the same still hero presentation on desktop as on mobile. */
+        @media (min-width: 761px) and (hover: hover) {
+            nav, .hero-bg, .water-ring, .drop, .hero::after,
+            .hero-left > *, .hero-visual, .app-mockup,
+            .hero-btn-primary, .hero-scroll-hint, .hero-scroll-hint i {
+                animation: none;
+            }
+            .hero-bg, .hero:hover .hero-bg {
+                transform: none;
+                filter: none;
+                transition: none;
+                will-change: auto;
+            }
+            .hero-bg::after, .hero::after { display: none; }
+            .hero-left > *, .hero-visual, .hero-scroll-hint { opacity: 1; }
+        }
+
         @media (prefers-reduced-motion:reduce) {
             html { scroll-behavior:auto; }
             *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; }
