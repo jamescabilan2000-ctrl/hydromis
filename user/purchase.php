@@ -414,6 +414,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
         $scanned_data = $result->fetch_assoc();
     }
 }
+
+// Resolve legacy QR/customer IDs before printing the receipt so it always
+// shows the customer's current ID after an ID migration.
+$receipt_customer_id = (string)($scanned_data['user_id'] ?? $transaction_data['user_id'] ?? '');
+if ($receipt_customer_id !== '' && function_exists('resolve_legacy_customer_id')) {
+    $receipt_customer_id = resolve_legacy_customer_id($conn, $receipt_customer_id);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1261,7 +1268,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['profile_submit'])) {
                             </div>
                             <div class="receipt-row">
                                 <span class="receipt-label">Customer ID:</span>
-                                <span class="receipt-value"><?php echo $scanned_data['user_id']; ?></span>
+                                <span class="receipt-value"><?php echo htmlspecialchars($receipt_customer_id, ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
                             <div class="receipt-row">
                                 <span class="receipt-label">Container:</span>
