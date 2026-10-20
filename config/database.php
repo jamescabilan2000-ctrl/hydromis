@@ -32,11 +32,27 @@ function generateID($prefix) {
 
 function generateUserID() {
     global $conn;
+
+    // The sequence table is also created during startup migrations, but a
+    // failed/deferred migration must not leave registration unable to allocate
+    // an ID when the application database user can still create tables.
+    $created = $conn->query("CREATE TABLE IF NOT EXISTS customer_id_sequence (
+        sequence_key TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+        last_value BIGINT UNSIGNED NOT NULL
+    ) ENGINE=InnoDB");
+    if ($created === false) {
+        throw new RuntimeException('Unable to prepare the customer ID sequence: ' . $conn->error);
+    }
+    $seeded = $conn->query("INSERT IGNORE INTO customer_id_sequence (sequence_key,last_value) VALUES (1,10000)");
+    if ($seeded === false) {
+        throw new RuntimeException('Unable to initialize the customer ID sequence: ' . $conn->error);
+    }
+
     $updated = $conn->query("UPDATE customer_id_sequence SET last_value=LAST_INSERT_ID(last_value+1) WHERE sequence_key=1");
     $result = $conn->query('SELECT LAST_INSERT_ID() AS generated_id');
     $row = $result ? $result->fetch_assoc() : null;
     if (!$updated || !$row || (int)$row['generated_id'] < 10001) {
-        throw new RuntimeException('Unable to generate a sequential customer ID.');
+        throw new RuntimeException('Unable to generate a sequential customer ID: ' . $conn->error);
     }
     return (string)$row['generated_id'];
 }
