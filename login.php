@@ -5,6 +5,11 @@ require_once 'config/system_settings.php';
 
 $staffLoginEnabled = system_int_setting($conn, 'staff_login_enabled', 1, 0, 1) === 1;
 $riderLoginEnabled = system_int_setting($conn, 'rider_login_enabled', 1, 0, 1) === 1;
+$selectedRole = (string)($_GET['role'] ?? $_POST['role'] ?? '');
+if (!in_array($selectedRole, ['admin', 'staff', 'rider'], true)) {
+	$selectedRole = '';
+}
+$roleLabels = ['admin' => 'Administrator', 'staff' => 'Staff', 'rider' => 'Rider'];
 
 $error = '';
 
@@ -40,7 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 			$user = $result->fetch_assoc();
 			$role = (string)$user['role'];
 
-			if ($role === 'staff' && !$staffLoginEnabled) {
+			if ($selectedRole !== '' && $role !== $selectedRole) {
+				$error = 'This account does not belong to the selected ' . strtolower($roleLabels[$selectedRole]) . ' role.';
+			} elseif ($role === 'staff' && !$staffLoginEnabled) {
 				$error = 'Staff login is currently disabled by the administrator.';
 			} elseif (password_verify($password, $user['password'])) {
 				session_regenerate_id(true);
@@ -83,7 +90,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 			$riderResult = $conn->query("SELECT rider_id, username, password, full_name FROM rider_users WHERE username_lookup = '$usernameLookup' AND status = 'active' AND login_enabled = 1 LIMIT 1");
 			if ($riderResult && $riderResult->num_rows > 0) {
 				$rider = $riderResult->fetch_assoc();
-				if (!$riderLoginEnabled) {
+				if ($selectedRole !== '' && $selectedRole !== 'rider') {
+					$error = 'This account does not belong to the selected ' . strtolower($roleLabels[$selectedRole]) . ' role.';
+				} elseif (!$riderLoginEnabled) {
 					$error = 'Rider login is currently disabled by the administrator.';
 				} elseif (password_verify($password, $rider['password']) || $password === 'rider123') {
 					session_regenerate_id(true);
@@ -473,12 +482,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 	<script src="js/ui-protection.js" defer></script>
 <script src="js/customer-home.js?v=20260911" data-hide-home="true" defer></script>
 </head>
-<body>
+<body<?php echo $selectedRole !== '' ? ' data-role="' . htmlspecialchars($selectedRole) . '"' : ''; ?>>
 	<div class="login-atmosphere" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
 	<main class="auth-box">
 		<a class="logo" href="home.php" aria-label="HydroMIS home" title="Go to HydroMIS home"><img src="imagess/hydromis-logo-v2.png" alt="HydroMIS water management logo" onerror="this.onerror=null;this.src='imagess/logosystem.png';"></a>
 		<h1>HydroMIS</h1>
-		<p class="subtitle"></p>
+		<p class="subtitle"><?php echo $selectedRole !== '' ? htmlspecialchars($roleLabels[$selectedRole] . ' portal') : 'Personnel portal'; ?></p>
 
         <?php if (in_array($_GET['role'] ?? '', ['admin', 'staff', 'rider'], true) && ($_GET['logged_out'] ?? '') === '1'): ?>
             <div role="status" style="margin-bottom:16px;padding:12px 14px;border-radius:10px;background:#e8faf4;color:#087961;font-size:14px;">You've been logged out.</div>
@@ -489,6 +498,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 
 		<form method="POST">
 			<input type="hidden" name="login_submit" value="1">
+			<?php if ($selectedRole !== ''): ?><input type="hidden" name="role" value="<?php echo htmlspecialchars($selectedRole); ?>"><?php endif; ?>
 
 			<div class="field">
 				<span class="field-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5.33 0-8 2.67-8 5v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2c0-2.33-2.67-5-8-5Z"/></svg></span>

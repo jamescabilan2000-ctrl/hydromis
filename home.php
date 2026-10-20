@@ -1471,7 +1471,6 @@ if ($db_initialized) {
                 <details class="account-menu">
                     <summary><i class="fas fa-circle-user"></i> Account <i class="fas fa-chevron-down"></i></summary>
                     <div class="account-popover">
-                        <a href="user/scan_qr.php"><i class="fas fa-qrcode"></i>Customer login</a>
                         <a href="login.php?role=staff"><i class="fas fa-briefcase"></i>Staff login</a>
                         <a href="login.php?role=rider"><i class="fas fa-motorcycle"></i>Rider login</a>
                         <a href="login.php?role=admin"><i class="fas fa-user-shield"></i>Administrator</a>
@@ -1499,8 +1498,9 @@ if ($db_initialized) {
                 </button>
             </div>
             <div class="mobile-nav-label">Accounts</div>
-            <a href="user/scan_qr.php" class="mobile-nav-item primary-account"><i class="fas fa-qrcode"></i> Customer login</a>
-            <a href="login.php?role=admin" class="mobile-nav-item"><i class="fas fa-user-shield"></i> Personnel login</a>
+            <a href="login.php?role=staff" class="mobile-nav-item"><i class="fas fa-briefcase"></i> Staff login</a>
+            <a href="login.php?role=rider" class="mobile-nav-item"><i class="fas fa-motorcycle"></i> Rider login</a>
+            <a href="login.php?role=admin" class="mobile-nav-item"><i class="fas fa-user-shield"></i> Administrator</a>
             <div class="mobile-nav-label">Explore</div>
             <a href="#features"            class="mobile-nav-item"><i class="fas fa-star"></i> Features</a>
             <a href="#how"                 class="mobile-nav-item"><i class="fas fa-route"></i> How it works</a>
