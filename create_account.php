@@ -6,6 +6,13 @@ require_once 'config/storage_service.php';
 $error = '';
 $success = false;
 $new_user_id = '';
+$orderSetupKeys = ['order_type', 'container', 'container_size', 'quantity', 'fulfillment', 'addons'];
+$orderSetup = [];
+foreach ($orderSetupKeys as $key) {
+    $value = $_POST[$key] ?? $_GET[$key] ?? '';
+    if (is_scalar($value) && $value !== '') $orderSetup[$key] = substr((string)$value, 0, 120);
+}
+$orderSetupQuery = http_build_query($orderSetup);
 
 // Handle Account Creation
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
@@ -546,7 +553,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                     </div>
 
                     <div class="success-actions-grid">
-                        <a href="user/scan_qr.php" class="btn-action home-action"><i class="fas fa-right-to-bracket"></i> User Login</a>
+                        <a href="user/scan_qr.php<?php echo $orderSetupQuery ? '?' . htmlspecialchars($orderSetupQuery) : ''; ?>" class="btn-action home-action"><i class="fas fa-right-to-bracket"></i> Log in to continue your order</a>
                     </div>
                 </div>
             <?php else: ?>
@@ -563,6 +570,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
 
                 <form method="POST" class="registration-form" id="registrationForm">
                     <input type="hidden" name="create_submit" value="1">
+                    <?php foreach ($orderSetup as $key => $value): ?>
+                    <input type="hidden" name="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value); ?>">
+                    <?php endforeach; ?>
                     
                     <div class="form-group">
                         <label for="full_name"><i class="fas fa-user mr-2"></i>Full Name *</label>

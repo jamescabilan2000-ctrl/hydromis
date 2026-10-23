@@ -12,6 +12,14 @@ $transaction_data = null;
 $profile_success = '';
 $mobile_login_value = '';
 $tracking_login = ($_POST['next'] ?? $_GET['next'] ?? '') === 'tracking';
+$orderSetupKeys = ['order_type', 'container', 'container_size', 'quantity', 'fulfillment', 'addons'];
+$orderSetup = [];
+foreach ($orderSetupKeys as $key) {
+    $value = $_POST[$key] ?? $_GET[$key] ?? '';
+    if (is_scalar($value) && $value !== '') $orderSetup[$key] = substr((string)$value, 0, 120);
+}
+$orderSetupQuery = http_build_query($orderSetup);
+$purchaseSetupQuery = $orderSetupQuery ? '&' . $orderSetupQuery : '';
 
 if (isset($_GET['approval_required'])) {
     $requiredStatus = strtolower(trim((string)$_GET['approval_required']));
@@ -74,6 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mobile_login'])) {
 
 if ($scanned_data) {
     $_SESSION['customer_user_id'] = (string)$scanned_data['user_id'];
+    $postLoginDestination = $orderSetupQuery
+        ? 'purchase.php?user_id=' . urlencode((string)$scanned_data['user_id']) . $purchaseSetupQuery
+        : 'dashboard.php';
     if ($tracking_login) {
         header('Location: track_order.php', true, 303);
         exit;
@@ -2067,8 +2078,8 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 <?php if ($accountApproved): ?>
                 <p class="success-copy">Your approved account is ready. Choose what you would like to do next.</p>
                 <div class="success-actions">
-                <a class="success-action primary" href="purchase.php?user_id=<?php echo urlencode($scanned_data['user_id']); ?>">
-                    <i class="fas fa-shopping-bag"></i> Order Water <i class="fas fa-arrow-right"></i>
+                <a class="success-action primary" href="<?php echo htmlspecialchars($postLoginDestination); ?>">
+                    <i class="fas <?php echo $orderSetupQuery ? 'fa-shopping-bag' : 'fa-grid-2'; ?>"></i> <?php echo $orderSetupQuery ? 'Continue My Order' : 'Open My Dashboard'; ?> <i class="fas fa-arrow-right"></i>
                 </a>
                 <a class="success-action secondary" href="rewards.php?user_id=<?php echo urlencode($scanned_data['user_id']); ?>">
                     <i class="fas fa-gift"></i> View Rewards
@@ -2233,6 +2244,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                     </style>
                     <form method="POST" class="login-form" id="mobileLoginForm" style="margin-bottom: 12px;">
                         <input type="hidden" name="mobile_login" value="1">
+                        <?php foreach ($orderSetup as $key => $value): ?><input type="hidden" name="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value); ?>"><?php endforeach; ?>
                         <?php if ($tracking_login): ?><input type="hidden" name="next" value="tracking"><?php endif; ?>
                         <label for="mobile_number" style="color: #1f2937; font-weight: 700; margin-bottom: 10px; display: block; font-size: 15px;">Mobile Number</label>
                         <div class="mobile-field"><span class="country-code">+63</span><input type="tel" id="mobile_number" name="mobile_number" pattern="9[0-9]{9}" minlength="10" maxlength="10" title="Enter 10 digits starting with 9. Do not include 0 or +63." class="form-control" placeholder="9123456789" autocomplete="tel" inputmode="numeric" value="<?php echo htmlspecialchars($mobile_login_value); ?>" style="border-radius: 12px; border: 1px solid #d1d5db; background: #ffffff; margin-bottom: 10px;" required></div>
@@ -2308,6 +2320,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 <div class="scanner-trust"><span><i class="fas fa-lock"></i> Encrypted access</span><span><i class="fas fa-camera"></i> Camera stays private</span></div>
 
                 <form id="qr-form" method="POST" style="display: none;">
+                    <?php foreach ($orderSetup as $key => $value): ?><input type="hidden" name="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value); ?>"><?php endforeach; ?>
                     <?php if ($tracking_login): ?><input type="hidden" name="next" value="tracking"><?php endif; ?>
                     <div class="form-group">
                         <label>QR Data:</label>

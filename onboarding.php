@@ -744,7 +744,7 @@
         </div>
 
         <div class="actions">
-            <a href="home.php" class="btn-primary" id="ctaBtn">
+            <a href="home.php#gallon-choice" class="btn-primary" id="ctaBtn">
                 <span>Get Started</span>
                 <span class="arrow-icon"><i class="fas fa-arrow-right"></i></span>
             </a>
