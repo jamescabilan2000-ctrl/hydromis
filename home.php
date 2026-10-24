@@ -1606,13 +1606,13 @@ nav.nav-scrolled { padding:0; background:#072640; }
             <h2 id="gallon-choice-title">Do you already have an empty gallon?</h2>
             <p>Choose the setup that matches your first delivery. You can select the gallon size, delivery schedule, and payment method in the secure order flow.</p>
             <div class="gallon-choice-cards">
-                <a class="gallon-choice-card" href="refill_order.php">
+                <a class="gallon-choice-card" href="create_account.php?order_type=refill&amp;container=existing&amp;container_size=5gal-round&amp;quantity=1&amp;fulfillment=delivery">
                     <div class="choice-icon"><i class="fas fa-recycle"></i></div>
                     <h3>Yes, I have a gallon</h3>
                     <p>Choose a refill and return your empty container during delivery or pickup.</p>
                     <span class="choice-link">Continue with a refill <i class="fas fa-arrow-right"></i></span>
                 </a>
-                <a class="gallon-choice-card" href="new_gallon_order.php">
+                <a class="gallon-choice-card" href="create_account.php?order_type=first_order&amp;container=new&amp;container_size=5gal-round&amp;quantity=1&amp;fulfillment=delivery">
                     <div class="choice-icon new"><i class="fas fa-bottle-water"></i></div>
                     <h3>No, I need a new gallon</h3>
                     <p>Start with a new container and add your first purified-water refill.</p>

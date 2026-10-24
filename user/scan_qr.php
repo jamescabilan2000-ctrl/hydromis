@@ -82,9 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mobile_login'])) {
 
 if ($scanned_data) {
     $_SESSION['customer_user_id'] = (string)$scanned_data['user_id'];
-    $postLoginDestination = $orderSetupQuery
-        ? 'purchase.php?user_id=' . urlencode((string)$scanned_data['user_id']) . $purchaseSetupQuery
-        : 'dashboard.php';
+    // All successful customer logins enter the dashboard. It is the central
+    // place to continue an order, reorder a past delivery, or start a new one.
+    $postLoginDestination = 'dashboard.php';
     if ($tracking_login) {
         header('Location: track_order.php', true, 303);
         exit;
@@ -2079,7 +2079,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 <p class="success-copy">Your approved account is ready. Choose what you would like to do next.</p>
                 <div class="success-actions">
                 <a class="success-action primary" href="<?php echo htmlspecialchars($postLoginDestination); ?>">
-                    <i class="fas <?php echo $orderSetupQuery ? 'fa-shopping-bag' : 'fa-grid-2'; ?>"></i> <?php echo $orderSetupQuery ? 'Continue My Order' : 'Open My Dashboard'; ?> <i class="fas fa-arrow-right"></i>
+                    <i class="fas fa-grid-2"></i> Open My Dashboard <i class="fas fa-arrow-right"></i>
                 </a>
                 <a class="success-action secondary" href="rewards.php?user_id=<?php echo urlencode($scanned_data['user_id']); ?>">
                     <i class="fas fa-gift"></i> View Rewards
