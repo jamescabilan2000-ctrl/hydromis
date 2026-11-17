@@ -6,7 +6,6 @@ require_once __DIR__.'/../config/checkout_payment.php';
 require_once __DIR__.'/../config/customer_order_access.php';
 require_once __DIR__.'/../config/maps.php';
 $mapsConfig=hydromis_maps_config();
-ensure_cart_schema($conn);
 if(empty($_SESSION['cart_csrf']))$_SESSION['cart_csrf']=bin2hex(random_bytes(32));
 $fieldErrors=[];$uploadedProof=null;$error='';$userId=(string)($_SESSION['customer_user_id']??'');$checkoutUserId='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
