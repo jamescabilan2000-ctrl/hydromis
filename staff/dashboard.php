@@ -425,16 +425,39 @@ $approved_trans = $conn->query("
         COALESCE((SELECT SUM(ti.line_total) FROM transaction_items ti WHERE ti.transaction_id=t.transaction_id AND ti.container_size LIKE 'cup%'),0) AS cup_subtotal,
         (SELECT GROUP_CONCAT(CONCAT(CASE ti.container_size WHEN 'cup-slim' THEN 'Slim Cup' WHEN 'cup-round' THEN 'Round Cup' ELSE 'Cup' END, ' × ', ti.quantity) ORDER BY ti.id SEPARATOR ', ') FROM transaction_items ti WHERE ti.transaction_id=t.transaction_id AND ti.container_size LIKE 'cup%') AS cup_details
     FROM transactions t
-    JOIN users u ON t.user_id = u.user_id
+    LEFT JOIN users u ON t.user_id = u.user_id
     LEFT JOIN rider_users ru ON {$transaction_rider_expr} = ru.rider_id
     LEFT JOIN rider_locations rl ON t.transaction_id = rl.transaction_id
     WHERE t.status = 'approved'
       AND COALESCE(t.fulfillment_method,'delivery') = 'delivery'
+      AND COALESCE(NULLIF(t.delivery_status,''),'pending') <> 'delivered'
       AND t.transaction_id NOT LIKE 'RWD-%'
       AND COALESCE(t.description,'') NOT LIKE 'Reward Redemption - %'
     ORDER BY CASE WHEN t.delivery_status = 'delivered' THEN 1 ELSE 0 END ASC,
              t.qr_priority DESC, t.created_at ASC, t.id ASC
 ");
+if (!$approved_trans) {
+    error_log('[Staff Delivery Operations] Enriched delivery query failed: ' . (string)$conn->error);
+    $approved_trans = $conn->query("
+        SELECT t.*,
+            COALESCE(NULLIF(t.rider_id,''), NULLIF(t.assigned_rider,'')) AS effective_rider_id,
+            COALESCE(u.full_name,'Customer') AS full_name,
+            u.contact_number, u.address,
+            NULL AS rider_name, NULL AS rider_age, NULL AS rider_address,
+            NULL AS rider_contact, NULL AS rider_last_seen_at,
+            0 AS rider_latitude, 0 AS rider_longitude, NULL AS gps_last_update,
+            0 AS cup_quantity, 0 AS cup_subtotal, NULL AS cup_details
+        FROM transactions t
+        LEFT JOIN users u ON t.user_id = u.user_id
+        WHERE t.status = 'approved'
+          AND COALESCE(t.fulfillment_method,'delivery') = 'delivery'
+          AND COALESCE(NULLIF(t.delivery_status,''),'pending') <> 'delivered'
+          AND t.transaction_id NOT LIKE 'RWD-%'
+          AND COALESCE(t.description,'') NOT LIKE 'Reward Redemption - %'
+        ORDER BY CASE WHEN t.delivery_status = 'delivered' THEN 1 ELSE 0 END ASC,
+                 t.qr_priority DESC, t.created_at ASC, t.id ASC
+    ");
+}
 $approved_operations = $approved_trans ? $approved_trans->num_rows : 0;
 
 $pickup_trans = $conn->query("
