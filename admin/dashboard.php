@@ -215,18 +215,42 @@ $denied_users       = $conn->query("SELECT COUNT(*) as count FROM users WHERE st
 
 // Approved water volume sold. New cart orders keep one row per product in
 // transaction_items; older orders fall back to the parent transaction quantity.
+$gallon_period = strtolower((string)($_GET['gallon_period'] ?? 'day'));
+if (!in_array($gallon_period, ['day', 'week', 'month', 'year'], true)) $gallon_period = 'day';
+$gallon_period_conditions = [
+    'day' => 'DATE(t.created_at) = CURDATE()',
+    'week' => 't.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)',
+    'month' => 'YEAR(t.created_at) = YEAR(CURDATE()) AND MONTH(t.created_at) = MONTH(CURDATE())',
+    'year' => 'YEAR(t.created_at) = YEAR(CURDATE())',
+];
+$gallon_period_labels = [
+    'day' => 'Today',
+    'week' => 'Last 7 days',
+    'month' => date('F Y'),
+    'year' => date('Y'),
+];
+$gallon_period_condition = $gallon_period_conditions[$gallon_period];
 $gallons_sold = 0;
 $refill_gallons = 0;
 $new_gallons = 0;
 $items_table = $conn->query("SHOW TABLES LIKE 'transaction_items'");
 if ($items_table && $items_table->num_rows > 0) {
     $gallon_result = $conn->query("SELECT
-        COALESCE(SUM(CASE WHEN ti.container_status <> 'accessory' AND ti.container_size NOT LIKE 'cup%' THEN ti.quantity ELSE 0 END), 0) AS total,
-        COALESCE(SUM(CASE WHEN ti.container_status = 'existing' THEN ti.quantity ELSE 0 END), 0) AS refills,
-        COALESCE(SUM(CASE WHEN ti.container_status = 'new' THEN ti.quantity ELSE 0 END), 0) AS new_containers
-        FROM transaction_items ti
-        INNER JOIN transactions t ON t.transaction_id = ti.transaction_id
-        WHERE t.status = 'approved'");
+        COALESCE(SUM(CASE WHEN COALESCE(ti.total,0) > 0 THEN ti.total ELSE CASE WHEN COALESCE(t.container_status,'') <> 'accessory' AND COALESCE(t.container_size,'') NOT LIKE 'cup%' THEN COALESCE(t.quantity,0) ELSE 0 END END),0) AS total,
+        COALESCE(SUM(CASE WHEN COALESCE(ti.total,0) > 0 THEN ti.refills ELSE CASE WHEN t.container_status = 'existing' THEN COALESCE(t.quantity,0) ELSE 0 END END),0) AS refills,
+        COALESCE(SUM(CASE WHEN COALESCE(ti.total,0) > 0 THEN ti.new_containers ELSE CASE WHEN t.container_status = 'new' THEN COALESCE(t.quantity,0) ELSE 0 END END),0) AS new_containers
+        FROM transactions t
+        LEFT JOIN (
+            SELECT transaction_id,
+                SUM(CASE WHEN container_status <> 'accessory' AND container_size NOT LIKE 'cup%' THEN quantity ELSE 0 END) AS total,
+                SUM(CASE WHEN container_status = 'existing' THEN quantity ELSE 0 END) AS refills,
+                SUM(CASE WHEN container_status = 'new' THEN quantity ELSE 0 END) AS new_containers
+            FROM transaction_items GROUP BY transaction_id
+        ) ti ON ti.transaction_id = t.transaction_id
+        WHERE t.status = 'approved'
+          AND {$gallon_period_condition}
+          AND t.transaction_id NOT LIKE 'RWD-%'
+          AND COALESCE(t.description,'') NOT LIKE 'Reward Redemption - %'");
     if ($gallon_result) {
         $gallon_row = $gallon_result->fetch_assoc();
         $gallons_sold = (int)($gallon_row['total'] ?? 0);
@@ -238,8 +262,11 @@ if ($items_table && $items_table->num_rows > 0) {
         COALESCE(SUM(quantity), 0) AS total,
         COALESCE(SUM(CASE WHEN container_status = 'existing' THEN quantity ELSE 0 END), 0) AS refills,
         COALESCE(SUM(CASE WHEN container_status = 'new' THEN quantity ELSE 0 END), 0) AS new_containers
-        FROM transactions
-        WHERE status = 'approved' AND COALESCE(container_status, '') <> 'accessory' AND COALESCE(container_size, '') NOT LIKE 'cup%'");
+        FROM transactions t
+        WHERE t.status = 'approved' AND {$gallon_period_condition}
+          AND COALESCE(t.container_status, '') <> 'accessory' AND COALESCE(t.container_size, '') NOT LIKE 'cup%'
+          AND t.transaction_id NOT LIKE 'RWD-%'
+          AND COALESCE(t.description,'') NOT LIKE 'Reward Redemption - %'");
     if ($gallon_result) {
         $gallon_row = $gallon_result->fetch_assoc();
         $gallons_sold = (int)($gallon_row['total'] ?? 0);
@@ -1311,9 +1338,18 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                 </div>
                 <div class="card stat-card stat-green">
                     <div class="stat-top"><span class="stat-trend trend-up"><i class="fas fa-droplet"></i> Approved sales</span></div>
+                    <form method="get" aria-label="Gallons sold period" style="margin:8px 0 2px;">
+                        <label for="gallon-period" style="display:block;margin-bottom:5px;color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;">Sales period</label>
+                        <select id="gallon-period" name="gallon_period" onchange="this.form.submit()" style="width:100%;min-height:34px;padding:6px 9px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);color:var(--text);font:700 11px 'Plus Jakarta Sans',sans-serif;">
+                            <option value="day" <?=$gallon_period==='day'?'selected':''?>>Today</option>
+                            <option value="week" <?=$gallon_period==='week'?'selected':''?>>Last 7 days</option>
+                            <option value="month" <?=$gallon_period==='month'?'selected':''?>>This month</option>
+                            <option value="year" <?=$gallon_period==='year'?'selected':''?>>This year</option>
+                        </select>
+                    </form>
                     <div class="stat-value"><?=(int)$gallons_sold?></div>
                     <div class="stat-label">Gallons Sold</div>
-                    <div class="stat-detail">Total water containers in approved transactions</div>
+                    <div class="stat-detail"><?=htmlspecialchars($gallon_period_labels[$gallon_period])?> · approved transactions</div>
                     <div class="water-breakdown">
                         <span><b><?=(int)$refill_gallons?></b> refills</span>
                         <span><b><?=(int)$new_gallons?></b> new</span>
