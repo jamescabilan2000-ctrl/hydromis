@@ -282,8 +282,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_feedback'])) {
         }
     }
     $_SESSION['tracking_feedback_flash'] = ['error' => $error, 'success' => $success, 'title' => $success_title];
-    $return_lookup = trim((string)($_POST['search_value'] ?? '')) ?: trim((string)($_POST['user_id'] ?? ''));
-    header('Location: track_order.php?' . http_build_query(['search_value' => $return_lookup]), true, 303);
+    $return_user_id = trim((string)($_POST['user_id'] ?? ''));
+    $session_user_id = trim((string)($_SESSION['customer_user_id'] ?? ''));
+    if ($return_user_id !== '' && hash_equals($session_user_id, $return_user_id)) {
+        header('Location: track_order.php?' . http_build_query(['user_id' => $return_user_id]), true, 303);
+    } else {
+        $return_mobile = trim((string)($_POST['search_value'] ?? ''));
+        header('Location: track_order.php?' . http_build_query(['search_value' => $return_mobile]), true, 303);
+    }
     exit;
 
 }
