@@ -27,6 +27,7 @@ if (!$order) {
     exit;
 }
 $destination = delivery_destination($order['delivery_latitude'] ?? null, $order['delivery_longitude'] ?? null);
+$deliveryAddress = trim((string)($order['address'] ?? ''));
 $status = strtolower((string)($order['delivery_status'] ?? 'pending'));
 $statusLabel = in_array($status, ['on_way','on_the_way'], true) ? 'On the way' : ucfirst(str_replace('_', ' ', $status));
 ?>
@@ -43,14 +44,15 @@ $statusLabel = in_array($status, ['on_way','on_the_way'], true) ? 'On the way' :
 <link rel="stylesheet" href="../css/rider-map-marker.css?v=3"><link rel="stylesheet" href="../css/customer-delivery-eta.css?v=1"></head>
 <body><main class="page">
 <header class="top"><a class="back" href="track_order.php?user_id=<?php echo urlencode($userId); ?>"><i class="fas fa-arrow-left"></i> Back to orders</a><span class="status" id="statusLabel"><?php echo htmlspecialchars($statusLabel); ?></span></header>
-<section class="heading"><h1>Real-time delivery map</h1><p>Order <?php echo htmlspecialchars($transactionId); ?> · Rider location refreshes automatically</p><?php if(!$destination):?><p>No delivery pin was saved for this order. Only the live rider location is shown.</p><?php endif;?></section>
+<section class="heading"><h1>Real-time delivery map</h1><p>Order <?php echo htmlspecialchars($transactionId); ?> · Rider location refreshes automatically</p><?php if(!$destination):?><p id="destinationNote"><?php echo $deliveryAddress !== '' ? 'Locating the saved delivery address for the arrival estimate.' : 'No delivery pin or address was saved for this order.'; ?></p><?php endif;?></section>
 <section class="eta-panel" aria-label="Delivery arrival estimate"><div class="eta-grid" aria-live="polite"><div class="eta-stat"><i class="fas fa-route" aria-hidden="true"></i><div><small>Distance remaining</small><strong id="eta-distance">?</strong></div></div><div class="eta-stat"><i class="far fa-clock" aria-hidden="true"></i><div><small>Estimated travel time</small><strong id="eta-duration">?</strong></div></div><div class="eta-stat"><i class="fas fa-truck" aria-hidden="true"></i><div><small>Expected arrival</small><strong id="eta-arrival">?</strong></div></div></div><p id="eta-note">Waiting for the rider?s live location to estimate arrival.</p></section><section class="map-wrap"><p id="mapMessage" role="status" hidden style="position:absolute;z-index:2;top:10px;left:14px;right:14px;padding:12px;background:#fff;border-radius:10px;font-size:12px">The map could not load. Rider status will continue to update.</p><div id="map" data-mapbox-token="<?=htmlspecialchars($mapsConfig['mapbox_token'],ENT_QUOTES,'UTF-8')?>"></div><div class="live-card"><div class="rider"><span class="rider-icon"><i class="fas fa-motorcycle"></i></span><div><strong id="riderName">Your delivery rider</strong><small id="lastUpdate">Waiting for real-time location…</small></div></div><a class="call" id="callRider" href="#" hidden aria-label="Call rider"><i class="fas fa-phone"></i></a></div></section>
 </main>
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.33.0/mapbox-gl.js"></script>
 <script src="../js/customer-delivery-eta.js?v=1"></script>
 <script>
 const transactionId=<?php echo json_encode($transactionId); ?>;
-const destination=<?= json_encode($destination) ?>;
+let destination=<?= json_encode($destination) ?>;
+const deliveryAddress=<?= json_encode($deliveryAddress, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 let map=null,riderMarker=null,routePoint=null,roadGeometry=null,roadFitted=false;
 function markerElement(icon,color){
     const element=document.createElement('div');
@@ -75,6 +77,23 @@ function syncRoute(){
         roadFitted=true;
     }
 }
+async function initializeDeliveryMap(){
+if(!destination&&deliveryAddress){
+    const note=document.getElementById('destinationNote');
+    try{
+        const token=document.getElementById('map').dataset.mapboxToken;
+        const query=deliveryAddress+', Tubigon, Bohol, Philippines';
+        const url=new URL('https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(query)+'.json');
+        url.search=new URLSearchParams({access_token:token,country:'ph',proximity:'123.9622,9.9509',limit:'1',types:'address,poi,neighborhood,locality,place'});
+        const response=await fetch(url,{signal:AbortSignal.timeout(10000)});
+        const data=response.ok?await response.json():null;
+        const center=data?.features?.[0]?.center;
+        if(Array.isArray(center)&&center.length===2&&Number.isFinite(Number(center[0]))&&Number.isFinite(Number(center[1]))){
+            destination=[Number(center[1]),Number(center[0])];
+            if(note)note.textContent='Arrival estimate uses your saved delivery address: '+deliveryAddress+'.';
+        }else if(note)note.textContent='The saved delivery address could not be located precisely. Add a map pin on your next order for an ETA.';
+    }catch(_){if(note)note.textContent='The saved delivery address could not be located right now. Rider tracking remains available.';}
+}
 try{
     const token=document.getElementById('map').dataset.mapboxToken;
     if(typeof mapboxgl==='undefined'||!token.startsWith('pk.'))throw new Error('Map unavailable');
@@ -90,6 +109,8 @@ try{
     map.on('load',syncRoute);
     map.on('error',()=>{document.getElementById('mapMessage').hidden=false;});
 }catch(_){document.getElementById('mapMessage').hidden=false;}
+refresh();
+}
 function labelStatus(value){value=(value||'pending').toLowerCase();return value==='on_way'||value==='on_the_way'?'On the way':value.replaceAll('_',' ').replace(/^./,c=>c.toUpperCase())}
 let refreshTimer=null, stopped=false, fitted=false;
 async function refresh(){
@@ -137,5 +158,5 @@ async function refresh(){
     finally {if(!stopped) refreshTimer=setTimeout(refresh,5000);}
 }
 window.addEventListener('pagehide',()=>{stopped=true;clearTimeout(refreshTimer);window.HydroMISCustomerETA.reset('Tracking paused.');});
-refresh();
+initializeDeliveryMap();
 </script></body></html>
