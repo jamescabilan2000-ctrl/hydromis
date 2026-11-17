@@ -9,13 +9,8 @@
     }
     let areaTimer=null,areaVersion=0;
     function syncAddressFields(){
-        const hasPin=lat.value!==''&&lng.value!==''&&Number.isFinite(Number(lat.value))&&Number.isFinite(Number(lng.value))&&Math.abs(Number(lat.value))<=90&&Math.abs(Number(lng.value))<=180;
         const manual=document.getElementById('manual-delivery-address');
-        if(manual){
-            manual.querySelectorAll('input,select').forEach(field=>{
-                field.disabled=false;
-            });
-        }
+        if(manual)manual.querySelectorAll('input,select').forEach(field=>{field.disabled=false;});
     }
     syncAddressFields();
     function draw(latitude,longitude){
@@ -25,7 +20,7 @@
             if(marker)marker.setLngLat([longitude,latitude]);
             else marker=new mapboxgl.Marker({draggable:true,color:'#0c88ad'}).setLngLat([longitude,latitude]).addTo(map).on('dragend',()=>{const p=marker.getLngLat();draw(p.lat,p.lng)});
         }
-        status.textContent='Finding the area for your delivery pin…';
+        status.textContent='Finding the area for your delivery pin...';
         clearTimeout(areaTimer);
         const version=++areaVersion;
         areaTimer=setTimeout(async()=>{
@@ -55,8 +50,8 @@
         if(map)map.resize();
     });
     const gpsButton=document.getElementById('use-checkout-location');
-    let gpsVersion=0;
-    function resetGpsButton(){gpsButton.disabled=false;gpsButton.textContent='Use GPS location';gpsButton.removeAttribute('aria-busy');}
+    let gpsVersion=0,gpsTimer=null;
+    function resetGpsButton(){clearTimeout(gpsTimer);gpsTimer=null;gpsButton.disabled=false;gpsButton.textContent='Use GPS location';gpsButton.removeAttribute('aria-busy');}
     gpsButton.addEventListener('click',()=>{
         if(!window.isSecureContext){status.textContent='Location requires HTTPS or localhost. You can still select a map pin or enter your delivery address.';return;}
         if(!navigator.geolocation){status.textContent='This browser does not support location. Select a map pin or enter your delivery address.';return;}
@@ -64,6 +59,11 @@
         clearTimeout(areaTimer);areaVersion++;
         gpsButton.disabled=true;gpsButton.textContent='Finding your location...';gpsButton.setAttribute('aria-busy','true');
         status.textContent='Allow location access when your browser asks.';
+        gpsTimer=setTimeout(()=>{
+            if(version!==gpsVersion)return;
+            gpsVersion++;resetGpsButton();
+            status.textContent='Finding your location took too long. Select a map pin or enter your delivery address.';
+        },15000);
         navigator.geolocation.getCurrentPosition(position=>{
             if(version!==gpsVersion)return;
             resetGpsButton();
@@ -75,7 +75,7 @@
             resetGpsButton();
             const messages={1:'Location access was denied. Allow location in your browser settings, then try again.',2:'Your device could not determine its location. Check that location services are enabled and try again.',3:'Finding your location took too long. Move near a window or outdoors and try again.'};
             status.textContent=(messages[error.code]||'Unable to get your location.')+' You can also select a map pin or enter your delivery address.';
-        },{enableHighAccuracy:true,timeout:20000,maximumAge:0});
+        },{enableHighAccuracy:true,timeout:12000,maximumAge:0});
     });
     document.getElementById('clear-checkout-location').addEventListener('click',()=>{gpsVersion++;resetGpsButton();clearTimeout(areaTimer);areaVersion++;lat.value='';lng.value='';if(pinAddress)pinAddress.value='';syncAddressFields();if(marker){marker.remove();marker=null;}status.textContent='Pin cleared. Your delivery address will be used.';});
 })();
