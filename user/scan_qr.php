@@ -3,6 +3,8 @@ if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 require_once '../config/database.php';
 require_once '../config/storage_service.php';
 require_once '../config/system_settings.php';
+require_once '../config/gmail_service.php';
+ensure_customer_email_schema($conn);
 $systemLogo = system_logo_path($conn);
 
 $scanned_data = null;
@@ -10,8 +12,11 @@ $error = '';
 $transaction_success = false;
 $transaction_data = null;
 $profile_success = '';
+$email_login_value = '';
 $mobile_login_value = '';
+$loginVerificationPending = !empty($_SESSION['pending_customer_login']);
 $tracking_login = ($_POST['next'] ?? $_GET['next'] ?? '') === 'tracking';
+$cart_login = ($_POST['next'] ?? $_GET['next'] ?? '') === 'cart';
 $orderSetupKeys = ['order_type', 'container', 'container_size', 'quantity', 'fulfillment', 'addons'];
 $orderSetup = [];
 foreach ($orderSetupKeys as $key) {
@@ -21,11 +26,11 @@ foreach ($orderSetupKeys as $key) {
 $orderSetupQuery = http_build_query($orderSetup);
 $purchaseSetupQuery = $orderSetupQuery ? '&' . $orderSetupQuery : '';
 
-if (isset($_GET['approval_required'])) {
+if (isset($_GET['approval_required']) && !in_array(strtolower((string)$_GET['approval_required']), ['pending','approved'], true)) {
     $requiredStatus = strtolower(trim((string)$_GET['approval_required']));
     $error = $requiredStatus === 'denied'
-        ? 'This account was not approved. Please contact HydroMIS support.'
-        : 'Your account is still pending administrator approval. Ordering will be available after approval.';
+        ? 'This account is disabled. Please contact HydroMIS support.'
+        : 'This account is unavailable. Please contact HydroMIS support.';
 }
 
 // Handle QR Scan
@@ -44,7 +49,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qr_data'])) {
         
         if ($result->num_rows > 0) {
             $scanned_data = $result->fetch_assoc();
-            $_SESSION['qr_priority_user'] = (string)$scanned_data['user_id'];
+            $qrEmail = normalize_gmail((string)($scanned_data['email'] ?? ''));
+            if (empty($scanned_data['email_verified_at']) || !valid_gmail($qrEmail)) {
+                $error = 'This QR account does not have a verified Gmail address. Please contact HydroMIS support.';
+                $scanned_data = null;
+            } else {
+                $code = (string)random_int(100000, 999999);
+                if (send_customer_otp($qrEmail, $code, 'login')) {
+                    $_SESSION['pending_customer_login'] = [
+                        'user_id' => (string)$scanned_data['user_id'],
+                        'email' => $qrEmail,
+                        'code_hash' => hash('sha256', $code),
+                        'expires' => time() + 600,
+                        'next' => $cart_login ? 'cart' : 'dashboard',
+                        'qr_priority' => true,
+                    ];
+                    $loginVerificationPending = true;
+                    $scanned_data = null;
+                } else {
+                    $error = 'Unable to send the Gmail verification code. Please try again.';
+                    $scanned_data = null;
+                }
+            }
         } else {
             $error = 'User not found in database!';
         }
@@ -53,50 +79,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qr_data'])) {
     }
 }
 
-// Handle Mobile Number Login (go to purchase/account area)
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['mobile_login'])) {
+// Send a one-time login code to the exact verified Gmail on the account.
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['customer_login'])) {
     unset($_SESSION['qr_priority_user']);
-    $mobile_login_value = trim((string)($_POST['mobile_number'] ?? ''));
-    $mobileDigits = preg_replace('/\D+/', '', $mobile_login_value);
-    if (str_starts_with($mobileDigits, '63') && strlen($mobileDigits) === 12) $mobileDigits = substr($mobileDigits, 2);
-    if (str_starts_with($mobileDigits, '0') && strlen($mobileDigits) === 11) $mobileDigits = substr($mobileDigits, 1);
-
-    if (empty($mobileDigits)) {
-        $error = 'Please enter your mobile number.';
-    } elseif (!preg_match('/\A9[0-9]{9}\z/', $mobileDigits)) {
-        $error = 'Enter 10 digits starting with 9. The +63 country code is already included.';
-    } else {
-        $mobileDigits = '0' . $mobileDigits;
-        $safeMobile = $conn->real_escape_string($mobileDigits);
-        $contact_lookup = sensitive_lookup($safeMobile);
-        $sql = "SELECT * FROM users WHERE contact_lookup = '$contact_lookup' LIMIT 1";
-        $result = $conn->query($sql);
-
-        if ($result && $result->num_rows > 0) {
-            $scanned_data = $result->fetch_assoc();
-        } else {
-            $error = 'Mobile number not found. Please check and try again.';
-        }
+    $email_login_value=normalize_gmail((string)($_POST['email']??''));
+    $mobile_login_value=trim((string)($_POST['mobile_number']??''));
+    $digits=preg_replace('/\D+/','',$mobile_login_value);
+    if(str_starts_with($digits,'63')&&strlen($digits)===12)$digits=substr($digits,2);
+    if(str_starts_with($digits,'0')&&strlen($digits)===11)$digits=substr($digits,1);
+    if(!preg_match('/\A9[0-9]{9}\z/',$digits))$error='Enter the registered 10-digit mobile number starting with 9.';
+    elseif(!valid_gmail($email_login_value))$error='Enter the Gmail address used during registration.';
+    else{$emailLookup=sensitive_lookup($email_login_value);$contactLookup=sensitive_lookup('0'.$digits);$stmt=$conn->prepare('SELECT user_id,email_verified_at,status FROM users WHERE contact_lookup=? AND email_lookup=? LIMIT 1');$stmt->bind_param('ss',$contactLookup,$emailLookup);$stmt->execute();$account=$stmt->get_result()->fetch_assoc();
+        if(!$account||empty($account['email_verified_at']))$error='The mobile number and Gmail address do not match the same verified account.';
+        else{$code=(string)random_int(100000,999999);if(send_customer_otp($email_login_value,$code,'login')){$_SESSION['pending_customer_login']=['user_id'=>$account['user_id'],'email'=>$email_login_value,'code_hash'=>hash('sha256',$code),'expires'=>time()+600,'next'=>$cart_login?'cart':'dashboard'];$loginVerificationPending=true;}else $error='Unable to send the login code. Please contact HydroMIS support.';}
     }
+}
+if ($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['verify_login_code'])) {
+    $pending=$_SESSION['pending_customer_login']??null;$code=preg_replace('/\D+/','',(string)($_POST['verification_code']??''));
+    if(!$pending||time()>(int)($pending['expires']??0)){$error='The login code expired. Request a new code.';unset($_SESSION['pending_customer_login']);$loginVerificationPending=false;}
+    elseif(!hash_equals((string)$pending['code_hash'],hash('sha256',$code))){$error='The login code is incorrect.';$loginVerificationPending=true;}
+    else{$stmt=$conn->prepare('SELECT * FROM users WHERE user_id=? AND email_verified_at IS NOT NULL LIMIT 1');$stmt->bind_param('s',$pending['user_id']);$stmt->execute();$scanned_data=$stmt->get_result()->fetch_assoc();if($scanned_data&&!empty($pending['qr_priority']))$_SESSION['qr_priority_user']=(string)$scanned_data['user_id'];unset($_SESSION['pending_customer_login']);$loginVerificationPending=false;}
 }
 
 if ($scanned_data) {
-    $_SESSION['customer_user_id'] = (string)$scanned_data['user_id'];
-    // All successful customer logins enter the dashboard. It is the central
-    // place to continue an order, reorder a past delivery, or start a new one.
-    $postLoginDestination = 'dashboard.php';
-    if ($tracking_login) {
-        header('Location: track_order.php', true, 303);
+    if (in_array(strtolower((string)($scanned_data['status'] ?? '')), ['approved', 'pending'], true)) {
+        session_regenerate_id(true);
+        $_SESSION['customer_user_id'] = (string)$scanned_data['user_id'];
+        header('Location: ' . ($cart_login ? 'cart.php' : 'dashboard.php'), true, 303);
         exit;
     }
-}
-
-// Transaction and profile handling moved to purchase.php
-// Redirect to purchase page when user is scanned
-if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])) {
-    // Auto-redirect to purchase after successful scan
-    // header('Location: purchase.php?user_id=' . urlencode($scanned_data['user_id']));
-    // exit;
 }
 ?>
 <!DOCTYPE html>
@@ -2014,6 +2025,27 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
             body.account-viewport .success-security{margin-top:13px;font-size:10px}
             body.account-viewport .approval-lock{padding:14px}
         }
+        /* Customer welcome: order tracking and account navigation. */
+        body.account-viewport{height:auto;min-height:100dvh;overflow:auto}
+        body.account-viewport .container-main{height:auto;min-height:100dvh!important;overflow:visible;padding:24px 16px!important}
+        body.account-viewport .container-main>div{height:auto!important;min-height:calc(100dvh - 48px)}
+        body.account-viewport .scan-success{width:min(100%,480px);max-height:none;padding:34px 32px 24px;border:1px solid #dce9ef;border-radius:24px;box-shadow:0 20px 60px rgba(10,48,75,.13);background:#fff}
+        body.account-viewport .success-mark{width:52px;height:52px;margin-bottom:16px;border-radius:16px;background:#e5f7f5;color:#098476;box-shadow:none;font-size:25px}
+        body.account-viewport .success-eyebrow{display:inline-block;margin-bottom:16px;padding:5px 10px;border-radius:99px;background:#eef9f6;color:#087c69;font-size:10px;letter-spacing:.08em}
+        body.account-viewport .scan-success h2{font-size:29px;line-height:1.3;color:#13334a;overflow-wrap:anywhere}
+        body.account-viewport .scan-success h2 span{color:#13334a}
+        body.account-viewport .success-copy{font-size:14px;line-height:1.65;margin:14px auto 24px;color:#657d8f}
+        body.account-viewport .success-actions{max-width:none;gap:10px}
+        body.account-viewport .success-action{min-height:50px;border-radius:12px;font-size:14px}
+        body.account-viewport .success-action.primary{background:#087fa9;box-shadow:0 6px 15px rgba(8,127,169,.18)}
+        body.account-viewport .success-action.primary:hover{background:#066b91;box-shadow:0 8px 20px rgba(8,127,169,.22)}
+        body.account-viewport .success-action.secondary{background:#f7fafc;border:1px solid #dce7ef;color:#25475e;box-shadow:none}
+        body.account-viewport .success-action.secondary:hover{background:#edf5f9;color:#173c55}
+        .success-rewards{display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;color:#597185;font-size:13px;font-weight:600;text-decoration:none}
+        .success-rewards:hover{color:#087fa9;text-decoration:underline}
+        .success-action:focus-visible,.success-rewards:focus-visible{outline:3px solid #49b5d6;outline-offset:4px}
+        body.account-viewport .success-security{margin:14px 0 0;padding-top:18px;border-top:1px solid #edf2f6;font-size:11px;color:#7a8d9b}
+        @media(max-width:400px){body.account-viewport .scan-success{padding:26px 22px 20px}body.account-viewport .scan-success h2{font-size:25px}}
         @media(prefers-reduced-motion:reduce){.login-icon,.login-icon::before,.login-icon::after{animation:none!important}.login-icon,.login-icon img{transition:none!important}}
     </style>
     <script src="../js/ui-protection.js" defer></script>
@@ -2072,27 +2104,28 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                 <div class="success-mark" aria-hidden="true">
                     <i class="fas fa-check-circle"></i>
                 </div>
-                <?php $accountApproved = strtolower((string)($scanned_data['status'] ?? 'pending')) === 'approved'; ?>
-                <p class="success-eyebrow"><?php echo $accountApproved ? 'Account verified' : 'Account located'; ?></p>
-                <h2 id="scan-success-title">Welcome, <span><?php echo htmlspecialchars($scanned_data['full_name']); ?></span></h2>
+                <?php $accountApproved = in_array(strtolower((string)($scanned_data['status'] ?? '')), ['approved', 'pending'], true); ?>
+                <p class="success-eyebrow"><?php echo $accountApproved ? 'You?re signed in' : 'Account located'; ?></p>
+                <h2 id="scan-success-title">Welcome back,<br><span><?php echo htmlspecialchars($scanned_data['full_name']); ?></span></h2>
                 <?php if ($accountApproved): ?>
-                <p class="success-copy">Your approved account is ready. Choose what you would like to do next.</p>
+                <p class="success-copy">View your orders, follow delivery updates, and check your rewards.</p>
                 <div class="success-actions">
-                <a class="success-action primary" href="<?php echo htmlspecialchars($postLoginDestination); ?>">
-                    <i class="fas fa-grid-2"></i> Open My Dashboard <i class="fas fa-arrow-right"></i>
+                <a class="success-action primary" href="<?php echo htmlspecialchars($myOrdersDestination); ?>">
+                    <i class="fas fa-box" aria-hidden="true"></i> My orders <i class="fas fa-arrow-right" aria-hidden="true"></i>
                 </a>
-                <a class="success-action secondary" href="rewards.php?user_id=<?php echo urlencode($scanned_data['user_id']); ?>">
-                    <i class="fas fa-gift"></i> View Rewards
+                <a class="success-action secondary" href="<?php echo htmlspecialchars($postLoginDestination); ?>">
+                    <i class="fas fa-th-large" aria-hidden="true"></i> My dashboard
                 </a>
+                <a class="success-rewards" href="rewards.php?user_id=<?php echo urlencode($scanned_data['user_id']); ?>"><i class="fas fa-gift" aria-hidden="true"></i> View my rewards <span aria-hidden="true">&rarr;</span></a>
                 </div>
-                <p class="success-security"><i class="fas fa-shield-alt"></i> Secure account access</p>
+                <p class="success-security"><i class="fas fa-shield-alt"></i> Signed in to your HydroMIS account</p>
                 <?php else: $accountDenied = strtolower((string)($scanned_data['status'] ?? 'pending')) === 'denied'; ?>
                 <p class="success-copy">We found your account, but ordering is not available yet.</p>
                 <div class="approval-lock<?php echo $accountDenied ? ' denied' : ''; ?>">
                     <div class="approval-lock-icon"><i class="fas <?php echo $accountDenied ? 'fa-circle-xmark' : 'fa-clock'; ?>"></i></div>
-                    <h3><?php echo $accountDenied ? 'Account not approved' : 'Waiting for administrator approval'; ?></h3>
-                    <p><?php echo $accountDenied ? 'Please contact HydroMIS support if you believe this decision needs review.' : 'A HydroMIS administrator must review and approve your registration before you can purchase water.'; ?></p>
-                    <div class="approval-next"><i class="fas <?php echo $accountDenied ? 'fa-headset' : 'fa-rotate'; ?>"></i> <?php echo $accountDenied ? 'Contact support for assistance' : 'Try logging in again after approval'; ?></div>
+                    <h3><?php echo $accountDenied ? 'Account disabled' : 'Account unavailable'; ?></h3>
+                    <p><?php echo $accountDenied ? 'Please contact HydroMIS support if you believe this decision needs review.' : 'Please contact HydroMIS support for help accessing your account.'; ?></p>
+                    <div class="approval-next"><i class="fas <?php echo $accountDenied ? 'fa-headset' : 'fa-rotate'; ?>"></i> <?php echo $accountDenied ? 'Contact support for assistance' : 'Contact support for assistance'; ?></div>
                 </div>
                 <p class="success-security"><i class="fas fa-lock"></i> Purchasing is locked for this account</p>
                 <?php endif; ?>
@@ -2219,7 +2252,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
 
                 <div class="login-tabs" role="tablist" aria-label="Login method">
                     <button type="button" class="tab-button active" onclick="switchTab('mobile')" style="flex: 1; background: #ffffff; color: #111827; border: none; border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: 13px; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);">
-                        <i class="fas fa-mobile-screen"></i> Mobile
+                        <i class="fas fa-mobile-screen"></i> Mobile + Gmail
                     </button>
                     <button type="button" class="tab-button" onclick="switchTab('qr')" style="flex: 1; background: transparent; color: #111827; border: none; border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: 13px; box-shadow: none;">
                         <i class="fas fa-qrcode"></i> Scan QR
@@ -2243,16 +2276,14 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
                         #mobileLoginForm .btn-toggle:disabled::after { display: none; }
                     </style>
                     <form method="POST" class="login-form" id="mobileLoginForm" style="margin-bottom: 12px;">
-                        <input type="hidden" name="mobile_login" value="1">
                         <?php foreach ($orderSetup as $key => $value): ?><input type="hidden" name="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value); ?>"><?php endforeach; ?>
-                        <?php if ($tracking_login): ?><input type="hidden" name="next" value="tracking"><?php endif; ?>
-                        <label for="mobile_number" style="color: #1f2937; font-weight: 700; margin-bottom: 10px; display: block; font-size: 15px;">Mobile Number</label>
-                        <div class="mobile-field"><span class="country-code">+63</span><input type="tel" id="mobile_number" name="mobile_number" pattern="9[0-9]{9}" minlength="10" maxlength="10" title="Enter 10 digits starting with 9. Do not include 0 or +63." class="form-control" placeholder="9123456789" autocomplete="tel" inputmode="numeric" value="<?php echo htmlspecialchars($mobile_login_value); ?>" style="border-radius: 12px; border: 1px solid #d1d5db; background: #ffffff; margin-bottom: 10px;" required></div>
-                        <p class="login-helper" style="color: #475569; font-size: 13px; margin-bottom: 16px;"><i class="fas fa-circle-info"></i> Enter 10 digits starting with 9 (for example, 950 785 3937). Do not include 0 or +63.</p>
-
-                        <button type="submit" class="btn-toggle" style="margin-bottom: 0; width: 100%;">
-                            <i class="fas fa-sign-in-alt mr-2"></i> <?php echo $tracking_login ? 'Login & Track Order' : 'Login & Go to Purchase'; ?>
-                        </button>
+                        <?php if ($cart_login): ?><input type="hidden" name="next" value="cart"><?php elseif ($tracking_login): ?><input type="hidden" name="next" value="tracking"><?php endif; ?>
+                        <?php if($loginVerificationPending): ?>
+                        <input type="hidden" name="verify_login_code" value="1"><label for="mobile_number" style="color:#1f2937;font-weight:700;margin-bottom:10px;display:block;font-size:15px;">Gmail verification code</label><div class="mobile-field"><span class="country-code"><i class="fas fa-shield-halved"></i></span><input type="text" id="mobile_number" name="verification_code" pattern="[0-9]{6}" maxlength="6" class="form-control" placeholder="000000" autocomplete="one-time-code" inputmode="numeric" required autofocus></div><p class="login-helper" style="color:#475569;font-size:13px;margin-bottom:16px;"><i class="fas fa-envelope-circle-check"></i> Enter the six-digit code sent to <?=htmlspecialchars($_SESSION['pending_customer_login']['email']??'your Gmail')?>.</p><button type="submit" class="btn-toggle" style="margin-bottom:0;width:100%;"><i class="fas fa-sign-in-alt mr-2"></i> Verify &amp; Open My Account</button>
+                        <?php else: ?>
+                        <input type="hidden" name="customer_login" value="1"><label for="login_mobile" style="color:#1f2937;font-weight:700;margin-bottom:10px;display:block;font-size:15px;">Mobile Number</label><div class="mobile-field"><span class="country-code">+63</span><input type="tel" id="login_mobile" name="mobile_number" pattern="9[0-9]{9}" minlength="10" maxlength="10" class="form-control" placeholder="9123456789" autocomplete="tel" inputmode="numeric" value="<?=htmlspecialchars($mobile_login_value)?>" required></div>
+                        <input type="hidden" name="email_login" value="1"><label for="mobile_number" style="color:#1f2937;font-weight:700;margin-bottom:10px;display:block;font-size:15px;">Verified Gmail Address</label><div class="mobile-field"><span class="country-code"><i class="fab fa-google"></i></span><input type="email" id="mobile_number" name="email" pattern="[A-Za-z0-9.!#$%&amp;'*+/=?^_`{|}~-]+@gmail\.com" maxlength="190" class="form-control" placeholder="yourname@gmail.com" autocomplete="email" value="<?=htmlspecialchars($email_login_value)?>" required></div><p class="login-helper" style="color:#475569;font-size:13px;margin-bottom:16px;"><i class="fas fa-circle-info"></i> Use the exact verified Gmail address from your registration. We’ll email a one-time login code.</p><button type="submit" class="btn-toggle" style="margin-bottom:0;width:100%;"><i class="fas fa-envelope mr-2"></i> Send Login Code</button>
+                        <?php endif; ?>
                     </form>
 
                     <div class="register-prompt">
@@ -2321,7 +2352,7 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
 
                 <form id="qr-form" method="POST" style="display: none;">
                     <?php foreach ($orderSetup as $key => $value): ?><input type="hidden" name="<?php echo htmlspecialchars($key); ?>" value="<?php echo htmlspecialchars($value); ?>"><?php endforeach; ?>
-                    <?php if ($tracking_login): ?><input type="hidden" name="next" value="tracking"><?php endif; ?>
+                    <?php if ($cart_login): ?><input type="hidden" name="next" value="cart"><?php elseif ($tracking_login): ?><input type="hidden" name="next" value="tracking"><?php endif; ?>
                     <div class="form-group">
                         <label>QR Data:</label>
                         <textarea name="qr_data" id="qr_data"></textarea>
@@ -2760,42 +2791,35 @@ if ($scanned_data && !isset($_POST['qr_data']) && !isset($_POST['mobile_login'])
 
             const mobileForm = document.getElementById('mobileLoginForm');
             if (mobileForm) {
-                const mobileInput = document.getElementById('mobile_number');
+                const mobileInput = document.getElementById('login_mobile');
+                const emailInput = mobileForm.querySelector('input[name="email"]');
+                const codeInput = mobileForm.querySelector('input[name="verification_code"]');
                 const submit = mobileForm.querySelector('.btn-toggle');
                 let submitting = false;
                 const updateLoginButton = () => {
-                    mobileInput.value = mobileInput.value.replace(/[^0-9]/g, '').replace(/^[0-8]+/, '').slice(0, 10);
-                    submit.disabled = submitting || !/^9[0-9]{9}$/.test(mobileInput.value);
+                    if (mobileInput) mobileInput.value = mobileInput.value.replace(/[^0-9]/g, '').replace(/^[0-8]+/, '').slice(0,10);
+                    if (codeInput) codeInput.value = codeInput.value.replace(/[^0-9]/g, '').slice(0,6);
+                    const fields=[mobileInput,emailInput,codeInput].filter(Boolean);
+                    submit.disabled = submitting || fields.some(field=>!field.checkValidity());
                 };
-                mobileInput.addEventListener('paste', function(event) {
-                    event.preventDefault();
-                    let digits = event.clipboardData.getData('text').replace(/[^0-9]/g, '');
-                    const start = mobileInput.selectionStart ?? mobileInput.value.length;
-                    const end = mobileInput.selectionEnd ?? start;
-                    if (start === 0) digits = digits.replace(/^[0-8]+/, '');
-                    const available = 10 - (mobileInput.value.length - (end - start));
-                    mobileInput.setRangeText(digits.slice(0, Math.max(0, available)), start, end, 'end');
-                    updateLoginButton();
-                });
-                mobileInput.addEventListener('input', updateLoginButton);
-                mobileInput.addEventListener('change', updateLoginButton);
+                [mobileInput,emailInput,codeInput].filter(Boolean).forEach(field=>{field.addEventListener('input',updateLoginButton);field.addEventListener('change',updateLoginButton);});
                 window.addEventListener('pageshow', function(event) {
                     if (event.persisted) {
                         submitting = false;
-                        submit.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> ' + <?php echo json_encode($tracking_login ? 'Login & Track Order' : 'Login & Go to Purchase'); ?>;
+                        submit.innerHTML = <?php echo json_encode($loginVerificationPending ? '<i class="fas fa-sign-in-alt mr-2"></i> Verify & Open My Account' : '<i class="fas fa-envelope mr-2"></i> Send Login Code'); ?>;
                     }
                     updateLoginButton();
                 });
                 updateLoginButton();
                 mobileForm.addEventListener('submit', function(event) {
-                    if (submitting || !mobileInput.checkValidity()) {
+                    if (submitting || !mobileForm.checkValidity()) {
                         event.preventDefault();
                         updateLoginButton();
                         return;
                     }
                     submitting = true;
                     updateLoginButton();
-                    submit.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Verifying account...';
+                    submit.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Please wait...';
                 });
             }
 

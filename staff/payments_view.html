@@ -84,7 +84,7 @@
                                     <td><?php echo htmlspecialchars($row['order_id'] ?? 'N/A'); ?></td>
                                     <td>
                                         <?php echo htmlspecialchars($row['full_name'] ?? 'Unknown customer'); ?><br>
-                                        <small style="color: var(--muted);"><?php echo htmlspecialchars($row['contact_number'] ?? ''); ?></small>
+                                        <small style="color: var(--muted);">ID: <?php echo htmlspecialchars($row['user_id'] ?? 'N/A'); ?><?php if (!empty($row['contact_number'])): ?> · <?php echo htmlspecialchars($row['contact_number']); ?><?php endif; ?></small>
                                     </td>
                                     <td>
                                         <?php $method = strtolower((string)($row['payment_method'] ?? 'cash')); ?>
@@ -113,7 +113,9 @@
                                     </td>
                                     <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?><br><small style="color:var(--muted);"><?php echo date('g:i A', strtotime($row['created_at'])); ?></small></td>
                                     <td>
-                                        <?php if ($row['status'] == 'pending' || $row['status'] == 'processing'): ?>
+                                        <?php if (($row['fulfillment_method'] ?? 'delivery') === 'pickup'): ?>
+                                            <span style="color:var(--muted);font-size:11px;"><i class="fas fa-store"></i> Pay on collection<br>No verification required</span>
+                                        <?php elseif ($row['status'] == 'pending' || $row['status'] == 'processing'): ?>
                                             <div class="action-buttons">
                                                 <form method="POST" style="display: inline;">
                                                     <input type="hidden" name="payment_id" value="<?php echo htmlspecialchars($row['payment_id']); ?>">

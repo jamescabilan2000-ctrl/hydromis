@@ -14,11 +14,11 @@ function feedback_escape($value) { return htmlspecialchars((string)$value, ENT_Q
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Customer Feedback | HydroMIS Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-<link href="../css/admin-sidebar-hover.css" rel="stylesheet">
+<link href="../css/admin-sidebar-hover.css?v=20261111f" rel="stylesheet">
 <link href="../css/animations.css" rel="stylesheet">
 <link href="../css/admin-feedback.css" rel="stylesheet">
 <link href="../css/admin-theme.css" rel="stylesheet">
-<script src="../js/admin-theme.js"></script>
+<script src="../js/admin-theme.js?v=20261111e"></script>
 <script src="../js/ui-protection.js" defer></script>
 </head><body><div class="shell">
     <aside class="sidebar">

@@ -29,7 +29,7 @@ if (!$result || $result->num_rows === 0) {
     exit;
 }
 $scanned_data = $result->fetch_assoc();
-if (strtolower((string)($scanned_data['status'] ?? 'pending')) !== 'approved') {
+if (!in_array(strtolower((string)($scanned_data['status'] ?? '')), ['approved', 'pending'], true)) {
     header('Location: scan_qr.php?approval_required=' . urlencode((string)($scanned_data['status'] ?? 'pending')));
     exit;
 }

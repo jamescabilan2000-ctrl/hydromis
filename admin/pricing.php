@@ -62,7 +62,8 @@ $systemLogo = system_logo_path($conn);
     <link rel="stylesheet" href="../css/admin-pricing.css?v=20261010b">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="../css/admin-pricing-sidebar.css">
-    <link rel="stylesheet" href="../css/admin-sidebar-hover.css">
+    <link rel="stylesheet" href="../css/admin-sidebar-hover.css?v=20261111f">
+    <script src="../js/admin-theme.js?v=20261111e"></script>
 </head>
 <body>
 <div class="shell">

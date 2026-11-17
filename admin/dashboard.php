@@ -173,6 +173,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'set_maintenance_mode') {
+    header('Content-Type: application/json');
+    if (!hash_equals($_SESSION['system_logo_csrf'], (string)($_POST['csrf_token'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Refresh the page and try again.']);
+        exit;
+    }
+    $enabled = ($_POST['enabled'] ?? '') === '1';
+    $adminId = (string)($_SESSION['admin_auth_id'] ?? $_SESSION['admin_id'] ?? 'admin');
+    $saved = set_system_setting($conn, 'maintenance_mode', $enabled ? '1' : '0', $adminId);
+    echo json_encode(['success' => $saved, 'enabled' => $enabled, 'message' => $saved ? ($enabled ? 'Maintenance mode enabled.' : 'HydroMIS is back online.') : 'Unable to update maintenance mode.']);
+    exit;
+}
+
 // Get user settings
 $admin_id = $conn->real_escape_string($_SESSION['admin_id'] ?? 'admin');
 $settings_result = $conn->query("SELECT settings FROM admin_settings WHERE admin_id = '$admin_id' LIMIT 1");
@@ -187,6 +201,7 @@ $profile_data = [];
 if ($profile_result && $profile_result->num_rows > 0) {
     $profile_data = $profile_result->fetch_assoc();
 }
+$maintenance_mode = system_int_setting($conn, 'maintenance_mode', 0, 0, 1) === 1;
 
 $total_users        = $conn->query("SELECT COUNT(*) as count FROM users")->fetch_assoc()['count'];
 $total_transactions = $conn->query("SELECT COUNT(*) as count FROM transactions")->fetch_assoc()['count'];
@@ -197,6 +212,41 @@ $denied             = $conn->query("SELECT COUNT(*) as count FROM transactions W
 $pending_users      = $conn->query("SELECT COUNT(*) as count FROM users WHERE status='pending'")->fetch_assoc()['count'];
 $approved_users     = $conn->query("SELECT COUNT(*) as count FROM users WHERE status='approved'")->fetch_assoc()['count'];
 $denied_users       = $conn->query("SELECT COUNT(*) as count FROM users WHERE status='denied'")->fetch_assoc()['count'];
+
+// Approved water volume sold. New cart orders keep one row per product in
+// transaction_items; older orders fall back to the parent transaction quantity.
+$gallons_sold = 0;
+$refill_gallons = 0;
+$new_gallons = 0;
+$items_table = $conn->query("SHOW TABLES LIKE 'transaction_items'");
+if ($items_table && $items_table->num_rows > 0) {
+    $gallon_result = $conn->query("SELECT
+        COALESCE(SUM(CASE WHEN ti.container_status <> 'accessory' AND ti.container_size NOT LIKE 'cup%' THEN ti.quantity ELSE 0 END), 0) AS total,
+        COALESCE(SUM(CASE WHEN ti.container_status = 'existing' THEN ti.quantity ELSE 0 END), 0) AS refills,
+        COALESCE(SUM(CASE WHEN ti.container_status = 'new' THEN ti.quantity ELSE 0 END), 0) AS new_containers
+        FROM transaction_items ti
+        INNER JOIN transactions t ON t.transaction_id = ti.transaction_id
+        WHERE t.status = 'approved'");
+    if ($gallon_result) {
+        $gallon_row = $gallon_result->fetch_assoc();
+        $gallons_sold = (int)($gallon_row['total'] ?? 0);
+        $refill_gallons = (int)($gallon_row['refills'] ?? 0);
+        $new_gallons = (int)($gallon_row['new_containers'] ?? 0);
+    }
+} else {
+    $gallon_result = $conn->query("SELECT
+        COALESCE(SUM(quantity), 0) AS total,
+        COALESCE(SUM(CASE WHEN container_status = 'existing' THEN quantity ELSE 0 END), 0) AS refills,
+        COALESCE(SUM(CASE WHEN container_status = 'new' THEN quantity ELSE 0 END), 0) AS new_containers
+        FROM transactions
+        WHERE status = 'approved' AND COALESCE(container_status, '') <> 'accessory' AND COALESCE(container_size, '') NOT LIKE 'cup%'");
+    if ($gallon_result) {
+        $gallon_row = $gallon_result->fetch_assoc();
+        $gallons_sold = (int)($gallon_row['total'] ?? 0);
+        $refill_gallons = (int)($gallon_row['refills'] ?? 0);
+        $new_gallons = (int)($gallon_row['new_containers'] ?? 0);
+    }
+}
 
 function revenue_series($conn, $days) {
     $series = [];
@@ -269,7 +319,7 @@ $revenue_year = monthly_revenue_series($conn);
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-<link href="../css/admin-sidebar-hover.css" rel="stylesheet">
+<link href="../css/admin-sidebar-hover.css?v=20261111f" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
@@ -388,19 +438,21 @@ body[data-color-mode="light"]{color-scheme:light;--bg:#f4f7fb;--bg2:#fff;--bg3:#
 .btn-save:hover { opacity: 0.9; transform: none; }
 
 /* Stat Cards */
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; position: relative; overflow: hidden; transition: border-color 0.25s, transform 0.2s; animation: fadeSlideUp 0.5s both; }
+.stats-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.stat-card { min-height: 164px; background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 15px 18px; position: relative; overflow: hidden; transition: border-color 0.25s, transform 0.2s; animation: fadeSlideUp 0.5s both; }
 .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
 .stat-card:nth-child(1) { animation-delay: 0.05s; }
 .stat-card:nth-child(2) { animation-delay: 0.10s; }
 .stat-card:nth-child(3) { animation-delay: 0.15s; }
 .stat-card:nth-child(4) { animation-delay: 0.20s; }
+.stat-card:nth-child(5) { animation-delay: 0.25s; }
 @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 .stat-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
 .stat-aqua::after   { background: var(--aqua); }
 .stat-blue::after   { background: var(--blue); }
 .stat-purple::after { background: var(--purple); }
 .stat-amber::after  { background: var(--amber); }
+.stat-green::after  { background: var(--green); }
 .stat-top { display: flex; align-items: flex-start; justify-content: flex-end; }
 .stat-icon-wrap { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
 .icon-aqua   { background: var(--aqua-dim);   color: var(--aqua); }
@@ -409,14 +461,16 @@ body[data-color-mode="light"]{color-scheme:light;--bg:#f4f7fb;--bg2:#fff;--bg3:#
 .icon-amber  { background: var(--amber-dim);  color: var(--amber); }
 .icon-red    { background: var(--red-dim);    color: var(--red); }
 .icon-green  { background: var(--green-dim);  color: var(--green); }
-.stat-trend { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 99px; display: inline-flex; align-items: center; gap: 3px; }
+.stat-trend { font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 99px; display: inline-flex; align-items: center; gap: 3px; }
 .trend-up   { background: var(--green-dim); color: var(--green); }
 .trend-flat { background: var(--bg3);       color: var(--muted); }
-.stat-value  { margin-top: 18px; font-size: 30px; font-weight: 800; color: #fff; letter-spacing: -1px; line-height: 1; }
-.stat-label  { margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
-.stat-detail { margin-top: 12px; font-size: 12px; color: var(--muted2); }
+.stat-value  { margin-top: 9px; font-size: 25px; font-weight: 800; color: #fff; letter-spacing: -.7px; line-height: 1; }
+.stat-label  { margin-top: 5px; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+.stat-detail { margin-top: 7px; font-size: 10px; color: var(--muted2); line-height: 1.4; }
 .stat-detail b { color: var(--muted); font-weight: 600; }
-.sparkline-wrap { margin-top: 16px; height: 44px; }
+.sparkline-wrap { margin-top: 7px; height: 26px; }
+.water-breakdown { display:flex; gap:8px; margin-top:10px; color:var(--muted2); font-size:10px; }
+.water-breakdown span { padding:4px 7px; border-radius:7px; background:var(--bg3); }
 
 /* Charts */
 .chart-row { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; }
@@ -806,7 +860,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
 </style>
 <script src="../js/ui-protection.js" defer></script>
     <link rel="stylesheet" href="../css/admin-theme.css">
-    <script src="../js/admin-theme.js"></script>
+    <script src="../js/admin-theme.js?v=20261111e"></script>
 </head>
 <body>
 
@@ -1072,6 +1126,20 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                 </div>
             </div>
 
+            <div class="settings-section danger-zone" id="maintenanceSection">
+                <div class="settings-section-title">System Maintenance</div>
+                <div class="settings-row">
+                    <div class="settings-row-info">
+                        <div class="settings-row-label" id="maintenanceLabel"><?= $maintenance_mode ? 'Maintenance mode is ON' : 'HydroMIS is online' ?></div>
+                        <div class="settings-row-desc" id="maintenanceDescription"><?= $maintenance_mode ? 'Customers, staff, riders, and APIs are currently paused. Administrators still have access.' : 'Turn this on to temporarily stop orders and block non-admin access.' ?></div>
+                    </div>
+                    <button type="button" class="btn-danger-action" id="maintenanceButton" onclick="toggleMaintenanceMode()" style="white-space:nowrap;<?= $maintenance_mode ? 'border-color:rgba(34,197,94,.45);color:var(--green);' : '' ?>">
+                        <i class="fas <?= $maintenance_mode ? 'fa-play' : 'fa-power-off' ?>"></i>
+                        <?= $maintenance_mode ? 'Resume System' : 'Start Maintenance' ?>
+                    </button>
+                </div>
+            </div>
+
             <div class="settings-section danger-zone">
                 <div class="settings-section-title">Danger Zone</div>
                 <div class="settings-row">
@@ -1117,6 +1185,7 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                 <div class="nav-group">
                     <a href="dashboard.php" class="nav-item active"><i class="fas fa-chart-pie"></i> Dashboard</a>
                     <a href="transactions.php" class="nav-item"><i class="fas fa-exchange-alt"></i> Transactions <?php if($pending>0): ?><span class="nav-badge"><?=(int)$pending?></span><?php endif; ?></a>
+                    <a href="payment_logs.php" class="nav-item"><i class="fas fa-receipt"></i> Payment Logs</a>
                     <a href="reports.php" class="nav-item"><i class="fas fa-chart-bar"></i> Reports</a>
                     <a href="feedback.php" class="nav-item"><i class="fas fa-comments"></i> Customer Feedback</a>
                     <a href="inventory.php" class="nav-item"><i class="fas fa-boxes-stacked"></i> Inventory</a>
@@ -1239,6 +1308,16 @@ body[data-border-radius="pill"] .table-panel { border-radius: 99px !important; }
                     <div class="stat-label">Pending Actions</div>
                     <div class="stat-detail"><b><?=(int)$pending?></b> txns · <b><?=(int)$pending_users?></b> users · <b><?=(int)$denied?></b> denied</div>
                     <div class="sparkline-wrap"><canvas id="spark4"></canvas></div>
+                </div>
+                <div class="card stat-card stat-green">
+                    <div class="stat-top"><span class="stat-trend trend-up"><i class="fas fa-droplet"></i> Approved sales</span></div>
+                    <div class="stat-value"><?=(int)$gallons_sold?></div>
+                    <div class="stat-label">Gallons Sold</div>
+                    <div class="stat-detail">Total water containers in approved transactions</div>
+                    <div class="water-breakdown">
+                        <span><b><?=(int)$refill_gallons?></b> refills</span>
+                        <span><b><?=(int)$new_gallons?></b> new</span>
+                    </div>
                 </div>
             </div>
 
@@ -1465,6 +1544,40 @@ function saveSettings() {
         btn.innerHTML = '<i class="fas fa-floppy-disk"></i> Save changes';
         btn.disabled = false;
     });
+}
+
+let maintenanceEnabled = <?= $maintenance_mode ? 'true' : 'false' ?>;
+function toggleMaintenanceMode() {
+    const action = maintenanceEnabled ? 'resume normal operation' : 'start maintenance mode and pause access for customers, staff, and riders';
+    if (!confirm('Are you sure you want to ' + action + '?')) return;
+
+    const button = document.getElementById('maintenanceButton');
+    const original = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({
+            action: 'set_maintenance_mode',
+            csrf_token: <?= json_encode($_SESSION['system_logo_csrf']) ?>,
+            enabled: maintenanceEnabled ? '0' : '1'
+        })
+    }).then(response => response.json()).then(data => {
+        if (!data.success) throw new Error(data.message || 'Unable to update maintenance mode.');
+        maintenanceEnabled = Boolean(data.enabled);
+        document.getElementById('maintenanceLabel').textContent = maintenanceEnabled ? 'Maintenance mode is ON' : 'HydroMIS is online';
+        document.getElementById('maintenanceDescription').textContent = maintenanceEnabled
+            ? 'Customers, staff, riders, and APIs are currently paused. Administrators still have access.'
+            : 'Turn this on to temporarily stop orders and block non-admin access.';
+        button.innerHTML = maintenanceEnabled ? '<i class="fas fa-play"></i> Resume System' : '<i class="fas fa-power-off"></i> Start Maintenance';
+        button.style.borderColor = maintenanceEnabled ? 'rgba(34,197,94,.45)' : '';
+        button.style.color = maintenanceEnabled ? 'var(--green)' : '';
+        alert(data.message);
+    }).catch(error => {
+        button.innerHTML = original;
+        alert(error.message);
+    }).finally(() => { button.disabled = false; });
 }
 
 /* ── Settings drawer ── */

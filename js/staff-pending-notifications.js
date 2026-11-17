@@ -152,6 +152,70 @@
         }
     }
 
+    function showStaffAlertPopup(alert) {
+        const container = getContainer();
+        const accepted = ['assignment_accepted','delivery_completed'].includes(alert.notification_type);
+        const card = document.createElement('div');
+        card.className = 'hydromis-order-toast hydromis-rider-toast ' + (accepted ? 'is-accepted' : 'needs-attention');
+        card.setAttribute('role', 'status');
+        card.setAttribute('aria-live', accepted ? 'polite' : 'assertive');
+
+        const head = document.createElement('div');
+        head.className = 'order-toast-head';
+        const icon = document.createElement('span');
+        icon.className = 'order-toast-icon';
+        icon.innerHTML = `<i class="fas ${accepted ? 'fa-circle-check' : 'fa-triangle-exclamation'}" aria-hidden="true"></i>`;
+        const heading = document.createElement('div');
+        heading.className = 'order-toast-heading';
+        const title = document.createElement('strong');
+        title.textContent = alert.title || 'Rider update';
+        const subtitle = document.createElement('span');
+        subtitle.textContent = alert.transaction_id ? `Order ${alert.transaction_id}` : 'Delivery Operations';
+        heading.append(title, subtitle);
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'hydromis-notif-close';
+        close.setAttribute('aria-label', 'Close notification');
+        close.textContent = '×';
+        head.append(icon, heading, close);
+
+        const message = document.createElement('p');
+        message.className = 'order-toast-items';
+        message.textContent = alert.message || 'A rider assignment needs attention.';
+        const actions = document.createElement('div');
+        actions.className = 'order-toast-actions';
+        const review = document.createElement('a');
+        review.className = 'order-toast-review';
+        review.href = 'dashboard.php?view=deliveries';
+        review.innerHTML = 'Open deliveries <i class="fas fa-arrow-right" aria-hidden="true"></i>';
+        const dismiss = document.createElement('button');
+        dismiss.type = 'button';
+        dismiss.className = 'hydromis-notif-dismiss';
+        dismiss.textContent = 'Dismiss';
+        actions.append(review, dismiss);
+        card.append(head, message, actions);
+        container.appendChild(card);
+        requestAnimationFrame(() => { card.style.opacity = '1'; card.style.transform = 'translateY(0) scale(1)'; });
+        const remove = () => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(-15px) scale(.95)';
+            setTimeout(() => card.remove(), 350);
+        };
+        close.addEventListener('click', remove);
+        dismiss.addEventListener('click', remove);
+        setTimeout(remove, 18000);
+
+        if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+                new Notification(alert.title || 'HydroMIS rider update', {
+                    body: alert.message || 'Open Delivery Operations for details.',
+                    icon: '../imagess/logosystem.png',
+                    tag: 'hydromis-staff-alert-' + (alert.id || alert.event_key || alert.transaction_id)
+                });
+            } catch (_) {}
+        }
+    }
+
     function escapeHtml(str) {
         if (!str) return '';
         return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -195,6 +259,13 @@
         });
 
         // Reward Claims badges
+        document.querySelectorAll('a[href*="rewards.php"]').forEach(link => {
+            if (!link.querySelector('b, .nav-badge, .staff-nav-redmark')) {
+                const badge = document.createElement('b');
+                badge.className = 'nav-badge';
+                link.appendChild(badge);
+            }
+        });
         const rewardBadges = document.querySelectorAll('a[href*="rewards.php"] b, a[href*="rewards.php"] .nav-badge');
         rewardBadges.forEach(el => {
             if (data.rewards_count > 0) {
@@ -226,6 +297,12 @@
             // Update UI badges
             updateBadges(data);
             document.dispatchEvent(new CustomEvent('hydromis:pending-orders', { detail: data }));
+
+            const staffAlerts = data.staff_notifications || [];
+            if (staffAlerts.length > 0) {
+                playNotificationSound();
+                staffAlerts.slice(0, 5).forEach(showStaffAlertPopup);
+            }
 
             const pendingList = data.pending_orders || [];
             let newOrdersDetected = [];
@@ -275,6 +352,7 @@
     style.textContent = `
         #hydromis-staff-notif-container{position:fixed;top:max(16px,env(safe-area-inset-top));right:16px;z-index:999999;width:min(400px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow-y:auto;display:flex;flex-direction:column;gap:12px;pointer-events:none}
         .hydromis-order-toast{box-sizing:border-box;pointer-events:auto;padding:20px;border:1px solid #33536b;border-top:3px solid #27c5d5;border-radius:20px;background:linear-gradient(145deg,#14283c,#172135);color:#f1f7fc;box-shadow:0 16px 44px #07142466;font-family:'Plus Jakarta Sans',system-ui,sans-serif;opacity:0;transform:translateY(-20px) scale(.98);transition:opacity .25s ease,transform .25s ease}
+        .hydromis-rider-toast.needs-attention{border-top-color:#f59e0b}.hydromis-rider-toast.needs-attention .order-toast-icon{background:#4a3515;color:#fbbf24}.hydromis-rider-toast.is-accepted{border-top-color:#10b981}.hydromis-rider-toast.is-accepted .order-toast-icon{background:#123f36;color:#34d399}
         .order-toast-head{display:flex;align-items:center;gap:10px;margin-bottom:18px}
         .order-toast-icon{display:grid;place-items:center;flex:0 0 38px;height:38px;border-radius:12px;background:#173f53;color:#63deeb}
         .order-toast-heading{flex:1;min-width:0}.order-toast-heading strong{display:block;font-size:14px;font-weight:800}.order-toast-heading span{display:block;margin-top:3px;font-size:11px;color:#a8bdcf}
@@ -294,10 +372,12 @@
     `;
     document.head.appendChild(style);
 
-    // Initial poll & 6-second interval
+    // Initial poll & short interval keeps every staff page and badge synchronized.
     pollPendingOrders();
-    setInterval(pollPendingOrders, 6000);
+    setInterval(pollPendingOrders, 4000);
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) pollPendingOrders();
     });
+    window.addEventListener('focus', pollPendingOrders);
+    window.addEventListener('online', pollPendingOrders);
 })();

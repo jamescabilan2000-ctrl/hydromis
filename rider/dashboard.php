@@ -16,6 +16,8 @@
 include 'check_auth.php';
 require_once '../config/database.php';
 require_once '../config/inventory_service.php';
+require_once '../config/maps.php';
+$mapsConfig=hydromis_maps_config();
 ensure_inventory_schema($conn);
 if (empty($_SESSION['logout_csrf'])) {
     $_SESSION['logout_csrf'] = bin2hex(random_bytes(32));
@@ -53,7 +55,13 @@ $conn->query("CREATE TABLE IF NOT EXISTS rider_users (
 )");
 $conn->query("ALTER TABLE rider_users ADD COLUMN IF NOT EXISTS age INT");
 $conn->query("ALTER TABLE rider_users ADD COLUMN IF NOT EXISTS address TEXT");
+$conn->query("ALTER TABLE rider_users ADD COLUMN IF NOT EXISTS last_seen_at DATETIME NULL");
 $conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS rider_id VARCHAR(50)");
+$conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS rider_assignment_status VARCHAR(30) DEFAULT 'unassigned'");
+$conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS rider_assignment_responded_at DATETIME NULL");
+$legacyRiderExpr = column_exists($conn, 'transactions', 'assigned_rider') ? 'COALESCE(rider_id, assigned_rider)' : 'rider_id';
+$conn->query("UPDATE transactions SET rider_assignment_status='accepted'
+    WHERE {$legacyRiderExpr} IS NOT NULL AND COALESCE(rider_assignment_status,'unassigned')='unassigned'");
 $conn->query("CREATE TABLE IF NOT EXISTS rider_locations (
     id INT PRIMARY KEY AUTO_INCREMENT,
     transaction_id VARCHAR(255) NOT NULL,
@@ -81,6 +89,18 @@ $conn->query("CREATE TABLE IF NOT EXISTS rider_notifications (
     INDEX idx_rider_id (rider_id),
     INDEX idx_is_read (is_read)
 )");
+$conn->query("CREATE TABLE IF NOT EXISTS staff_notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_key VARCHAR(190) NOT NULL UNIQUE,
+    transaction_id VARCHAR(50) NOT NULL,
+    rider_id VARCHAR(50) NULL,
+    notification_type VARCHAR(40) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_staff_notification_unread (is_read, created_at)
+)");
 
 $transactions_has_assigned_rider = column_exists($conn, 'transactions', 'assigned_rider');
 $rider_col_expr = $transactions_has_assigned_rider ? "COALESCE(t.rider_id, t.assigned_rider)" : "t.rider_id";
@@ -107,6 +127,15 @@ if ($rider_id === '') {
 
 if ($rider_id === '') {
     die('Error: Rider not properly authenticated. Please log in again.');
+}
+
+// A recent heartbeat means "online" to staff; stale sessions become offline automatically.
+$seenStmt = $conn->prepare("UPDATE rider_users SET last_seen_at = NOW() WHERE rider_id = ?");
+$seenStmt->bind_param('s', $rider_id);
+$seenStmt->execute();
+
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'heartbeat') {
+    respond_json(['ok' => true, 'rider_id' => $rider_id]);
 }
 
 /* ---------- AJAX endpoints (location ping + fetch) ---------- */
@@ -167,7 +196,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'delivery_info') {
             COALESCE(u.full_name, 'Unknown Customer') AS customer_name,
             COALESCE(u.contact_number, '-') AS contact_number,
             COALESCE(u.email, '-') AS email,
-            COALESCE(u.address, 'No address provided') AS address
+            COALESCE(NULLIF(t.delivery_address,''),u.address, 'No address provided') AS address
             FROM transactions t
             LEFT JOIN users u ON t.user_id = u.user_id
             WHERE t.transaction_id = ? AND (t.rider_id = ? OR t.assigned_rider = ?) LIMIT 1");
@@ -177,7 +206,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'delivery_info') {
             COALESCE(u.full_name, 'Unknown Customer') AS customer_name,
             COALESCE(u.contact_number, '-') AS contact_number,
             COALESCE(u.email, '-') AS email,
-            COALESCE(u.address, 'No address provided') AS address
+            COALESCE(NULLIF(t.delivery_address,''),u.address, 'No address provided') AS address
             FROM transactions t
             LEFT JOIN users u ON t.user_id = u.user_id
             WHERE t.transaction_id = ? AND t.rider_id = ? LIMIT 1");
@@ -204,19 +233,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'delivery_info') {
         $messages[] = $msg;
     }
 
-    $feedback = null;
-    $fbStmt = $conn->prepare("SELECT rating, feedback_message, created_at FROM feedback_ratings WHERE transaction_id = ? ORDER BY updated_at DESC LIMIT 1");
-    $fbStmt->bind_param('s', $transaction_id);
-    $fbStmt->execute();
-    $fbRes = $fbStmt->get_result();
-    if ($fb = $fbRes->fetch_assoc()) {
-        $feedback = $fb;
-    }
-
     respond_json([
         'delivery' => $delivery,
-        'messages' => $messages,
-        'feedback' => $feedback
+        'messages' => $messages
     ]);
 }
 
@@ -274,6 +293,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = sanitize($_POST['action']);
     $transaction_id = sanitize($_POST['transaction_id'] ?? '');
 
+    if (in_array($action, ['accept_assignment', 'reject_assignment'], true) && $transaction_id !== '') {
+        if ($action === 'accept_assignment') {
+            $accepted = $conn->prepare("UPDATE transactions SET rider_assignment_status='accepted', rider_assignment_responded_at=NOW()
+                WHERE transaction_id=? AND status='approved' AND rider_id=? AND rider_assignment_status='pending'");
+            $accepted->bind_param('ss', $transaction_id, $rider_id);
+            $accepted->execute();
+            if ($accepted->affected_rows > 0) {
+                $eventKey = "accepted:{$transaction_id}:{$rider_id}";
+                $title = 'Rider accepted the order';
+                $message = "Rider {$session_full_name} accepted order {$transaction_id} and is ready to proceed with the delivery.";
+                $staffAlert = $conn->prepare("INSERT IGNORE INTO staff_notifications (event_key,transaction_id,rider_id,notification_type,title,message) VALUES (?, ?, ?, 'assignment_accepted', ?, ?)");
+                $staffAlert->bind_param('sssss', $eventKey, $transaction_id, $rider_id, $title, $message);
+                $staffAlert->execute();
+            }
+            $_SESSION['rider_flash'] = $accepted->affected_rows > 0
+                ? "Assignment accepted: {$transaction_id}."
+                : 'This assignment is no longer awaiting your response.';
+        } else {
+            $clearAssigned = $transactions_has_assigned_rider ? ", assigned_rider=NULL" : '';
+            $rejected = $conn->prepare("UPDATE transactions SET rider_assignment_status='rejected', rider_assignment_responded_at=NOW(), rider_id=NULL{$clearAssigned}
+                WHERE transaction_id=? AND status='approved' AND rider_id=? AND rider_assignment_status='pending'");
+            $rejected->bind_param('ss', $transaction_id, $rider_id);
+            $rejected->execute();
+            if ($rejected->affected_rows > 0) {
+                $eventKey = "declined:{$transaction_id}:{$rider_id}";
+                $title = 'Rider declined an order';
+                $message = "Rider {$session_full_name} declined order {$transaction_id}. Please assign another available rider.";
+                $staffAlert = $conn->prepare("INSERT IGNORE INTO staff_notifications (event_key,transaction_id,rider_id,notification_type,title,message) VALUES (?, ?, ?, 'assignment_declined', ?, ?)");
+                $staffAlert->bind_param('sssss', $eventKey, $transaction_id, $rider_id, $title, $message);
+                $staffAlert->execute();
+            }
+            $_SESSION['rider_flash'] = $rejected->affected_rows > 0
+                ? "Assignment declined: {$transaction_id}. Staff can now select another rider."
+                : 'This assignment is no longer awaiting your response.';
+        }
+    }
+
     if ($action === 'report_delay' && $transaction_id !== '') {
         $delay_reasons = [
             'traffic' => 'Heavy traffic',
@@ -305,6 +361,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $messageStmt = $conn->prepare("INSERT INTO rider_messages (transaction_id, sender, recipient, message) VALUES (?, ?, ?, ?)");
             $messageStmt->bind_param('ssss', $transaction_id, $rider_id, $delayOrder['user_id'], $delay_message);
             $messageStmt->execute();
+            $delayEventKey = 'delay:' . $transaction_id . ':' . bin2hex(random_bytes(6));
+            $staffDelayTitle = 'Rider reported a delivery delay';
+            $staffDelayMessage = "Rider {$session_full_name} reported {$reason} for order {$transaction_id}." . ($delay_note !== '' ? " Note: {$delay_note}" : '');
+            $staffDelay = $conn->prepare("INSERT INTO staff_notifications (event_key,transaction_id,rider_id,notification_type,title,message) VALUES (?, ?, ?, 'delivery_delay', ?, ?)");
+            $staffDelay->bind_param('sssss', $delayEventKey, $transaction_id, $rider_id, $staffDelayTitle, $staffDelayMessage);
+            $staffDelay->execute();
             $_SESSION['rider_flash'] = 'Delay update sent to the customer.';
         } else {
             $_SESSION['rider_flash'] = 'Delay update was not sent. This delivery is no longer on the way.';
@@ -330,17 +392,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($transactions_has_assigned_rider) {
                 $stmt = $conn->prepare("UPDATE transactions SET delivery_status = ?
                     WHERE transaction_id = ? AND status = 'approved' AND (rider_id = ? OR assigned_rider = ?)
-                    AND {$expected_status_sql}");
+                    AND COALESCE(rider_assignment_status,'accepted')='accepted' AND {$expected_status_sql}");
                 $stmt->bind_param('ssss', $new_status, $transaction_id, $rider_id, $rider_id);
             } else {
                 $stmt = $conn->prepare("UPDATE transactions SET delivery_status = ?
                     WHERE transaction_id = ? AND status = 'approved' AND rider_id = ?
-                    AND {$expected_status_sql}");
+                    AND COALESCE(rider_assignment_status,'accepted')='accepted' AND {$expected_status_sql}");
                 $stmt->bind_param('sss', $new_status, $transaction_id, $rider_id);
             }
             if ($stmt->execute()) {
                 if ($stmt->affected_rows > 0) {
                     $_SESSION['rider_flash'] = $flash;
+                    $eventType = $action === 'complete' ? 'delivery_completed' : 'delivery_started';
+                    $eventKey = $eventType . ':' . $transaction_id . ':' . $rider_id;
+                    $staffTitle = $action === 'complete' ? 'Delivery completed' : 'Rider started the delivery';
+                    $staffMessage = $action === 'complete'
+                        ? "Rider {$session_full_name} marked order {$transaction_id} as delivered."
+                        : "Rider {$session_full_name} started order {$transaction_id} and is now on the way.";
+                    $staffStageAlert = $conn->prepare("INSERT IGNORE INTO staff_notifications (event_key,transaction_id,rider_id,notification_type,title,message) VALUES (?, ?, ?, ?, ?, ?)");
+                    $staffStageAlert->bind_param('ssssss', $eventKey, $transaction_id, $rider_id, $eventType, $staffTitle, $staffMessage);
+                    $staffStageAlert->execute();
                 } else {
                     $_SESSION['rider_flash'] = 'This delivery has already moved to another stage. The page has been refreshed.';
                 }
@@ -405,19 +476,20 @@ $sql = "SELECT
         t.transaction_id,
         t.amount,
         t.delivery_status,
+        t.rider_assignment_status,
         t.description,
         t.water_type,
         t.quantity,
         t.price_per_unit,
         t.payment_method,
         t.notes,
-        t.user_id,
+        t.user_id, t.delivery_latitude, t.delivery_longitude,
         t.created_at,
         t.updated_at,
         COALESCE(u.full_name, 'Unknown Customer') AS full_name,
         COALESCE(u.contact_number, '-') AS contact_number,
         COALESCE(u.email, '-') AS email,
-        COALESCE(u.address, 'No address provided') AS address
+        COALESCE(NULLIF(t.delivery_address,''),u.address, 'No address provided') AS address
     FROM transactions t
     LEFT JOIN users u ON t.user_id = u.user_id
     WHERE t.status = 'approved'
@@ -463,8 +535,11 @@ while ($row = $res->fetch_assoc()) {
         'phone' => $row['contact_number'],
         'email' => $row['email'],
         'address' => $row['address'],
+        'delivery_latitude' => $row['delivery_latitude'] ?? null,
+        'delivery_longitude' => $row['delivery_longitude'] ?? null,
         'amount' => (float)$row['amount'],
         'status' => $status,
+        'assignment_status' => strtolower((string)($row['rider_assignment_status'] ?? 'accepted')),
         'created_at' => $row['created_at'],
         'updated_at' => $row['updated_at'],
         'description' => $row['description'],
@@ -510,7 +585,7 @@ $display_name = $_SESSION['rider_auth_full_name'] ?? ($_SESSION['full_name'] ?? 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" rel="stylesheet">
+
 <style>
 :root{
   --ink:#16202b;
@@ -710,7 +785,7 @@ body{
 .drawer-head .drawer-sub{font-size:12.5px; color:var(--steel); margin-top:2px;}
 .drawer-close{background:none; border:none; font-size:18px; color:var(--steel); cursor:pointer; padding:4px;}
 
-#trackMap{height:230px; width:100%; background:#e2e8f0;}
+#trackMap{height:clamp(300px,48vh,480px); width:100%; background:#e2e8f0;}
 .map-toggle-wrap{padding:0 18px 10px;}
 .map-toggle{width:100%; display:flex; align-items:center; justify-content:space-between; border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:var(--card); color:var(--ink); font-size:13px; font-weight:700; cursor:pointer;}
 .map-toggle i{color:var(--teal);}
@@ -729,11 +804,11 @@ body{
 .detail-group .value{font-size:13px; color:var(--ink); line-height:1.4;}
 .detail-group .value::before{content:''; display:block; height:0;}
 
-.message-panel, .feedback-panel{
+.message-panel{
   background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px;
   margin-bottom:14px;
 }
-.message-head, .feedback-head{
+.message-head{
   font-size:13px; font-weight:700; margin-bottom:10px; color:var(--ink);
 }
 .message-head{margin-bottom:0;}
@@ -753,8 +828,6 @@ body{
 .message-input-row input{flex:1; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:13px;}
 .message-input-row input:focus{outline:none; border-color:var(--teal);}
 
-.feedback-content{font-size:13px; color:var(--ink); line-height:1.5; min-height:60px;}.feedback-rating{display:flex;align-items:center;gap:4px;margin-bottom:7px;font-size:20px;color:#d7dce2}.feedback-rating .filled{color:var(--amber)}.feedback-rating .rating-value{margin-left:6px;color:var(--ink);font:700 12px 'Inter',sans-serif}.feedback-empty{color:var(--steel);font-size:12px}
-
 .route-line.expanded{padding:18px 20px; margin:0;}
 .route-line.expanded .step{display:flex; flex-direction:column; align-items:center; flex:1; position:relative;}
 .route-line.expanded .step .lbl{font-size:11px; margin-top:6px; color:var(--steel); text-align:center; font-weight:600;}
@@ -773,7 +846,7 @@ body{
 <link href="../css/rider-theme.css?v=20260909-logo" rel="stylesheet">
 <link href="../css/animations.css" rel="stylesheet">
 <script src="../js/ui-protection.js" defer></script>
-</head>
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.33.0/mapbox-gl.css"><link rel="stylesheet" href="../css/rider-map-marker.css?v=3"></head>
 <body id="home">
 
 <div class="topbar">
@@ -879,14 +952,27 @@ body{
         </div>
       </div>
 
+      <?php if (!in_array(trim((string)$d['address']), ['Delivery to selected map pin','Delivery to the selected map pin'], true)): ?>
       <div class="card-address"><i class="fas fa-map-marker-alt"></i><span><?php echo htmlspecialchars($d['address']); ?></span></div>
+      <?php endif; ?>
 
       <div class="card-actions">
         <button class="btn btn-track" onclick='openTracking(<?php echo json_encode($d); ?>)'>
           <i class="fas fa-location-arrow"></i> Details
         </button>
 
-        <?php if ($status === 'assigned'): ?>
+        <?php if ($d['assignment_status'] === 'pending'): ?>
+          <form method="POST" style="display:inline;">
+            <input type="hidden" name="action" value="accept_assignment">
+            <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($d['id']); ?>">
+            <button class="btn btn-secondary" type="submit"><i class="fas fa-check"></i> Accept Order</button>
+          </form>
+          <form method="POST" style="display:inline;" onsubmit="return confirm('Decline this delivery assignment?');">
+            <input type="hidden" name="action" value="reject_assignment">
+            <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($d['id']); ?>">
+            <button class="btn btn-ghost" type="submit"><i class="fas fa-xmark"></i> Decline</button>
+          </form>
+        <?php elseif ($status === 'assigned'): ?>
           <form method="POST" style="display:inline;">
             <input type="hidden" name="action" value="start_delivery">
             <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($d['id']); ?>">
@@ -978,7 +1064,7 @@ body{
       </button>
     </div>
     <div class="map-body" id="mapBody" hidden>
-      <div id="trackMap"></div>
+      <div id="trackMap" data-mapbox-token="<?=htmlspecialchars($mapsConfig['mapbox_token'],ENT_QUOTES,'UTF-8')?>" data-station-origin="<?=htmlspecialchars($mapsConfig['station_origin'],ENT_QUOTES,'UTF-8')?>" data-station-exact="<?=$mapsConfig['station_exact']?'true':'false'?>"></div><div style="padding:10px 14px"><p id="delivery-route-status" role="status" style="font-size:12px;line-height:1.5;margin:0 0 9px"></p><button type="button" id="delivery-navigate" class="btn btn-track" hidden>Show route on this map</button></div>
       <button class="btn btn-track map-gps-control" id="gpsToggleBtn" type="button" onclick="toggleGPS()"><i class="fas fa-satellite-dish"></i> Share GPS</button>
     </div>
 
@@ -1009,10 +1095,6 @@ body{
           <div class="value" id="detailPhone">–</div>
         </div>
         <div class="detail-group">
-          <div class="label">Email</div>
-          <div class="value" id="detailEmail">–</div>
-        </div>
-        <div class="detail-group">
           <div class="label">Payment Method</div>
           <div class="value" id="detailPaymentMethod">–</div>
         </div>
@@ -1037,17 +1119,12 @@ body{
         </div>
       </div>
 
-      <div class="feedback-panel">
-        <div class="feedback-head">Customer Feedback</div>
-        <div class="feedback-content" id="feedbackContent"><div class="feedback-rating" aria-label="No customer rating yet"><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i></div><div class="feedback-empty">Awaiting the customer's rating.</div></div>
-      </div>
-
       <div class="card-actions" id="drawerActions"></div>
     </div>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.33.0/mapbox-gl.js"></script><script src="../js/rider-delivery-route.js?v=7"></script>
 <script>
 /* ---------- rider assignment notifications ---------- */
 const initialAssignmentNotifications = <?php echo json_encode($notifications, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
@@ -1139,6 +1216,10 @@ async function pollAssignmentNotifications(){
 syncNotificationButton();
 if ('Notification' in window && Notification.permission === 'granted') initialAssignmentNotifications.forEach(showAssignmentNotification);
 setInterval(pollAssignmentNotifications, 10000);
+setInterval(() => fetch('?ajax=heartbeat', {cache:'no-store'}).catch(() => {}), 30000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) fetch('?ajax=heartbeat', {cache:'no-store'}).catch(() => {});
+});
 
 async function copyRiderId(button){
   const value = document.getElementById('riderIdValue')?.textContent.trim();
@@ -1203,7 +1284,7 @@ function setMapVisible(visible){
   if (!body || !button) return;
   body.hidden = !visible;
   button.setAttribute('aria-expanded', visible ? 'true' : 'false');
-  if (visible && map) setTimeout(() => map.invalidateSize(), 50);
+  if (visible && map) setTimeout(() => { map.resize(); window.HydroMISDeliveryRoute.fit(); }, 50);
 }
 
 function toggleMap(){
@@ -1266,7 +1347,6 @@ function fillDeliveryDetails(delivery){
   document.getElementById('detailItems').textContent = delivery.item_summary || 'No item details';
   document.getElementById('detailCustomer').textContent = delivery.customer;
   document.getElementById('detailPhone').textContent = delivery.phone || '-';
-  document.getElementById('detailEmail').textContent = delivery.email || '-';
   document.getElementById('detailPaymentMethod').textContent = delivery.payment_label || 'Cash';
   const notes = document.getElementById('detailNotes');
   notes.textContent = String(delivery.notes || '').trim() || 'No special instructions.';
@@ -1288,17 +1368,6 @@ function fillMessages(messages){
   }).join('');
 }
 
-function fillFeedback(feedback){
-  const box = document.getElementById('feedbackContent');
-  if (!feedback) {
-    box.innerHTML = `<div class="feedback-rating" aria-label="No customer rating yet">${'<i class="far fa-star"></i>'.repeat(5)}</div><div class="feedback-empty">Awaiting the customer's rating.</div>`;
-    return;
-  }
-  const rating = Math.max(1, Math.min(5, parseInt(feedback.rating, 10) || 0));
-  const stars = Array.from({length: 5}, (_, index) => `<i class="fa${index < rating ? 's filled' : 'r'} fa-star"></i>`).join('');
-  box.innerHTML = `<div class="feedback-rating" aria-label="Customer rated ${rating} out of 5 stars">${stars}<span class="rating-value">${rating}/5</span></div><div>${escapeHtml(feedback.feedback_message || 'No written feedback provided.')}</div><div class="meta" style="margin-top:8px;">${formatDate(feedback.created_at)}</div>`;
-}
-
 function escapeHtml(str){
   return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);
 }
@@ -1309,28 +1378,72 @@ function formatDate(value){
   return date.toLocaleString();
 }
 
-function initMap(delivery){
-  const el = document.getElementById('trackMap');
-  if (map) map.remove();
-  el.innerHTML = '';
-  map = L.map(el, { zoomControl: false }).setView([10.3157, 123.8854], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 19
-  }).addTo(map);
-  marker = L.marker([10.3157, 123.8854]).addTo(map).bindPopup('Waiting for GPS signal…');
+let mapRequest=0;
+let latestRiderPosition=null;
+let lastRouteRiderPoint=null;
+async function initMap(delivery){
+  const request=++mapRequest;
+  const el=document.getElementById('trackMap');
+  window.HydroMISDeliveryRoute.clear();
+  document.getElementById('delivery-route-status').textContent='';
+  document.getElementById('delivery-navigate').hidden=true;
+  if(map)map.remove();
+  map=null;marker=null;latestRiderPosition=null;lastRouteRiderPoint=null;
+  el.hidden=false;
+  el.textContent='Loading delivery map...';
+  try {
+    if(typeof mapboxgl==='undefined'||!el.dataset.mapboxToken.startsWith('pk.'))throw new Error('Mapbox unavailable');
+    if(request!==mapRequest || currentDelivery?.id!==delivery.id)return;
+    el.replaceChildren();
+    const lat=Number(delivery.delivery_latitude),lng=Number(delivery.delivery_longitude);
+    const hasPin=delivery.delivery_latitude!=null && delivery.delivery_longitude!=null && Number.isFinite(lat) && Number.isFinite(lng);
+    map=new mapboxgl.Map({container:el,accessToken:el.dataset.mapboxToken,style:'mapbox://styles/mapbox/satellite-streets-v12',center:hasPin?[lng,lat]:[123.9622,9.9509],zoom:hasPin?16:12});
+    map.addControl(new mapboxgl.NavigationControl(),'top-right');
+    map.addControl(new mapboxgl.FullscreenControl(),'top-right');
+    if(hasPin){
+      const customerPin=document.createElement('div');
+      customerPin.className='customer-delivery-marker';
+      customerPin.innerHTML='<span class="customer-delivery-badge"><img src="../imagess/customer-gallon-delivery-marker.png" alt="Customer water gallon delivery" width="60" height="60"></span>';
+      new mapboxgl.Marker({element:customerPin,anchor:'bottom'}).setLngLat([lng,lat]).setPopup(new mapboxgl.Popup({offset:65}).setText('Customer delivery location')).addTo(map);
+      document.getElementById('delivery-route-status').textContent='Waiting for the rider GPS location to build the route…';
+    } else document.getElementById('delivery-route-status').textContent='This order has no customer pin. A road route cannot be displayed.';
+    if(latestRiderPosition)updateRiderMap(...latestRiderPosition);
+  } catch (_) {
+    if(request!==mapRequest)return;
+    el.textContent='The delivery map could not load. GPS sharing remains available.';
+  }
+}
+function updateRiderMap(lat,lng,title){
+  if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
+  latestRiderPosition=[lat,lng,title];
+  if(!map)return;
+  if(marker)marker.setLngLat([lng,lat]);
+  else {
+    const riderPin=document.createElement('div');
+    riderPin.className='customer-delivery-marker station-location-marker';
+    riderPin.innerHTML='<span class="customer-delivery-badge"><img src="../imagess/water-delivery-rider-marker.png" alt="Rider live location" width="60" height="60"></span>';
+    marker=new mapboxgl.Marker({element:riderPin,anchor:'bottom'}).setLngLat([lng,lat]).setPopup(new mapboxgl.Popup({offset:65}).setText(title)).addTo(map);
+  }
+  const customerLat=Number(currentDelivery?.delivery_latitude),customerLng=Number(currentDelivery?.delivery_longitude);
+  if(Number.isFinite(customerLat)&&Number.isFinite(customerLng)){
+    const moved=!lastRouteRiderPoint || Math.hypot(lat-lastRouteRiderPoint[0],lng-lastRouteRiderPoint[1])>0.0009;
+    if(moved){
+      lastRouteRiderPoint=[lat,lng];
+      window.HydroMISDeliveryRoute.show(map,`${lat},${lng}`,{lat:customerLat,lng:customerLng},true);
+    }
+  }
+  if(currentDelivery?.delivery_latitude==null || currentDelivery?.delivery_longitude==null)map.jumpTo({center:[lng,lat],zoom:15});
 }
 
 function pollLocation(transactionId){
   fetch(`?ajax=get_location&transaction_id=${encodeURIComponent(transactionId)}`)
     .then(r => r.json())
     .then(loc => {
-      if (!loc || !map) return;
+      if (!loc || currentDelivery?.id!==transactionId) return;
       const lat = parseFloat(loc.rider_latitude);
       const lng = parseFloat(loc.rider_longitude);
       if (isNaN(lat) || isNaN(lng)) return;
-      map.setView([lat, lng], 15);
-      marker.setLatLng([lat, lng]).bindPopup('Rider\'s last known position').openPopup();
+      updateRiderMap(lat,lng,"Rider's last known position");
     })
     .catch(() => {});
 }
@@ -1341,7 +1454,7 @@ function loadDeliveryInfo(transactionId){
     .then(r => r.json())
     .then(data => {
       if (data.error) {
-        document.getElementById('feedbackContent').textContent = data.error;
+        console.warn(data.error);
         return;
       }
       const delivery = data.delivery;
@@ -1368,14 +1481,11 @@ function loadDeliveryInfo(transactionId){
       }
       fillDeliveryDetails(currentDelivery);
       fillMessages(data.messages || []);
-      fillFeedback(data.feedback || null);
       if (previousStatus && previousStatus !== 'delivered' && currentDelivery.status === 'delivered') {
         setTimeout(() => window.location.reload(), 700);
       }
     })
-    .catch(() => {
-      document.getElementById('feedbackContent').textContent = 'Unable to load delivery details.';
-    });
+    .catch(() => console.warn('Unable to load delivery details.'));
 }
 
 function toggleGPS(){
@@ -1405,10 +1515,7 @@ function toggleGPS(){
         heading: pos.coords.heading
       })
     }).catch(() => {});
-    if (map){
-      map.setView([pos.coords.latitude, pos.coords.longitude], 15);
-      marker.setLatLng([pos.coords.latitude, pos.coords.longitude]).bindPopup('You are here');
-    }
+    updateRiderMap(pos.coords.latitude,pos.coords.longitude,'You are here');
   }, () => { alert('Could not get your location. Check location permissions.'); }, { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 });
 
   btn.innerHTML = '<i class="fas fa-stop"></i> Stop Sharing';

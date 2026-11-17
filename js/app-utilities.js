@@ -5,14 +5,14 @@
 
 // ===== API Service =====
 const APIService = {
-    baseUrl: '/api/delivery_tracker.php',
+    baseUrl: new URL('../api/delivery_tracker.php', document.currentScript.src).href,
     
     /**
      * Make API request to delivery tracker
      */
     async request(method, request, data = null) {
         try {
-            const url = new URL(window.location.origin + this.baseUrl);
+            const url = new URL(this.baseUrl);
             url.searchParams.append('request', request);
             
             const options = {
@@ -24,6 +24,8 @@ const APIService = {
             
             if (data && (method === 'POST' || method === 'PUT')) {
                 options.body = JSON.stringify(data);
+            }
+            if (data && method === 'GET') {
                 for (let key in data) {
                     url.searchParams.append(key, data[key]);
                 }

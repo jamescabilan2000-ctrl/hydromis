@@ -21,6 +21,10 @@ function ensure_inventory_schema($conn): void {
     ];
     $seed = $conn->prepare("INSERT IGNORE INTO inventory_items (item_code,item_name,category,quantity,minimum_stock,unit_price) VALUES (?,?,'Container',0,10,?)");
     if ($seed) foreach ($defaults as $row) { $seed->bind_param('ssd', $row[0], $row[1], $row[2]); $seed->execute(); }
+    // Preserve an existing manually created New Container item and its stock.
+    $conn->query("INSERT IGNORE INTO inventory_items (item_code,item_name,category,quantity,minimum_stock,unit_price)
+        SELECT 'CNT-NEW','New Container','Container',0,10,0
+        WHERE NOT EXISTS (SELECT 1 FROM inventory_items WHERE category='Container' AND LOWER(TRIM(item_name))='new container')");
 }
 
 function inventory_code_for_container(string $containerSize): ?string {
@@ -39,6 +43,28 @@ function add_user_notification($conn, string $userId, ?string $transactionId, st
 }
 
 function release_order_inventory($conn, array $order, string $actor, string $reason): bool {
+    // Cart reservations cover several inventory rows. Restore the exact recorded
+    // quantities, rather than applying the parent order quantity to one gallon.
+    if (str_starts_with((string)($order['description'] ?? ''), 'Cart order:')) {
+        if (empty($order['inventory_reserved'])) return true;
+        $reservationReason='Reserved for cart order '.$order['transaction_id'];
+        $stmt=$conn->prepare("SELECT item_id,SUM(-quantity_change) AS reserved FROM inventory_movements WHERE reason=? AND movement_type='order' GROUP BY item_id ORDER BY item_id");
+        $stmt->bind_param('s',$reservationReason); $stmt->execute(); $rows=$stmt->get_result();
+        if (!$rows || !$rows->num_rows) return false;
+        while ($reservation=$rows->fetch_assoc()) {
+            $itemId=(int)$reservation['item_id']; $qty=(int)$reservation['reserved'];
+            $result=$conn->query("SELECT quantity FROM inventory_items WHERE id=$itemId FOR UPDATE");
+            $stock=$result?$result->fetch_assoc():null; if (!$stock) return false;
+            $before=(int)$stock['quantity']; $after=$before+$qty;
+            $safeActor=$conn->real_escape_string($actor);
+            if (!$conn->query("UPDATE inventory_items SET quantity=$after,updated_by='$safeActor' WHERE id=$itemId")) return false;
+            $log=$conn->prepare("INSERT INTO inventory_movements (item_id,movement_type,quantity_change,previous_quantity,new_quantity,reason,staff_id) VALUES (?,'release',?,?,?,?,?)");
+            $log->bind_param('iiiiss',$itemId,$qty,$before,$after,$reason,$actor);
+            if (!$log->execute()) return false;
+        }
+        $id=$conn->real_escape_string((string)$order['transaction_id']);
+        return (bool)$conn->query("UPDATE transactions SET inventory_reserved=0 WHERE transaction_id='$id'");
+    }
     $qty=(int)$order['quantity']; if($qty<1)return true;
     if(!empty($order['new_container_inventory_reserved'])&&!empty($order['new_container_inventory_item_id'])){
         $newId=(int)$order['new_container_inventory_item_id'];$newQ=$conn->query("SELECT quantity FROM inventory_items WHERE id=$newId FOR UPDATE");$newItem=$newQ?$newQ->fetch_assoc():null;if(!$newItem)return false;

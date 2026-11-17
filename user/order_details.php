@@ -1,6 +1,7 @@
 <?php
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 require_once '../config/customer_order_access.php';
+require_once '../config/order_items.php';
 if (!isset($transaction)) { header('Location: track_order.php'); exit; }
 require_customer_order_access((string)$transaction['user_id']);
 ?>
@@ -64,6 +65,7 @@ require_customer_order_access((string)$transaction['user_id']);
                     </div>
                 </div>
 
+                <?php render_order_items($conn,$transaction); ?>
                 <div class="product-breakdown">
                     <div class="breakdown-row">
                         <span class="breakdown-label">Quantity</span>

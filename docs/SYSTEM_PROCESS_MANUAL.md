@@ -15,7 +15,7 @@ flowchart TD
     E --> G
     G --> H{Registered customer?}
     H -->|No| I[Create account]
-    I --> J[Administrator approves account]
+    I --> J[Account is active immediately]
     J --> F
     H -->|Yes| F
     F --> K[Existing purchase page]
@@ -34,7 +34,7 @@ flowchart TD
 3. Select gallon size, quantity, and delivery or station pickup.
 4. Select **Create account to continue**.
 5. Register with name, address, and mobile number.
-6. The administrator approves the account.
+6. The account is active immediately; administrator approval is not required.
 7. The customer logs in by mobile number or QR code.
 8. HydroMIS opens the existing purchase flow with the selected size, quantity, container status, and fulfillment option already prepared.
 9. The customer reviews the order, completes checkout/payment, and tracks the delivery.
@@ -80,10 +80,10 @@ flowchart LR
 | `refill_order.php` | size, quantity, `existing` container, delivery/pickup | `user/purchase.php` → review → checkout |
 | `new_gallon_order.php` | size, quantity, `new` container, delivery/pickup | `user/purchase.php` → review → checkout |
 
-## 5. Recommended future cart flow
+## 5. Functional multi-product cart
 
-For a full multi-item **Add to Cart** experience, HydroMIS should add a cart and order-items structure first. The recommended flow is:
+Both gallon setup pages and the homepage now add products to the same persistent cart. Customers review mixed products in `user/cart.php`, then register or log in if needed and return to the cart before checkout. The flow is:
 
 `Choose products → Add to cart → Continue shopping → Review cart → Select delivery → Payment → One checkout → One delivery tracking record`
 
-Until that database change is implemented, keep the current single active-order flow. It avoids incorrect totals, lost items, and conflicting delivery requests.
+One active order per customer remains the rule; each order may contain multiple products. See [Cart workflow](CART_WORKFLOW.md) for pricing, stock reservations, payments, cancellation, and verification details.

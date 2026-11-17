@@ -12,6 +12,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit('Invalid logout request. Please go back and try again.');
     }
 
+    // Preserve the authenticated rider identity before the session is cleared.
+    $logoutRiderId = (string)($_SESSION['rider_auth_id'] ?? (
+        (($_SESSION['role'] ?? '') === 'rider') ? ($_SESSION['rider_id'] ?? '') : ''
+    ));
+
     define('HYDROMIS_DISABLE_AUTO_ACTIVITY', true);
     require_once __DIR__ . '/config/database.php';
     log_system_activity($conn, 'logout', 'User signed out of HydroMIS.');
@@ -19,6 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $logoutRole = (string)($_POST['logout_role'] ?? $_SESSION['role'] ?? '');
     if (!in_array($logoutRole, ['admin', 'staff', 'rider'], true)) $logoutRole = '';
     if ($logoutRole === '' && !empty($_SESSION['rider_auth_id'])) $logoutRole = 'rider';
+    if ($logoutRole === 'rider' && $logoutRiderId !== '') {
+        $offlineStmt = $conn->prepare("UPDATE rider_users SET last_seen_at = NULL WHERE rider_id = ?");
+        if ($offlineStmt) {
+            $offlineStmt->bind_param('s', $logoutRiderId);
+            $offlineStmt->execute();
+        }
+    }
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
         $params = session_get_cookie_params();

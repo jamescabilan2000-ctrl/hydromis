@@ -7,3 +7,21 @@
 }
 /* Keep the animated HydroMIS mark free of any square/tile container. */
 .staff-sidebar-brand>b{border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;overflow:visible!important}
+
+/* Shared desktop alignment: keep account controls grouped at the bottom. */
+@media(min-width:769px){
+    .staff-sidebar{height:100vh;min-height:100vh;position:sticky;top:0;overflow-y:auto}
+    .staff-sidebar-nav{flex:0 0 auto;width:100%}
+    .staff-sidebar-nav a{box-sizing:border-box;width:100%;min-height:48px}
+    .staff-sidebar-nav a>i:first-child{flex:0 0 20px;display:grid;place-items:center}
+    .staff-sidebar-nav a.active>i:first-child{flex-basis:40px;width:40px;margin:-7px -10px}
+    .staff-theme-toggle{margin-top:auto!important;flex:0 0 auto;min-height:46px;box-sizing:border-box}
+    .staff-sidebar-footer{margin-top:14px!important;padding-top:16px!important;flex:0 0 auto}
+    .staff-sidebar-profile{box-sizing:border-box;width:100%;min-height:72px;margin:0 0 12px!important}
+    .staff-sidebar-logout{box-sizing:border-box;display:flex!important;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px}
+    .staff-sidebar-logout i{flex:0 0 auto}
+}
+
+@media(max-width:768px){
+    .staff-theme-toggle{margin-top:12px!important}
+}

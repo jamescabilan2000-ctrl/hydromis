@@ -37,10 +37,10 @@ if (isset($payments) && $payments) {
 }
 
 $total_payments = count($payments_data);
-$pending_payments = count(array_filter($payments_data, fn($p) => in_array(strtolower($p['status'] ?? ''), ['pending', 'processing'], true)));
+$pending_payments = count(array_filter($payments_data, fn($p) => ($p['fulfillment_method'] ?? 'delivery') !== 'pickup' && in_array(strtolower($p['status'] ?? ''), ['pending', 'processing'], true)));
 $verified_payments = count(array_filter($payments_data, fn($p) => strtolower($p['status'] ?? '') === 'paid'));
 $total_collected = array_reduce($payments_data, fn($carry, $p) => $carry + (strtolower($p['status'] ?? '') === 'paid' ? (float)($p['amount'] ?? 0) : 0), 0);
-$pending_amount = array_reduce($payments_data, fn($carry, $p) => $carry + (in_array(strtolower($p['status'] ?? ''), ['pending', 'processing'], true) ? (float)($p['amount'] ?? 0) : 0), 0);
+$pending_amount = array_reduce($payments_data, fn($carry, $p) => $carry + (($p['fulfillment_method'] ?? 'delivery') !== 'pickup' && in_array(strtolower($p['status'] ?? ''), ['pending', 'processing'], true) ? (float)($p['amount'] ?? 0) : 0), 0);
 $total_amount = $total_collected;
 
 $display_payments = array_values(array_filter($payments_data, function ($payment) use ($status_filter, $method_filter, $payment_search) {

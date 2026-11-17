@@ -1,0 +1,7 @@
+.eta-panel{padding:0 18px 18px;background:#fff;border-bottom:1px solid #dce9ef}
+.eta-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;max-width:850px}
+.eta-stat{display:flex;align-items:center;gap:12px;padding:15px 18px;border:1px solid #dceaf2;border-radius:13px;background:#f6fbfe}
+.eta-stat>i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;color:#087fa9;background:#e2f3fa;font-size:15px;flex-shrink:0}
+.eta-stat small{display:block;font-size:11px;font-weight:600;color:#6b8193;margin-bottom:4px}.eta-stat strong{font-size:20px;line-height:1.3;color:#123c56;font-variant-numeric:tabular-nums}
+#eta-note{font-size:11px;line-height:1.6;color:#70879a;margin:9px 0 0;max-width:850px}
+@media(max-width:600px){.eta-panel{padding:0 14px 14px}.eta-grid{gap:7px}.eta-stat{padding:11px 8px;display:block}.eta-stat>i{width:27px;height:27px;margin-bottom:8px;font-size:12px}.eta-stat small{font-size:10px}.eta-stat strong{font-size:16px}}

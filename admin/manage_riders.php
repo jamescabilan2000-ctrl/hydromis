@@ -207,7 +207,7 @@ if (!$riders) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="../css/admin-sidebar-hover.css" rel="stylesheet">
+    <link href="../css/admin-sidebar-hover.css?v=20261111f" rel="stylesheet">
     <link href="../css/animations.css" rel="stylesheet">
     <style>
 :root {
@@ -657,7 +657,7 @@ html, body {
     </style>
     <script src="../js/ui-protection.js" defer></script>
     <link rel="stylesheet" href="../css/admin-theme.css">
-    <script src="../js/admin-theme.js"></script>
+    <script src="../js/admin-theme.js?v=20261111e"></script>
 </head>
 <body>
 <div class="shell">

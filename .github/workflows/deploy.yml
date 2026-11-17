@@ -1,9 +1,7 @@
 name: Deploy HydroMIS to FTP
 
 on:
-  push:
-    branches:
-      - main
+  # Automatic publishing paused while revisions are developed in XAMPP.
   workflow_dispatch:
 
 concurrency:
@@ -30,6 +28,7 @@ jobs:
             --exclude='.git/' \
             --exclude='.github/' \
             --exclude='.env*' \
+            --exclude='config/database.xampp.php' \
             --exclude='uploads/' \
             --exclude='qrcodes/*.png' \
             --exclude='data/' \
@@ -61,6 +60,7 @@ jobs:
             **/.git*/**
             **/.github/**
             **/.env*
+            **/config/database.xampp.php
             **/uploads/**
             **/qrcodes/*.png
             **/data/**

@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $enc_contact = $conn->real_escape_string(encrypt_sensitive($contact_number));
         $contact_lookup = sensitive_lookup($contact_number);
         $sql = "INSERT INTO users (user_id, full_name, address, contact_number, contact_lookup, status) 
-                VALUES ('$user_id', '$enc_name', '$enc_address', '$enc_contact', '$contact_lookup', 'pending')";
+                VALUES ('$user_id', '$enc_name', '$enc_address', '$enc_contact', '$contact_lookup', 'approved')";
         
         if ($conn->query($sql) === TRUE) {
             // Generate QR code
@@ -398,7 +398,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
 
             <p style="color: #666; margin-top: 30px; font-size: 12px;">
-                <i class="fas fa-info-circle"></i> Your account is pending approval by the admin. Please check back soon!
+                <i class="fas fa-info-circle"></i> Your account is ready. You can log in and order water now.
             </p>
         </div>
 

@@ -14,6 +14,8 @@ if ($db_initialized) {
     $check_table = $conn->query("SHOW TABLES LIKE 'users'");
     $db_initialized = $check_table && $check_table->num_rows > 0;
 }
+require_once __DIR__.'/config/gallon_availability.php';
+$gallonStock=gallon_inventory_snapshot($conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1479,20 +1481,28 @@ nav.nav-scrolled { padding:0; background:#072640; }
 .logo { gap:11px; }
 .logo-text { color:#f4fbff; font-size:1.28rem; letter-spacing:-.035em; }
 .logo-text span { color:#3bd4ed; }
-.nav-links { gap:2px; }
+.nav-links { gap:8px; }
 .nav-links a, .nav-links button { position:relative; padding:10px 16px; border-radius:7px; color:#bfd3e2!important; font-weight:650; }
 .nav-links .btn-ghost:hover, .nav-links .btn-ghost.active { color:#fff!important; background:transparent; }
 .nav-links .btn-ghost::after { content:''; position:absolute; left:16px; right:16px; bottom:5px; height:2px; border-radius:2px; background:#55d8ea; transform:scaleX(0); transition:transform .2s ease; }
 .nav-links .btn-ghost:hover::after, .nav-links .btn-ghost.active::after { transform:scaleX(1); }
-.login-link { color:#dbeaf3!important; }
-.login-link:hover { color:#fff!important; background:rgba(255,255,255,.06)!important; }
+.nav-links .login-link { margin-left:16px; padding:10px 20px!important; border:1px solid rgba(180,221,239,.35); border-radius:8px; color:#e6f3fb!important; font-weight:600; }
+.nav-links .login-link:hover { color:#fff!important; border-color:#55d8ea; background:rgba(255,255,255,.06)!important; }
+.nav-links a:focus-visible { outline:2px solid #55d8ea; outline-offset:4px; }
 .nav-cta { margin-left:8px; padding:11px 18px!important; border-radius:8px!important; color:#fff!important; background:#1687d5!important; box-shadow:none!important; }
 .nav-cta:hover { background:#0f75bd!important; transform:translateY(-1px); box-shadow:none!important; }
 @media(max-width:760px){
     nav{padding:0}.nav-inner,nav.nav-scrolled .nav-inner{height:62px;padding:0 17px;border:0;border-radius:0}.logo-icon{width:39px!important;height:39px!important}.logo-text{font-size:1.14rem}.mobile-burger{color:#e1f0f8}.mobile-drawer{background:#082b49}
 }
+@media(max-width:960px){.nav-links .login-link{display:none!important}}
 
 .hero-content.order-first { grid-template-columns:minmax(0,1fr) minmax(360px,440px); gap:54px; align-items:center; }
+.hero-actions .customer-sign-in { gap:10px; min-width:0; min-height:48px; padding:12px 22px; border:1px solid rgba(180,221,239,.4); border-radius:8px; background:rgba(255,255,255,.06); color:#eef8ff; font-size:.95rem; font-weight:600; }
+.hero-actions .customer-sign-in:hover { border-color:#55d8ea; background:rgba(255,255,255,.12); }
+.hero-actions .customer-sign-in:focus-visible { outline:2px solid #55d8ea; outline-offset:4px; }
+.hero-actions .customer-register { display:inline-flex; gap:10px; min-height:48px; padding:12px 22px; border:1px solid #46cbe2; border-radius:8px; background:#dff8ff; color:#073b56; font-size:.95rem; font-weight:700; }
+.hero-actions .customer-register:hover { background:#fff; border-color:#fff; }
+.hero-actions .customer-register:focus-visible { outline:2px solid #55d8ea; outline-offset:4px; }
 .order-first .hero-title { max-width:620px; }
 .order-first .hero-desc { max-width:570px; }
 .quick-order {
@@ -1511,6 +1521,8 @@ nav.nav-scrolled { padding:0; background:#072640; }
 .quick-product { display:flex; align-items:center; gap:11px; padding:12px; border-radius:16px; background:rgba(255,255,255,.075); border:1px solid rgba(210,247,255,.1); transition:transform .2s ease,background .2s ease,border-color .2s ease; }
 .quick-product:hover { transform:translateY(-2px); background:rgba(255,255,255,.12); border-color:rgba(112,232,255,.37); }
 .product-icon { width:42px; height:42px; display:grid; place-items:center; border-radius:13px; flex:0 0 auto; color:#76eaff; background:linear-gradient(145deg,rgba(56,212,240,.27),rgba(67,119,244,.24)); font-size:1.05rem; }
+.product-icon.product-photo { overflow:hidden; background:#fff; padding:3px; }
+.product-photo img { display:block; width:100%; height:100%; object-fit:contain; }
 .product-copy { flex:1; min-width:0; }
 .product-copy strong { display:block; color:#fff; font-size:.86rem; }
 .product-copy span { display:block; margin-top:2px; color:#a9cadb; font-size:.71rem; }
@@ -1519,8 +1531,27 @@ nav.nav-scrolled { padding:0; background:#072640; }
 .cart-total { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; padding:14px 0 0; border-top:1px solid rgba(201,244,255,.13); }
 .cart-total small { display:block; color:#9bc3d6; font-size:.7rem; line-height:1.35; }
 .cart-total strong { display:block; color:#fff; font-size:.9rem; margin-top:2px; }
+.cart-total > div { min-width:0; }
+.quick-cart-items { list-style:none; padding:0; margin:13px 0 0; border:1px solid rgba(201,244,255,.12); border-radius:12px; background:rgba(2,28,45,.15); }
+.quick-cart-items[hidden] { display:none; }
+.quick-cart-items li { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 12px; color:#d6eaf3; font-size:.73rem; line-height:1.5; }
+.quick-cart-items li + li { border-top:1px solid rgba(201,244,255,.08); }
+.quick-cart-items .item-name { min-width:0; overflow-wrap:anywhere; }
+.quick-cart-items .item-quantity { flex-shrink:0; min-width:31px; padding:2px 7px; border-radius:6px; text-align:center; background:rgba(118,234,255,.11); color:#a5edfa; font-size:.69rem; font-weight:700; font-variant-numeric:tabular-nums; }
+.quick-cart-items .item-controls { display:flex; align-items:center; gap:5px; flex-shrink:0; }
+.cart-step { display:grid; place-items:center; width:30px; height:30px; padding:0; border:1px solid rgba(170,231,247,.22); border-radius:7px; background:rgba(255,255,255,.06); color:#d7f5ff; font-size:17px; cursor:pointer; }
+.cart-step:hover { background:rgba(118,234,255,.18); border-color:#76d9ed; }
+.cart-step:focus-visible,.cart-reset:focus-visible { outline:2px solid #76eaff; outline-offset:3px; }
+.cart-reset { display:block; margin:9px 0 0 auto; padding:5px 0 5px 10px; border:0; background:none; color:#b1cfdd; text-decoration:underline; text-underline-offset:3px; font:inherit; font-size:11px; font-weight:600; cursor:pointer; }
+.cart-reset:hover { color:#fff; }
+.cart-reset[hidden] { display:none; }
+.quick-order .cart-feedback { display:flex; align-items:center; gap:7px; margin:12px 0 0; padding:9px 11px; border-radius:9px; border:1px solid rgba(103,229,192,.18); background:rgba(36,179,141,.09); color:#a7e9d4; font-size:.7rem; line-height:1.5; }
+.quick-order .cart-feedback[hidden] { display:none; }
+.quick-order .cart-feedback.is-error { border-color:rgba(255,174,159,.3); background:rgba(230,97,80,.1); color:#ffd0c6; }
+.product-add[aria-disabled="true"] { opacity:.65; cursor:wait; transform:none; }
 .checkout-link { display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:12px; color:#063049; background:#e9fbff; text-decoration:none; font-size:.78rem; font-weight:800; white-space:nowrap; transition:transform .2s ease,box-shadow .2s ease; }
 .checkout-link:hover { transform:translateY(-2px); box-shadow:0 8px 18px rgba(0,0,0,.16); }
+.checkout-link[aria-disabled="true"] { opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
 .order-note { position:relative; z-index:1; display:flex; gap:7px; margin-top:13px; color:#a6c9da; font-size:.68rem; line-height:1.4; }
 .order-note i { color:#73e7f8; margin-top:2px; }
 @media(max-width:900px){.hero-content.order-first{grid-template-columns:1fr;gap:34px}.quick-order{max-width:520px}.hero-visual{display:block!important}}
@@ -1550,11 +1581,11 @@ nav.nav-scrolled { padding:0; background:#072640; }
 .returning-customer a { display:inline-flex; align-items:center; gap:7px; flex:0 0 auto; color:#137ebd; font-size:.78rem; font-weight:800; text-decoration:none; }.returning-customer a:hover { color:#075b91; }
 @media(max-width:600px){.gallon-choice-dialog{padding:27px 20px 21px;border-radius:20px}.gallon-choice-cards{grid-template-columns:1fr;gap:11px}.gallon-choice-card{padding:16px}.choice-icon{width:42px;height:42px;margin-bottom:11px}.choice-close{top:11px;right:11px}}
 </style>
-</head>
+<link rel="stylesheet" href="css/gallon-stock.css?v=1"><link rel="stylesheet" href="css/home-portals.css?v=1"><link rel="stylesheet" href="css/brand-motion.css?v=1"></head>
 <body>
 
     <!-- ─── NAV ─────────────────────────────── -->
-    <nav>
+    <nav aria-label="Main navigation">
         <div class="nav-inner">
             <a href="index.php" class="logo">
                 <div class="logo-icon"><img src="imagess/hydromis-logo-v2.png" alt="HydroMIS Logo" style="width: 100%; height: 100%; object-fit: contain;"></div>
@@ -1564,10 +1595,7 @@ nav.nav-scrolled { padding:0; background:#072640; }
             <div class="nav-links">
                 <a href="#home" class="btn-ghost active">Home</a>
                 <a href="#features"    class="btn-ghost">Features</a>
-                <a href="#how"         class="btn-ghost">How it works</a>
-                <a href="user/track_order.php?view=search" class="btn-ghost">Track Order</a>
-                <a href="login.php" class="login-link"><i class="fas fa-circle-user"></i> Login</a>
-                <a href="#gallon-choice" class="nav-cta js-gallon-choice">Get Started <i class="fas fa-arrow-right"></i></a>
+                <a href="#how"         class="btn-ghost">How It Works</a>
             </div>
 
             <button class="mobile-burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-drawer">
@@ -1588,13 +1616,10 @@ nav.nav-scrolled { padding:0; background:#072640; }
                     <i class="fas fa-xmark"></i>
                 </button>
             </div>
-            <div class="mobile-nav-label">Account</div>
-            <a href="login.php" class="mobile-nav-item"><i class="fas fa-circle-user"></i> Login</a>
             <div class="mobile-nav-label">Explore</div>
+            <a href="#home"                class="mobile-nav-item"><i class="fas fa-house"></i> Home</a>
             <a href="#features"            class="mobile-nav-item"><i class="fas fa-star"></i> Features</a>
-            <a href="#how"                 class="mobile-nav-item"><i class="fas fa-route"></i> How it works</a>
-            <a href="user/track_order.php?view=search" class="mobile-nav-item"><i class="fas fa-location-dot"></i> Track order</a>
-            <a href="#gallon-choice" class="mobile-nav-item js-gallon-choice"><i class="fas fa-bag-shopping"></i> Start an order</a>
+            <a href="#how"                 class="mobile-nav-item"><i class="fas fa-route"></i> How It Works</a>
         </aside>
     </div>
 
@@ -1606,13 +1631,13 @@ nav.nav-scrolled { padding:0; background:#072640; }
             <h2 id="gallon-choice-title">Do you already have an empty gallon?</h2>
             <p>Choose the setup that matches your first delivery. You can select the gallon size, delivery schedule, and payment method in the secure order flow.</p>
             <div class="gallon-choice-cards">
-                <a class="gallon-choice-card" href="create_account.php?order_type=refill&amp;container=existing&amp;container_size=5gal-round&amp;quantity=1&amp;fulfillment=delivery">
+                <a class="gallon-choice-card" href="refill_order.php" data-setup-href="refill_order.php">
                     <div class="choice-icon"><i class="fas fa-recycle"></i></div>
                     <h3>Yes, I have a gallon</h3>
                     <p>Choose a refill and return your empty container during delivery or pickup.</p>
                     <span class="choice-link">Continue with a refill <i class="fas fa-arrow-right"></i></span>
                 </a>
-                <a class="gallon-choice-card" href="create_account.php?order_type=first_order&amp;container=new&amp;container_size=5gal-round&amp;quantity=1&amp;fulfillment=delivery">
+                <a class="gallon-choice-card" href="new_gallon_order.php" data-setup-href="new_gallon_order.php">
                     <div class="choice-icon new"><i class="fas fa-bottle-water"></i></div>
                     <h3>No, I need a new gallon</h3>
                     <p>Start with a new container and add your first purified-water refill.</p>
@@ -1648,10 +1673,10 @@ nav.nav-scrolled { padding:0; background:#072640; }
                     Add the gallons you need, continue ordering whenever you like, then check out in one smooth flow. Track every delivery from your customer portal.
                 </p>
                 <div class="hero-actions">
-                    <a href="#gallon-choice" class="hero-btn-primary js-gallon-choice">Start an order <i class="fas fa-arrow-right" style="margin-left:6px;font-size:.85em;"></i></a>
-                    <a href="user/scan_qr.php" class="hero-btn-secondary"><i class="fas fa-qrcode" style="margin-right:6px;font-size:.85em;"></i> Log in to order again</a>
+                    <a href="user/scan_qr.php" class="hero-btn-secondary customer-sign-in"><i class="fas fa-arrow-right-to-bracket" aria-hidden="true"></i> Customer Sign In</a>
+                    <a href="create_account.php" class="customer-register"><i class="fas fa-user-plus" aria-hidden="true"></i> Register as Customer</a>
                 </div>
-                <a href="#features" class="hero-scroll-hint"><i class="fas fa-chevron-down"></i> Scroll to explore</a>
+                <a href="#features" class="hero-scroll-hint"><i class="fas fa-chevron-down" aria-hidden="true"></i> Explore our services</a>
                 <div class="hero-stats">
                     <div>
                         <div class="hero-stat-num">3<span>+</span></div>
@@ -1678,26 +1703,28 @@ nav.nav-scrolled { padding:0; background:#072640; }
                 </div>
                 <div class="quick-products">
                     <article class="quick-product">
-                        <div class="product-icon"><i class="fas fa-droplet"></i></div>
-                        <div class="product-copy"><strong>19L Refill</strong><span>Return your empty gallon</span></div>
-                        <button class="product-add" type="button" data-product="19L Refill" aria-label="Add 19L refill to cart"><i class="fas fa-plus"></i></button>
+                        <div class="product-icon product-photo"><img src="imagess/water5.webp" alt="19L round refill gallon" width="36" height="36"></div>
+                        <div class="product-copy"><strong>19L Round</strong><?=gallon_stock_badge(gallon_availability($gallonStock,'5gal-round'))?></div>
+                        <button class="product-add" type="button" data-product="19L Round" <?= !gallon_availability($gallonStock,'5gal-round')['available'] ? 'disabled' : '' ?> aria-label="Add 19L round refill to cart"><i class="fas fa-plus"></i></button>
                     </article>
                     <article class="quick-product">
-                        <div class="product-icon"><i class="fas fa-bottle-water"></i></div>
-                        <div class="product-copy"><strong>19L New Gallon</strong><span>Fresh container, ready for delivery</span></div>
-                        <button class="product-add" type="button" data-product="19L New Gallon" aria-label="Add 19L new gallon to cart"><i class="fas fa-plus"></i></button>
+                        <div class="product-icon product-photo"><img src="imagess/water4.webp" alt="19L slim refill gallon" width="36" height="36"></div>
+                        <div class="product-copy"><strong>19L Slim</strong><?=gallon_stock_badge(gallon_availability($gallonStock,'5gal-slim'))?></div>
+                        <button class="product-add" type="button" data-product="19L Slim" <?= !gallon_availability($gallonStock,'5gal-slim')['available'] ? 'disabled' : '' ?> aria-label="Add 19L slim refill to cart"><i class="fas fa-plus"></i></button>
                     </article>
                     <article class="quick-product">
-                        <div class="product-icon"><i class="fas fa-glass-water"></i></div>
-                        <div class="product-copy"><strong>9.5L Refill</strong><span>Compact option for everyday use</span></div>
-                        <button class="product-add" type="button" data-product="9.5L Refill" aria-label="Add 9.5L refill to cart"><i class="fas fa-plus"></i></button>
+                        <div class="product-icon product-photo"><img src="imagess/water3.jpg" alt="9.5L slim refill gallon" width="36" height="36"></div>
+                        <div class="product-copy"><strong>9.5L Slim</strong><?=gallon_stock_badge(gallon_availability($gallonStock,'2.5gal-slim'))?></div>
+                        <button class="product-add" type="button" data-product="9.5L Slim" <?= !gallon_availability($gallonStock,'2.5gal-slim')['available'] ? 'disabled' : '' ?> aria-label="Add 9.5L slim refill to cart"><i class="fas fa-plus"></i></button>
                     </article>
                 </div>
                 <div class="cart-total">
                     <div><small>Your cart</small><strong id="cart-summary">No gallons added yet</strong></div>
-                    <a href="user/scan_qr.php" class="checkout-link">Checkout <i class="fas fa-arrow-right"></i></a>
+                    <a href="#gallon-choice" class="checkout-link js-gallon-choice" aria-disabled="true" tabindex="-1" aria-haspopup="dialog" aria-controls="gallon-choice">Checkout <i class="fas fa-arrow-right"></i></a>
                 </div>
-                <p class="order-note"><i class="fas fa-circle-info"></i><span>Add more items any time. Sign in securely to confirm your address, schedule, and final total.</span></p>
+                <ul class="quick-cart-items" id="quick-cart-items" aria-label="Selected products" hidden></ul>
+                <button type="button" id="reset-quick-cart" class="cart-reset" hidden>Reset cart</button>
+                <p class="order-note"><i class="fas fa-circle-info" aria-hidden="true"></i><span>Review quantities, delivery, and payment before placing your order.</span></p>
             </aside>
 
         </div>
@@ -1717,6 +1744,7 @@ nav.nav-scrolled { padding:0; background:#072640; }
 
     <!-- ─── FEATURES / ROLES ───────────────── -->
     <section id="features">
+        <div class="portal-water-bubbles" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
         <div class="section-inner">
             <div class="section-header center">
                 <div class="section-tag"><i class="fas fa-users"></i> For everyone</div>
@@ -1979,30 +2007,47 @@ nav.nav-scrolled { padding:0; background:#072640; }
         document.querySelectorAll('#mobile-drawer a[href^="#"]').forEach(a => a.addEventListener('click', closeNav));
 
         // ─── First-order gallon choice ─────────
-        const gallonChoice = document.getElementById('gallon-choice');
-        const choiceClose = document.getElementById('choice-close');
-        const choiceTriggers = document.querySelectorAll('.js-gallon-choice');
-        const openGallonChoice = event => {
+        const gallonChoice=document.getElementById('gallon-choice');
+        const choiceClose=document.getElementById('choice-close');
+        let choiceTrigger=null;
+        function closeGallonChoice(){
+            gallonChoice.classList.remove('is-open');
+            gallonChoice.setAttribute('aria-hidden','true');
+            if(choiceTrigger) choiceTrigger.focus();
+        }
+        document.querySelectorAll('.js-gallon-choice').forEach(trigger=>trigger.addEventListener('click',event=>{
             event.preventDefault();
+            choiceTrigger=trigger;
+            const hasSelectedItems=Number(document.getElementById('cart-count')?.textContent||0)>0;
+            if(trigger.classList.contains('checkout-link') && (!hasSelectedItems || trigger.getAttribute('aria-disabled')==='true'))return;
+            const reviewExistingCart=trigger.classList.contains('checkout-link')&&hasSelectedItems;
+            gallonChoice.querySelectorAll('.gallon-choice-card').forEach(choice=>{
+                choice.href=reviewExistingCart?'user/cart.php':choice.dataset.setupHref;
+                choice.dataset.reviewCart=String(reviewExistingCart);
+            });
             closeNav();
             gallonChoice.classList.add('is-open');
-            gallonChoice.setAttribute('aria-hidden', 'false');
+            gallonChoice.setAttribute('aria-hidden','false');
             choiceClose.focus();
-        };
-        const closeGallonChoice = () => {
-            gallonChoice.classList.remove('is-open');
-            gallonChoice.setAttribute('aria-hidden', 'true');
-        };
-        choiceTriggers.forEach(trigger => trigger.addEventListener('click', openGallonChoice));
-        choiceClose.addEventListener('click', closeGallonChoice);
-        gallonChoice.addEventListener('click', event => { if (event.target === gallonChoice) closeGallonChoice(); });
-        document.addEventListener('keydown', event => { if (event.key === 'Escape' && gallonChoice.classList.contains('is-open')) closeGallonChoice(); });
-        if (window.location.hash === '#gallon-choice') {
-            gallonChoice.classList.add('is-open');
-            gallonChoice.setAttribute('aria-hidden', 'false');
+        }));
+        choiceClose.addEventListener('click',closeGallonChoice);
+        gallonChoice.addEventListener('click',event=>{if(event.target===gallonChoice)closeGallonChoice()});
+        document.addEventListener('keydown',event=>{
+            if(!gallonChoice.classList.contains('is-open'))return;
+            if(event.key==='Escape')closeGallonChoice();
+            if(event.key==='Tab'){
+                const links=[...gallonChoice.querySelectorAll('button,a[href]')];
+                const first=links[0],last=links[links.length-1];
+                if(event.shiftKey && document.activeElement===first){event.preventDefault();last.focus()}
+                else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus()}
+            }
+        });
+        // Opening the homepage after onboarding shows Quick Order, without a popup.
+        if(window.location.hash==='#gallon-choice'){
+            history.replaceState(null,'','#quick-order');
+            document.getElementById('quick-order').scrollIntoView({block:'center'});
         }
 
-        // ─── Scroll fade-up ───────────────────
         const fadeEls = document.querySelectorAll('.fade-up');
         const obs = new IntersectionObserver(entries => {
             entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
@@ -2076,29 +2121,6 @@ nav.nav-scrolled { padding:0; background:#072640; }
         // ─── Quick order preview ──────────────
         // The public homepage keeps a lightweight cart preview. The real order
         // is confirmed only after the customer signs in through the secure flow.
-        const cartItems = [];
-        const cartCount = document.getElementById('cart-count');
-        const cartSummary = document.getElementById('cart-summary');
-        document.querySelectorAll('.product-add').forEach(button => {
-            button.addEventListener('click', () => {
-                cartItems.push(button.dataset.product);
-                const quantities = cartItems.reduce((summary, name) => {
-                    summary[name] = (summary[name] || 0) + 1;
-                    return summary;
-                }, {});
-                const itemLabel = `${cartItems.length} ${cartItems.length === 1 ? 'item' : 'items'}`;
-                cartCount.textContent = cartItems.length;
-                cartSummary.textContent = `${itemLabel} · ${Object.entries(quantities).map(([name, quantity]) => `${quantity} ${name}`).join(', ')}`;
-                button.innerHTML = '<i class="fas fa-check"></i>';
-                button.setAttribute('aria-label', `${button.dataset.product} added to cart`);
-                window.setTimeout(() => {
-                    button.innerHTML = '<i class="fas fa-plus"></i>';
-                    button.setAttribute('aria-label', `Add ${button.dataset.product} to cart`);
-                }, 850);
-            });
-        });
-
-        // ─── Share ────────────────────────────
         async function shareWithFriends() {
             const shareData = { title: 'HydroMIS', text: 'Check out HydroMIS for easy water refill ordering and tracking.', url: window.location.origin + '/HydroMIS-1.3/' };
             if (navigator.share) { try { await navigator.share(shareData); } catch {} return; }
@@ -2106,5 +2128,6 @@ nav.nav-scrolled { padding:0; background:#072640; }
         }
     </script>
 <script src="js/user-notifications.js"></script>
+<script src="js/shopping-cart.js?v=20261029-1" defer></script>
 </body>
 </html>

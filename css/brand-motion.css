@@ -1,0 +1,11 @@
+nav .logo-icon img,.cart-logo img{
+    animation:hydromisLogoFloat 5s ease-in-out infinite;
+    will-change:transform;
+}
+@keyframes hydromisLogoFloat{
+    0%,100%{transform:translateY(0);filter:drop-shadow(0 0 3px rgba(59,212,237,.12))}
+    50%{transform:translateY(-3px);filter:drop-shadow(0 0 7px rgba(59,212,237,.38))}
+}
+@media(prefers-reduced-motion:reduce){
+    nav .logo-icon img,.cart-logo img{animation:none;will-change:auto}
+}

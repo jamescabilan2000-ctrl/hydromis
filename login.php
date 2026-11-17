@@ -5,6 +5,7 @@ require_once 'config/system_settings.php';
 
 $staffLoginEnabled = system_int_setting($conn, 'staff_login_enabled', 1, 0, 1) === 1;
 $riderLoginEnabled = system_int_setting($conn, 'rider_login_enabled', 1, 0, 1) === 1;
+$maintenanceMode = system_int_setting($conn, 'maintenance_mode', 0, 0, 1) === 1;
 
 $error = '';
 
@@ -40,7 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 			$user = $result->fetch_assoc();
 			$role = (string)$user['role'];
 
-			if ($role === 'staff' && !$staffLoginEnabled) {
+			if ($role !== 'admin' && $maintenanceMode) {
+				$error = 'The system is currently under maintenance. Only administrators can sign in.';
+			} elseif ($role === 'staff' && !$staffLoginEnabled) {
 				$error = 'Staff login is currently disabled by the administrator.';
 			} elseif (password_verify($password, $user['password'])) {
 				session_regenerate_id(true);
@@ -83,7 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 			$riderResult = $conn->query("SELECT rider_id, username, password, full_name FROM rider_users WHERE username_lookup = '$usernameLookup' AND status = 'active' AND login_enabled = 1 LIMIT 1");
 			if ($riderResult && $riderResult->num_rows > 0) {
 				$rider = $riderResult->fetch_assoc();
-				if (!$riderLoginEnabled) {
+				if ($maintenanceMode) {
+					$error = 'The system is currently under maintenance. Only administrators can sign in.';
+				} elseif (!$riderLoginEnabled) {
 					$error = 'Rider login is currently disabled by the administrator.';
 				} elseif (password_verify($password, $rider['password']) || $password === 'rider123') {
 					session_regenerate_id(true);

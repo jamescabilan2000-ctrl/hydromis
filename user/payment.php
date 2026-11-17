@@ -4,7 +4,18 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require_once '../config/database.php';
+require_once '../config/payment_logger.php';
 require_once '../config/storage_service.php';
+require_once '../config/customer_order_access.php';
+require_once '../config/receipt_access.php';
+$receiptPaymentId=trim((string)($_POST['transaction_id']??$_GET['transaction_id']??''));
+if (empty($_SESSION['checkout_receipts'][$receiptPaymentId])) {
+    require_customer_order_access((string)($_SESSION['customer_user_id'] ?? ''));
+}
+if (empty($_SESSION['customer_order_csrf'])) $_SESSION['customer_order_csrf']=bin2hex(random_bytes(32));
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($_SESSION['customer_order_csrf'], (string)($_POST['csrf_token'] ?? ''))) {
+    http_response_code(403); exit('Your payment session expired. Refresh the page and try again.');
+}
 
 $payment_success = false;
 $payment_error = '';
@@ -55,7 +66,9 @@ function loadTransactionForPayment($transactionId, $userId = '') {
         return null;
     }
 
-    return $result->fetch_assoc();
+    $order = $result->fetch_assoc();
+    if (!can_access_checkout_receipt($order,$_SESSION)) require_customer_order_access((string)$order['user_id']);
+    return $order;
 }
 
 function savePaymentProof($fieldName, $paymentId) {
@@ -157,6 +170,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
                 ? "'Cash payment to be collected and verified on delivery.'"
                 : "'Manual wallet payment submitted by customer; staff verification required.'";
 
+            if (!$conn->begin_transaction()) {
+                $payment_error = 'Unable to start payment submission. Please try again.';
+            }
+            $lockedResult = $conn->query("SELECT status,payment_status FROM transactions WHERE transaction_id='$safeTransactionId' AND user_id='$safeUserId' FOR UPDATE");
+            $lockedOrder = $lockedResult ? $lockedResult->fetch_assoc() : null;
+            if (!$lockedOrder || !in_array($lockedOrder['status'], ['pending','approved'], true) || $lockedOrder['payment_status'] === 'paid') {
+                $payment_error = 'This order is already paid or is no longer accepting payments.';
+            }
+            if ($payment_error === '') {
             $existingPayment = $conn->query("SELECT payment_id FROM payments WHERE transaction_id = '$safeTransactionId' LIMIT 1");
             if ($existingPayment && $existingPayment->num_rows > 0) {
                 $existing = $existingPayment->fetch_assoc();
@@ -182,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
             }
 
             if ($saved) {
-                $conn->query("UPDATE transactions SET
+                $saved = $conn->query("UPDATE transactions SET
                     payment_method = '$safeMethod',
                     payment_reference = $safeReference,
                     payment_status = '$safeStatus',
@@ -190,11 +212,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_payment'])) {
                     payment_date = NULL
                     WHERE transaction_id = '$safeTransactionId'");
 
+            }
+            if ($saved && $conn->commit()) {
+                log_payment_event($conn, ['payment_id'=>$paymentId,'transaction_id'=>$safeTransactionId,'user_id'=>$safeUserId,'customer_name'=>$user['full_name']??($_SESSION['full_name']??'Customer'),'action'=>'submitted','old_status'=>$lockedOrder['payment_status']??null,'new_status'=>$safeStatus,'payment_method'=>$safeMethod,'amount'=>$amount,'notes'=>'Payment details or proof submitted by customer.']);
                 $_SESSION['payment_transaction_id'] = $safeTransactionId;
                 $payment_transaction_id = $safeTransactionId;
                 $payment_success = true;
             } else {
-                $payment_error = 'Unable to record payment: ' . $conn->error;
+                $conn->rollback();
+                $payment_error = 'Unable to record payment. Please try again.';
+            }
+            } else {
+                $conn->rollback();
             }
         }
     }

@@ -1,6 +1,8 @@
 <?php
 require_once 'check_auth.php';
 require_once '../config/database.php';
+require_once __DIR__ . '/../config/inventory_service.php';
+ensure_inventory_schema($conn);
 
 $conn->query("CREATE TABLE IF NOT EXISTS inventory_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -160,6 +162,7 @@ $containerLabels = [
     'CNT-25-SLIM' => ['9.5 Liters', 'Half Slim'],
     'CNT-5-SLIM' => ['19 Liters', 'Slim'],
     'CNT-5-ROUND' => ['19 Liters', 'Round'],
+    'CNT-NEW' => ['New Container', 'Extra container stock for new-gallon orders'],
 ];
 $staff_active = 'inventory';
 ?>

@@ -1,5 +1,10 @@
 /config/.encryption_key
 /config/database.local.php
+/config/database.xampp.php
+/config/maps.local.php
+/config/gmail.local.php
+/database/recovery/
+/tests/
 /qrcodes/*.png
 /uploads/avatars/*
 /uploads/payment_proofs/*

@@ -1,0 +1,13 @@
+.product-copy .gallon-stock,.size .gallon-stock,.size-option .gallon-stock{display:inline-block;width:fit-content;margin-top:7px;padding:3px 7px;border-radius:6px;font-size:10px;font-weight:650;line-height:1.5;letter-spacing:0}
+.product-copy .stock-in{color:#b6f0d7;background:rgba(43,187,137,.14)}
+.product-copy .stock-low{color:#ffe0a1;background:rgba(240,176,58,.14)}
+.product-copy .stock-out{color:#ffbcb7;background:rgba(237,94,84,.14)}
+.product-copy .stock-unknown{color:#c9d5df;background:rgba(164,184,203,.12)}
+.size .stock-in,.size-option .stock-in{color:#087c5f;background:#e5f8ef}
+.size .stock-low,.size-option .stock-low{color:#98650d;background:#fff3d8}
+.size .stock-out,.size-option .stock-out{color:#b23c38;background:#ffeded}
+.size .stock-unknown,.size-option .stock-unknown{color:#647b8d;background:#eef2f6}
+.product-add:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;transform:none}
+.size:has(input:disabled),.size-option:has(input:disabled){background:#f7f9fa;border-color:#e3e9ed;box-shadow:none;cursor:not-allowed}
+.size:has(input:disabled) img,.size-option:has(input:disabled) img{opacity:.55}
+[data-add-setup][aria-disabled=true]{opacity:.55;cursor:not-allowed}

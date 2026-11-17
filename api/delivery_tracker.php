@@ -1,10 +1,12 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+header('Cache-Control: no-store');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
-require_once '../config/database.php';
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/delivery_access.php';
 
 // Ensure rider_locations table exists
 $conn->query("CREATE TABLE IF NOT EXISTS rider_locations (
@@ -27,7 +29,7 @@ function hasColumn($table, $column) {
     global $conn;
     $table = $conn->real_escape_string($table);
     $column = $conn->real_escape_string($column);
-    $result = $conn->query("SELECT column_name FROM information_schema.columns WHERE table_name = '$table' AND column_name = '$column' LIMIT 1");
+    $result = $conn->query("SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '$table' AND column_name = '$column' LIMIT 1");
     return $result && $result->num_rows > 0;
 }
 
@@ -36,7 +38,7 @@ function riderJoinExpr() {
     if ($expr !== null) {
         return $expr;
     }
-    $expr = hasColumn('transactions', 'assigned_rider') ? "COALESCE(t.rider_id, t.assigned_rider)" : "t.rider_id";
+    $expr = hasColumn('transactions', 'assigned_rider') ? "COALESCE(NULLIF(t.rider_id, ''), t.assigned_rider)" : "t.rider_id";
     return $expr;
 }
 
@@ -48,6 +50,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 $method = $_SERVER['REQUEST_METHOD'];
 $request = isset($_GET['request']) ? $_GET['request'] : '';
+
+// Authenticate and authorize before dispatching any delivery operation.
+$deliveryInput = $method === 'POST' ? json_decode(file_get_contents('php://input'), true) : $_GET;
+if (!is_array($deliveryInput)) {
+    http_response_code(400); echo json_encode(['success' => false, 'error' => 'Invalid JSON body']); exit;
+}
+$operator = false;
+foreach (['admin', 'staff'] as $role) {
+    $id = (string)($_SESSION[$role . '_auth_id'] ?? ((($_SESSION['role'] ?? '') === $role) ? ($_SESSION['admin_id'] ?? '') : ''));
+    if ($id === '') continue;
+    $check = $conn->prepare('SELECT admin_id FROM admin_users WHERE admin_id=? AND role=? AND COALESCE(login_enabled,1)=1 LIMIT 1');
+    $check->bind_param('ss', $id, $role); $check->execute();
+    if ($check->get_result()->num_rows > 0) $operator = true;
+}
+if ($request === 'get_all_deliveries') {
+    if (!$operator) { http_response_code(403); echo json_encode(['success'=>false,'error'=>'Staff access required']); exit; }
+} elseif (in_array($request, ['get_rider_location','get_delivery_details','update_rider_location','complete_delivery'], true)) {
+    $id = trim((string)($deliveryInput['transaction_id'] ?? ''));
+    $check = $conn->prepare('SELECT * FROM transactions WHERE transaction_id=? LIMIT 1');
+    $check->bind_param('s', $id); $check->execute();
+    $deliveryOrder = $check->get_result()->fetch_assoc();
+    if (!$deliveryOrder || !($method === 'GET' && $operator) && !delivery_actor_can_access($deliveryOrder, $_SESSION, $method === 'POST')) {
+        http_response_code(403); echo json_encode(['success'=>false,'error'=>'Delivery access denied']); exit;
+    }
+    if ($method === 'POST') {
+        if (!in_array($deliveryOrder['delivery_status'] ?? '', ['on_way', 'on_the_way'], true)) {
+            http_response_code(409); echo json_encode(['success'=>false,'error'=>'Delivery must be on the way']); exit;
+        }
+        $riderId = delivery_assigned_rider($deliveryOrder);
+        $check = $conn->prepare("SELECT rider_id FROM rider_users WHERE rider_id=? AND status='active' AND COALESCE(login_enabled,1)=1 LIMIT 1");
+        $check->bind_param('s', $riderId); $check->execute();
+        if (!$check->get_result()->num_rows) { http_response_code(403); echo json_encode(['success'=>false,'error'=>'Active rider access required']); exit; }
+        // JSON writes are same-origin only. Cross-origin JSON preflights receive no allow-origin header.
+        if (stripos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== 0) {
+            http_response_code(415); echo json_encode(['success'=>false,'error'=>'application/json is required']); exit;
+        }
+    }
+}
 
 if ($method == 'GET') {
     if ($request == 'get_rider_location') {
@@ -96,11 +136,11 @@ function getRiderLocation() {
                 t.rider_id,
                 t.delivery_status,
                 t.status,
-                u.address as destination,
+                COALESCE(NULLIF(t.delivery_address,''),u.address) as destination,
                 t.created_at,
                 u.full_name as customer_name,
                 u.contact_number,
-                u.address,
+                COALESCE(NULLIF(t.delivery_address,''),u.address) AS address,
                 ru.full_name as rider_name,
                 ru.contact_number as rider_contact_number,
                 r.rider_latitude,
@@ -113,14 +153,14 @@ function getRiderLocation() {
             LEFT JOIN rider_users ru ON {$riderExpr} = ru.rider_id
             LEFT JOIN rider_locations r ON r.id = (
                 SELECT rl.id FROM rider_locations rl
-                WHERE rl.transaction_id = t.transaction_id
+                WHERE rl.transaction_id = t.transaction_id AND rl.rider_id = {$riderExpr}
                 ORDER BY rl.last_update DESC, rl.id DESC LIMIT 1
             )
             WHERE t.transaction_id = '$transaction_id'";
 
     $result = $conn->query($sql);
     
-    if ($result->num_rows > 0) {
+    if ($result && $result->num_rows > 0) {
         $delivery = $result->fetch_assoc();
         http_response_code(200);
         echo json_encode([
@@ -172,21 +212,21 @@ function getDeliveryDetails() {
                 t.*,
                 u.full_name,
                 u.contact_number,
-                u.address,
+                COALESCE(NULLIF(t.delivery_address,''),u.address) AS address,
                 ru.full_name as rider_name,
                 ru.contact_number as rider_contact_number,
-                COALESCE(r.rider_latitude, 12.8797) as rider_latitude,
-                COALESCE(r.rider_longitude, 121.7740) as rider_longitude,
-                COALESCE(r.last_update, NOW()) as rider_last_update
+                r.rider_latitude as rider_latitude,
+                r.rider_longitude as rider_longitude,
+                r.last_update as rider_last_update
             FROM transactions t
             JOIN users u ON t.user_id = u.user_id
             LEFT JOIN rider_users ru ON {$riderExpr} = ru.rider_id
-            LEFT JOIN rider_locations r ON t.transaction_id = r.transaction_id
+            LEFT JOIN rider_locations r ON r.id = (SELECT rl.id FROM rider_locations rl WHERE rl.transaction_id=t.transaction_id AND rl.rider_id={$riderExpr} ORDER BY rl.last_update DESC,rl.id DESC LIMIT 1)
             WHERE t.transaction_id = '$transaction_id'";
 
     $result = $conn->query($sql);
     
-    if ($result->num_rows > 0) {
+    if ($result && $result->num_rows > 0) {
         $delivery = $result->fetch_assoc();
         http_response_code(200);
         echo json_encode([
@@ -211,26 +251,26 @@ function getAllDeliveries() {
                 t.user_id,
                 t.delivery_status,
                 t.status,
-                u.address as destination,
+                COALESCE(NULLIF(t.delivery_address,''),u.address) as destination,
                 u.full_name,
                 u.contact_number,
                 ru.full_name as rider_name,
                 ru.contact_number as rider_contact_number,
-                COALESCE(r.rider_latitude, 12.8797) as rider_latitude,
-                COALESCE(r.rider_longitude, 121.7740) as rider_longitude,
-                COALESCE(r.last_update, NOW()) as last_update
+                r.rider_latitude as rider_latitude,
+                r.rider_longitude as rider_longitude,
+                r.last_update as last_update
             FROM transactions t
             JOIN users u ON t.user_id = u.user_id
             LEFT JOIN rider_users ru ON {$riderExpr} = ru.rider_id
-            LEFT JOIN rider_locations r ON t.transaction_id = r.transaction_id
-            WHERE t.delivery_status IN ('assigned', 'pending', 'on_way')
+            LEFT JOIN rider_locations r ON r.id = (SELECT rl.id FROM rider_locations rl WHERE rl.transaction_id=t.transaction_id AND rl.rider_id={$riderExpr} ORDER BY rl.last_update DESC,rl.id DESC LIMIT 1)
+            WHERE t.status='approved' AND COALESCE(t.fulfillment_method,'delivery')='delivery' AND t.delivery_status IN ('assigned', 'pending', 'on_way', 'on_the_way')
             ORDER BY t.created_at DESC
             LIMIT 50";
 
     $result = $conn->query($sql);
     
     $deliveries = [];
-    if ($result->num_rows > 0) {
+    if ($result && $result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
             $deliveries[] = $row;
         }
@@ -257,7 +297,7 @@ function getAllDeliveries() {
 function updateRiderLocation() {
     global $conn;
     
-    $data = json_decode(file_get_contents("php://input"), true);
+    $data = $GLOBALS['deliveryInput'];
     
     $transaction_id = isset($data['transaction_id']) ? sanitize($data['transaction_id']) : '';
     $latitude = isset($data['latitude']) ? floatval($data['latitude']) : 0;
@@ -266,14 +306,14 @@ function updateRiderLocation() {
     $speed = isset($data['speed']) ? floatval($data['speed']) : null;
     $heading = isset($data['heading']) ? floatval($data['heading']) : null;
     
-    if (empty($transaction_id) || $latitude == 0 || $longitude == 0) {
+    if (empty($transaction_id) || !delivery_coordinates_valid($data['latitude'] ?? null, $data['longitude'] ?? null)) {
         http_response_code(400);
         echo json_encode(['error' => 'transaction_id, latitude, and longitude are required']);
         return;
     }
 
     // Get rider_id from transaction
-    $riderExpr = hasColumn('transactions', 'assigned_rider') ? "COALESCE(rider_id, assigned_rider)" : "rider_id";
+    $riderExpr = hasColumn('transactions', 'assigned_rider') ? "COALESCE(NULLIF(rider_id, ''), assigned_rider)" : "rider_id";
     $rider_sql = "SELECT {$riderExpr} AS rider_id FROM transactions WHERE transaction_id = '$transaction_id' LIMIT 1";
     $rider_result = $conn->query($rider_sql);
     $rider_id = '';
@@ -286,7 +326,7 @@ function updateRiderLocation() {
     $check_sql = "SELECT id FROM rider_locations WHERE transaction_id = '$transaction_id'";
     $check_result = $conn->query($check_sql);
     
-    if ($check_result->num_rows > 0) {
+    if ($check_result && $check_result->num_rows > 0) {
         // Update existing record
         $sql = "UPDATE rider_locations 
                 SET rider_latitude = $latitude, 
@@ -319,7 +359,7 @@ function updateRiderLocation() {
         ]);
     } else {
         http_response_code(500);
-        echo json_encode(['error' => 'Failed to update rider location: ' . $conn->error]);
+        echo json_encode(['error' => 'Failed to update rider location']);
     }
 }
 
@@ -330,7 +370,7 @@ function updateRiderLocation() {
 function completeDelivery() {
     global $conn;
     
-    $data = json_decode(file_get_contents("php://input"), true);
+    $data = $GLOBALS['deliveryInput'];
     
     $transaction_id = isset($data['transaction_id']) ? sanitize($data['transaction_id']) : '';
     
@@ -343,9 +383,9 @@ function completeDelivery() {
     $sql = "UPDATE transactions 
             SET delivery_status = 'delivered',
                 updated_at = NOW()
-            WHERE transaction_id = '$transaction_id'";
+            WHERE transaction_id = '$transaction_id' AND status='approved' AND delivery_status IN ('on_way','on_the_way')";
 
-    if ($conn->query($sql)) {
+    if ($conn->query($sql) && $conn->affected_rows > 0) {
         http_response_code(200);
         echo json_encode([
             'success' => true,
@@ -357,7 +397,7 @@ function completeDelivery() {
         ]);
     } else {
         http_response_code(500);
-        echo json_encode(['error' => 'Failed to complete delivery: ' . $conn->error]);
+        echo json_encode(['success'=>false, 'error' => 'Delivery must be on the way before completion']);
     }
 }
 

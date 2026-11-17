@@ -14,34 +14,324 @@
     overflow: visible !important;
 }
 
-/* Desktop admin menu: reveal the navigation from the left screen edge. */
-@media (min-width: 901px) {
+/* One avatar shape across every legacy and current admin layout. */
+.sidebar .admin-avatar,
+.sidebar .avatar.admin-avatar,
+.sidebar .sidebar-avatar.admin-avatar {
+    display: grid !important;
+    place-items: center !important;
+    overflow: hidden !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important;
+    color: #fff !important;
+}
+
+.sidebar .admin-avatar > img,
+.sidebar .avatar.admin-avatar > img,
+.sidebar .sidebar-avatar.admin-avatar > img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border-radius: 50% !important;
+}
+
+/* Desktop admin menu: keep a clickable icon rail visible until the user opens
+   the full sidebar with the toggle button. */
+@media (min-width: 480px) {
+    :root {
+        --admin-sidebar-rail: 80px;
+    }
+
     .shell {
-        grid-template-columns: 10px minmax(0, 1fr) !important;
+        grid-template-columns: var(--admin-sidebar-rail) minmax(0, 1fr) !important;
     }
 
     .sidebar {
         width: var(--sidebar-w, 260px);
+        position: sticky !important;
+        top: 0;
+        height: 100vh !important;
         z-index: 100;
         overflow-x: hidden;
-        clip-path: inset(0 calc(100% - 10px) 0 0);
+        clip-path: inset(0 calc(100% - var(--admin-sidebar-rail)) 0 0);
         box-shadow: 10px 0 24px rgba(0, 0, 0, 0);
         transition: clip-path .22s ease, box-shadow .22s ease;
     }
 
-    .sidebar:not(:hover) > * {
-        visibility: hidden;
+    /* Hide only the labels while collapsed. The links and their icons remain
+       in place, so the visible rail is fully clickable. */
+    html:not([data-admin-sidebar="expanded"]) .sidebar .nav-section-label,
+    html:not([data-admin-sidebar="expanded"]) .sidebar .brand-logo > :not(.brand-icon),
+    html:not([data-admin-sidebar="expanded"]) .sidebar .admin-card > :not(.admin-avatar):not(.logout-link) {
         opacity: 0;
+        visibility: hidden;
     }
 
-    .sidebar:hover {
+    html:not([data-admin-sidebar="expanded"]) .sidebar {
+        padding: 18px 16px 76px !important;
+        gap: 18px !important;
+        overflow: hidden !important;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .brand-logo {
+        width: 48px;
+        min-height: 48px;
+        padding: 0 !important;
+        justify-content: center;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .brand-icon {
+        position: fixed !important;
+        left: 18px !important;
+        top: 18px !important;
+        z-index: 111;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px;
+        margin: 0 !important;
+        transform: none !important;
+        overflow: visible !important;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .brand-icon img {
+        display: block !important;
+        width: 30px !important;
+        height: 30px !important;
+        margin: 0 !important;
+        object-fit: contain !important;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar nav {
+        position: fixed !important;
+        left: 16px !important;
+        top: 84px !important;
+        bottom: 154px !important;
+        z-index: 105;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 48px;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar nav > div {
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border, rgba(255, 255, 255, .08));
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar nav > div:last-child {
+        padding-bottom: 0;
+        border-bottom: 0;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .nav-section-label {
+        display: none !important;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .nav-group {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .nav-item {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 48px !important;
+        min-width: 48px;
+        height: 46px;
+        padding: 0 !important;
+        gap: 0 !important;
+        border-radius: 12px !important;
+        color: transparent !important;
+        font-size: 0 !important;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .nav-item i {
+        width: 20px !important;
+        margin: 0 !important;
+        text-align: center;
+        color: var(--muted, #8493a8);
+        font-size: 17px;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .nav-item.active i {
+        color: var(--aqua, #2dd4bf);
+    }
+
+    html[data-admin-sidebar="expanded"] .shell {
+        grid-template-columns: var(--sidebar-w, 260px) minmax(0, 1fr) !important;
+    }
+
+    html[data-admin-sidebar="expanded"] .sidebar {
         clip-path: inset(0);
         box-shadow: 10px 0 24px rgba(0, 0, 0, .28);
     }
 
-    .sidebar:hover > * {
-        visibility: visible;
-        opacity: 1;
+    .sidebar .nav-section-label,
+    .sidebar .brand-logo > :not(.brand-icon),
+    .sidebar .admin-card > :not(.admin-avatar):not(.logout-link) {
         transition: opacity .12s ease .08s;
     }
+
+    .admin-sidebar-toggle {
+        position: fixed;
+        left: 13px;
+        bottom: 14px;
+        z-index: 110;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: calc(var(--sidebar-w, 260px) - 26px);
+        min-height: 42px;
+        margin: 0;
+        padding: 10px 12px;
+        border: 1px solid var(--border, rgba(255, 255, 255, .08));
+        border-radius: 10px;
+        background: var(--bg3, rgba(255, 255, 255, .05));
+        color: var(--muted, #8493a8);
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .admin-sidebar-toggle:hover,
+    .admin-sidebar-toggle:focus-visible {
+        color: var(--aqua, #2dd4bf);
+        border-color: currentColor;
+        outline: none;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .admin-sidebar-toggle {
+        position: static;
+        left: auto;
+        bottom: auto;
+        flex: 0 0 46px;
+        width: 48px;
+        height: 46px;
+        padding: 0;
+    }
+
+    .sidebar {
+        padding-bottom: 76px !important;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar-footer {
+        position: fixed !important;
+        left: 16px !important;
+        bottom: 16px !important;
+        z-index: 110;
+        width: 48px;
+        height: 112px;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        display: flex !important;
+        flex-direction: column;
+        gap: 14px;
+        align-items: center;
+        justify-content: center;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .admin-card {
+        flex: 0 0 48px;
+        width: 48px;
+        height: 48px;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .logout-link {
+        display: none !important;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .admin-avatar {
+        position: fixed !important;
+        left: 20px !important;
+        bottom: 88px !important;
+        z-index: 112;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        margin: 0 !important;
+        cursor: pointer;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar .admin-avatar:hover,
+    html:not([data-admin-sidebar="expanded"]) .sidebar .admin-avatar:focus-visible {
+        outline: 2px solid var(--aqua, #2dd4bf);
+        outline-offset: 3px;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar.sidebar-profile-open .admin-card .logout-link {
+        position: fixed !important;
+        left: 72px !important;
+        bottom: 87px !important;
+        z-index: 130;
+        display: inline-flex !important;
+        align-items: center;
+        gap: 9px;
+        width: auto;
+        min-width: 112px;
+        height: 42px;
+        margin: 0 !important;
+        padding: 0 14px !important;
+        border: 1px solid var(--border, rgba(255, 255, 255, .1));
+        border-radius: 11px;
+        background: var(--bg3, #1e2533);
+        color: #fb7185;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, .32);
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .sidebar.sidebar-profile-open .admin-card .logout-link:hover,
+    html:not([data-admin-sidebar="expanded"]) .sidebar.sidebar-profile-open .admin-card .logout-link:focus-visible {
+        border-color: #fb7185;
+        background: rgba(244, 63, 94, .12);
+        outline: none;
+    }
+
+    .admin-sidebar-toggle .toggle-icon {
+        display: inline-grid;
+        place-items: center;
+        width: 20px;
+        font-size: 24px;
+        font-weight: 500;
+        line-height: 1;
+        color: currentColor !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    html:not([data-admin-sidebar="expanded"]) .admin-sidebar-toggle .toggle-label {
+        display: none;
+    }
+}
+
+@media (max-width: 479px) {
+    .admin-sidebar-toggle { display: none !important; }
 }

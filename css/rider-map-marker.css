@@ -1,0 +1,10 @@
+.rider-location-marker{width:48px;height:48px;cursor:default}
+.rider-location-badge{position:relative;display:grid;place-items:center;width:44px;height:44px;border:3px solid #fff;border-radius:50%;background:linear-gradient(145deg,#087fa9,#075575);color:#fff;box-shadow:0 3px 12px #062c4b55,0 0 0 5px #0b8caf20}
+.rider-location-badge::after{content:'';position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border:2px solid #fff;border-radius:50%;background:#20ba89}
+.rider-location-badge i{font-size:20px;line-height:1}
+.customer-delivery-marker{width:72px;height:83px;cursor:pointer}
+.customer-delivery-badge{position:relative;display:grid;place-items:center;width:72px;height:72px;padding:3px;border:3px solid #fff;border-radius:50%;background:#e8f8fc;box-shadow:0 4px 16px #072e4d50,0 0 0 2px #0b8caf}
+.customer-delivery-badge::after{content:'';position:absolute;bottom:-10px;left:26px;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #0b8caf}
+.customer-delivery-badge img{display:block;width:60px;height:60px;object-fit:contain;border-radius:50%}
+.station-location-marker .customer-delivery-badge{background:#edfaf2;box-shadow:0 4px 16px #072e4d50,0 0 0 2px #138a59}
+.station-location-marker .customer-delivery-badge::after{border-top-color:#138a59}

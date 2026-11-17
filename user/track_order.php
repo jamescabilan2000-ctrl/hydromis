@@ -3,6 +3,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 require_once '../config/database.php';
 require_once '../config/cap_request.php';
 require_once '../config/inventory_service.php';
+require_once '../config/order_items.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
@@ -301,7 +302,7 @@ if (
     if ($is_mobile_search && !preg_match('/\A09[0-9]{9}\z/', htmlspecialchars_decode($search_value))) {
         $error = 'Enter a valid 11-digit mobile number starting with 09 (example: 09123456789).';
     } elseif (!empty($search_value)) {
-        $sql = "SELECT t.*, {$transaction_rider_expr} AS effective_rider_id, u.full_name, u.address, u.contact_number, u.loyalty_points, u.user_id,
+        $sql = "SELECT t.*, {$transaction_rider_expr} AS effective_rider_id, u.full_name, COALESCE(NULLIF(t.delivery_address,''),u.address) AS address, u.contact_number, u.loyalty_points, u.user_id,
                    ru.full_name AS rider_name, ru.contact_number AS rider_contact_number
                 FROM transactions t
                 JOIN users u ON t.user_id = u.user_id
@@ -330,7 +331,7 @@ if (
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_feedback']) && $search_value !== '') {
     $search_contact_lookup = tracking_contact_lookup($search_value);
-    $sql = "SELECT t.*, {$transaction_rider_expr} AS effective_rider_id, u.full_name, u.address, u.contact_number, u.loyalty_points, u.user_id,
+    $sql = "SELECT t.*, {$transaction_rider_expr} AS effective_rider_id, u.full_name, COALESCE(NULLIF(t.delivery_address,''),u.address) AS address, u.contact_number, u.loyalty_points, u.user_id,
                ru.full_name AS rider_name, ru.contact_number AS rider_contact_number
             FROM transactions t
             JOIN users u ON t.user_id = u.user_id
@@ -629,6 +630,12 @@ function compactTransactionId(string $id): string {
 
     /* ── RESULTS PAGE ── */
     .r-wrap{max-width:820px;margin:0 auto;padding:20px 16px 56px}
+    .empty-orders{position:relative;overflow:hidden;max-width:720px;margin:34px auto;padding:48px 42px;border:1px solid #dce9f2;border-radius:26px;background:rgba(255,255,255,.96);box-shadow:0 24px 60px rgba(20,67,102,.11);text-align:center;animation:fadeDown .45s ease both}.empty-orders::before{content:'';position:absolute;inset:0 0 auto;height:4px;background:linear-gradient(90deg,#1d6fd8,#22b8cf,#10b981)}.empty-orders::after{content:'';position:absolute;right:-80px;top:-100px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(45,133,240,.09),transparent 70%);pointer-events:none}.empty-orders-visual{position:relative;width:112px;height:112px;margin:0 auto 25px}.empty-orders-ring{position:absolute;inset:0;border:1px dashed #9fc9eb;border-radius:50%;animation:emptyOrbit 18s linear infinite}.empty-orders-ring::before,.empty-orders-ring::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:#2d85f0;box-shadow:0 0 0 6px rgba(45,133,240,.1)}.empty-orders-ring::before{left:8px;top:19px}.empty-orders-ring::after{right:6px;bottom:20px;background:#10b981;box-shadow:0 0 0 6px rgba(16,185,129,.1)}.empty-orders-icon{position:absolute;inset:17px;display:grid;place-items:center;border-radius:24px;background:linear-gradient(145deg,#eaf5ff,#f5fbff);color:#1d6fd8;font-size:31px;box-shadow:0 12px 28px rgba(29,111,216,.14)}.empty-orders-status{display:inline-flex;align-items:center;gap:7px;margin-bottom:13px;padding:6px 11px;border-radius:99px;background:#eef8ff;color:#1766ad;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.empty-orders-status i{font-size:7px;color:#10b981}.empty-orders h1{margin:0 0 10px;font:800 clamp(25px,4vw,34px)/1.2 'Syne',sans-serif;letter-spacing:-.8px;color:var(--navy)}.empty-orders>p{max-width:500px;margin:0 auto;color:var(--t2);font-size:14px;line-height:1.75}.empty-orders-actions{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:27px}.empty-orders-primary,.empty-orders-secondary{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:46px;padding:0 18px;border-radius:12px;font-size:12px;font-weight:800;transition:transform .2s,box-shadow .2s,border-color .2s}.empty-orders-primary{background:linear-gradient(135deg,#1769d2,#168ec8);color:#fff;box-shadow:0 12px 25px rgba(29,111,216,.22)}.empty-orders-primary:hover{transform:translateY(-2px);box-shadow:0 16px 31px rgba(29,111,216,.29)}.empty-orders-secondary{border:1px solid #d9e7f1;background:#fff;color:#3d5a7a}.empty-orders-secondary:hover{transform:translateY(-2px);border-color:#a8cbe8}.empty-orders-help{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:23px;padding-top:20px;border-top:1px solid var(--border);color:var(--t3);font-size:11px}.empty-orders-help a{color:var(--blue);font-weight:800}@keyframes emptyOrbit{to{transform:rotate(360deg)}}
+    /* Professional, highly readable typography for the empty state. */
+    .empty-orders h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(27px,4vw,36px);font-weight:800;line-height:1.2;letter-spacing:-1.2px}
+    .empty-orders>p{max-width:540px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:500;letter-spacing:-.1px}
+    .empty-orders-status,.empty-orders-primary,.empty-orders-secondary,.empty-orders-help{font-family:'Plus Jakarta Sans',sans-serif}
+    .empty-orders-primary,.empty-orders-secondary{font-weight:700;line-height:1;letter-spacing:-.15px}
     .r-top{display:none!important;align-items:center;justify-content:space-between;
         margin-bottom:22px;flex-wrap:wrap;gap:12px;
         animation:fadeDown .4s ease both}
@@ -683,7 +690,7 @@ function compactTransactionId(string $id): string {
     .r-sub{display:none!important}
     .txn-id{font-family:'Manrope','Segoe UI',sans-serif!important;letter-spacing:0!important;line-height:1.4!important}
     #live-location-info{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px!important;background:#f7fbfa!important;border-top:1px solid var(--border);font-size:12px!important}#live-location-info>div:first-child{margin:0!important;color:var(--green)!important}#live-location-info>div:first-child i{animation:none!important}#live-location-details{font-size:10px!important;line-height:1.3!important;text-align:right}#live-location-details>div:nth-child(1),#live-location-details>div:nth-child(2){display:none}#live-location-details strong{font-weight:700;color:var(--t3)}
-    @media(max-width:520px){#tracking-map{height:230px}.map-hd{padding:11px 13px}.map-hd-title{font-size:13px}.status-pill{padding:5px 10px;font-size:10px}.rider-bar{padding:11px 14px}.rider-av{width:36px;height:36px}.rider-nm{font-size:13px}.rider-rl{font-size:10px}.steps-bar{padding:13px 8px}.step-ico{width:32px;height:32px}.step-lb{font-size:8px}.map-note{padding:9px 12px;font-size:9px}#live-location-info{padding:11px 13px!important}.customer-chat{padding:14px;margin-top:12px}.customer-message-list{max-height:180px}.tracking-legend{font-size:8px;padding:5px 7px}}
+    @media(max-width:520px){#tracking-map{height:230px}.map-hd{padding:11px 13px}.map-hd-title{font-size:13px}.status-pill{padding:5px 10px;font-size:10px}.rider-bar{padding:11px 14px}.rider-av{width:36px;height:36px}.rider-nm{font-size:13px}.rider-rl{font-size:10px}.steps-bar{padding:13px 8px}.step-ico{width:32px;height:32px}.step-lb{font-size:8px}.map-note{padding:9px 12px;font-size:9px}#live-location-info{padding:11px 13px!important}.customer-chat{padding:14px;margin-top:12px}.customer-message-list{max-height:180px}.tracking-legend{font-size:8px;padding:5px 7px}.empty-orders{margin:16px auto;padding:38px 20px 28px;border-radius:20px}.empty-orders-visual{width:94px;height:94px;margin-bottom:21px}.empty-orders-icon{inset:14px;border-radius:20px;font-size:27px}.empty-orders-actions{align-items:stretch;flex-direction:column}.empty-orders-primary,.empty-orders-secondary{width:100%}}
     .customer-chat{margin-top:16px;padding:18px;border:1px solid var(--border);border-radius:18px;background:#fff;box-shadow:var(--sh-sm)}.customer-chat-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.customer-chat-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800}.customer-chat-title i{color:var(--blue)}.customer-chat-status{font-size:9px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.06em}.customer-message-list{display:flex;flex-direction:column;gap:9px;min-height:68px;max-height:240px;padding:2px 2px 12px;overflow-y:auto}.customer-message{display:flex;flex-direction:column;align-items:flex-start}.customer-message.mine{align-items:flex-end}.customer-message-bubble{max-width:82%;padding:10px 12px;border-radius:14px 14px 14px 4px;background:#f0f5f8;color:var(--t1);font-size:12px;line-height:1.45}.customer-message.mine .customer-message-bubble{border-radius:14px 14px 4px 14px;background:linear-gradient(135deg,#1769d2,#168ec8);color:#fff}.customer-message-meta{margin-top:3px;color:var(--t3);font-size:9px}.customer-chat-empty{margin:auto;color:var(--t3);font-size:11px}.customer-chat-form{display:flex;gap:9px}.customer-chat-input{min-width:0;flex:1;height:44px;padding:0 13px;border:1px solid var(--border);border-radius:12px;background:#f9fbfd;color:var(--t1);font:inherit;font-size:12px;outline:none;transition:border-color .2s,box-shadow .2s}.customer-chat-input:focus{border-color:var(--blue-br);box-shadow:0 0 0 3px var(--blue-glow)}.customer-chat-send{width:46px;height:44px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--blue-br));color:#fff;box-shadow:var(--sh-bl);transition:transform .2s}.customer-chat-send:hover{transform:translateY(-2px)}.customer-chat-send:disabled{opacity:.55;cursor:not-allowed;transform:none}
     .customer-chat-toggle{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid #d7e5ed;border-radius:10px;background:#f4f9fc;color:var(--blue);font:800 10px 'Manrope',sans-serif;cursor:pointer}.customer-chat.is-collapsed{padding:14px 16px}.customer-chat.is-collapsed .customer-chat-head{margin-bottom:0}.customer-chat.is-collapsed .customer-message-list,.customer-chat.is-collapsed .customer-chat-form{display:none}.customer-chat.is-collapsed .customer-chat-status{display:none}.page-orders.is-chat-hidden{display:none!important}
     .customer-delay-alert{display:flex;gap:10px;margin:0 0 12px;padding:13px 14px;border:1px solid #fed7aa;border-radius:13px;background:#fff7ed;color:#7c2d12;font-size:11px;line-height:1.5}.customer-delay-alert[hidden]{display:none}.customer-delay-alert i{margin-top:2px;color:#f59e0b}.customer-delay-alert strong{display:block;margin-bottom:2px;font-size:12px}
@@ -960,7 +967,7 @@ function compactTransactionId(string $id): string {
                 Order Again
             </button>
             <?php else: ?>
-            <a class="mob-itm" href="purchase.php?user_id=<?php echo urlencode($access_customer['user_id']); ?>">
+            <a class="mob-itm" href="../home.php#quick-order">
                 <i class="fas fa-rotate-right"></i>
                 <?php echo $tracking_info ? 'Order Again' : 'Place an Order'; ?>
             </a>
@@ -1026,6 +1033,7 @@ function compactTransactionId(string $id): string {
                             </div>
                         </div>
                         <div class="txn-body">
+<?php render_order_items($conn,$txn); ?>
                             <div class="txn-row">
                                 <span class="txn-lbl">Product</span>
                                 <span class="txn-val"><?php 
@@ -1037,7 +1045,7 @@ function compactTransactionId(string $id): string {
                                 ?></span>
                             </div>
                             <div class="txn-row">
-                                <span class="txn-lbl">Price / Unit</span>
+                                <span class="txn-lbl"><?= str_starts_with((string)$txn['description'], 'Cart order:') ? 'Average / gallon' : 'Price / Unit' ?></span>
                                 <span class="txn-val">₱<?php echo number_format($txn['price_per_unit'],2); ?></span>
                             </div>
                             <?php if($txn['discount']>0): ?>
@@ -1105,7 +1113,7 @@ function compactTransactionId(string $id): string {
                             <?php endif; ?>
                             <?php if($txn['status'] === 'pending' && in_array($mcs, ['pending', 'assigned'], true)): ?>
                             <div class="cancel-order-form" style="padding:12px 0 0;">
-                                <a class="cancel-order-btn" style="display:block;text-align:center;text-decoration:none;border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8;" href="purchase.php?user_id=<?php echo urlencode($txn['user_id']); ?>&amp;edit_transaction_id=<?php echo urlencode($txn['transaction_id']); ?>"><i class="fas fa-pen-to-square"></i> Edit Order</a>
+                                <?php if (!str_starts_with((string)($txn['description'] ?? ''), 'Cart order:')): ?><a class="cancel-order-btn" style="display:block;text-align:center;text-decoration:none;border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8;" href="purchase.php?user_id=<?php echo urlencode($txn['user_id']); ?>&amp;edit_transaction_id=<?php echo urlencode($txn['transaction_id']); ?>"><i class="fas fa-pen-to-square"></i> Edit Order</a><?php endif; ?>
                             </div>
                             <form method="POST" class="cancel-order-form" style="padding:12px 0 0;" onsubmit="return confirm('Cancel this order? This action cannot be undone.');">
                                 <input type="hidden" name="cancel_order" value="1">
@@ -1179,11 +1187,14 @@ function compactTransactionId(string $id): string {
 <section id="pg-results" class="pg <?php echo $view==='results'?'on':''; ?>">
 <div class="r-wrap">
     <?php if (!$tracking_info && $access_customer): ?>
-    <div class="tracking-no-orders" style="max-width:460px;margin:24px auto;">
-        <h2 style="margin-bottom:12px;">Welcome, <?= htmlspecialchars($access_customer['full_name']) ?></h2>
-        <p>You have no orders yet. You can access and download your QR pass anytime.</p>
-        <?php require __DIR__ . '/customer-access-pass.php'; ?>
-    </div>
+    <section class="empty-orders" aria-labelledby="empty-orders-title">
+        <div class="empty-orders-visual" aria-hidden="true"><div class="empty-orders-ring"></div><div class="empty-orders-icon"><i class="fas fa-box-open"></i></div></div>
+        <div class="empty-orders-status"><i class="fas fa-circle"></i> Account ready</div>
+        <h1 id="empty-orders-title">No orders yet</h1>
+        <p>Hello, <?= htmlspecialchars(explode(' ', trim((string)$access_customer['full_name']))[0] ?: 'Customer') ?>. Once you place an order, its payment status, preparation progress, and live delivery updates will appear here.</p>
+        <div class="empty-orders-actions"><a class="empty-orders-primary" href="../home.php#quick-order"><i class="fas fa-bottle-water"></i> Browse water products</a><a class="empty-orders-secondary" href="dashboard.php"><i class="fas fa-table-cells-large"></i> Back to dashboard</a></div>
+        <div class="empty-orders-help"><i class="fas fa-qrcode"></i> Need your account pass? <a href="scan_qr.php">Open QR access</a></div>
+    </section>
     <?php endif; ?>
 
     <div class="r-top">
@@ -1358,6 +1369,7 @@ function compactTransactionId(string $id): string {
         </div>
 
         <div class="txn-body">
+<?php render_order_items($conn,$txn); ?>
             <div class="txn-row">
                 <span class="txn-lbl">Product</span>
                 <span class="txn-val"><?php 
@@ -1369,7 +1381,7 @@ function compactTransactionId(string $id): string {
                 ?></span>
             </div>
             <div class="txn-row">
-                <span class="txn-lbl">Price / Unit</span>
+                <span class="txn-lbl"><?= str_starts_with((string)$txn['description'], 'Cart order:') ? 'Average / gallon' : 'Price / Unit' ?></span>
                 <span class="txn-val">₱<?php echo number_format($txn['price_per_unit'],2); ?></span>
             </div>
             <?php if($txn['discount']>0): ?>
@@ -1399,7 +1411,7 @@ function compactTransactionId(string $id): string {
 
         <?php if($txn['status'] === 'pending' && in_array($cs, ['pending', 'assigned'], true)): ?>
         <div class="cancel-order-form" style="padding-bottom:0;">
-            <a class="cancel-order-btn" style="display:block;text-align:center;text-decoration:none;border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8;" href="purchase.php?user_id=<?php echo urlencode($txn['user_id']); ?>&amp;edit_transaction_id=<?php echo urlencode($txn['transaction_id']); ?>"><i class="fas fa-pen-to-square"></i> Edit Order</a>
+            <?php if (!str_starts_with((string)($txn['description'] ?? ''), 'Cart order:')): ?><a class="cancel-order-btn" style="display:block;text-align:center;text-decoration:none;border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8;" href="purchase.php?user_id=<?php echo urlencode($txn['user_id']); ?>&amp;edit_transaction_id=<?php echo urlencode($txn['transaction_id']); ?>"><i class="fas fa-pen-to-square"></i> Edit Order</a><?php endif; ?>
         </div>
         <form method="POST" class="cancel-order-form" onsubmit="return confirm('Cancel this order? This action cannot be undone.');">
             <input type="hidden" name="cancel_order" value="1">

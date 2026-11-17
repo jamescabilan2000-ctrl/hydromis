@@ -129,8 +129,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                     $conn,
                     htmlspecialchars_decode($user_id),
                     null,
-                    'Account approved',
-                    'Your HydroMIS account has been approved. You can now scan your QR code and order water.',
+                    'Account reactivated',
+                    'Your HydroMIS account has been reactivated. You can now scan your QR code and order water.',
                     'success'
                 );
             } else {
@@ -139,12 +139,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                     htmlspecialchars_decode($user_id),
                     null,
                     'Account update',
-                    'Your HydroMIS account was not approved. Please contact HydroMIS support for assistance.',
+                    'Your HydroMIS account has been disabled. Please contact HydroMIS support for assistance.',
                     'warning'
                 );
             }
         }
-            $success = $status === 'approved' ? 'User account approved successfully!' : 'User account denied successfully!';
+            $success = $status === 'approved' ? 'Customer account reactivated successfully!' : 'User account denied successfully!';
         } else {
             $error = 'The user account could not be updated.';
         }
@@ -160,7 +160,7 @@ $standalonePortalUsers = $conn->query("SELECT id, admin_id AS account_id, full_n
     ORDER BY created_at DESC");
 $users = $conn->query("SELECT * FROM users ORDER BY created_at DESC");
 $total_users = $conn->query("SELECT COUNT(*) as count FROM users")->fetch_assoc()['count'];
-$approved_users = $conn->query("SELECT COUNT(*) as count FROM users WHERE status='approved'")->fetch_assoc()['count'];
+$approved_users = $conn->query("SELECT COUNT(*) as count FROM users WHERE status IN ('approved','pending')")->fetch_assoc()['count'];
 $pending_users = $conn->query("SELECT COUNT(*) as count FROM users WHERE status='pending'")->fetch_assoc()['count'];
 $denied_users = $conn->query("SELECT COUNT(*) as count FROM users WHERE status='denied'")->fetch_assoc()['count'];
 ?>
@@ -173,7 +173,7 @@ $denied_users = $conn->query("SELECT COUNT(*) as count FROM users WHERE status='
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="../css/admin-sidebar-hover.css" rel="stylesheet">
+    <link href="../css/admin-sidebar-hover.css?v=20261111f" rel="stylesheet">
     <link href="../css/animations.css" rel="stylesheet">
     <style>
 :root {
@@ -599,7 +599,7 @@ html, body {
     </style>
     <script src="../js/ui-protection.js" defer></script>
     <link rel="stylesheet" href="../css/admin-theme.css">
-    <script src="../js/admin-theme.js"></script>
+    <script src="../js/admin-theme.js?v=20261111e"></script>
 </head>
 <body>
 <div class="shell">
@@ -684,7 +684,7 @@ html, body {
             <div class="page-heading">
                 <div>
                     <div class="page-title">User Management</div>
-                    <div class="page-subtitle">Review and approve customer accounts</div>
+                    <div class="page-subtitle">Manage customer accounts. Registration is active immediately.</div>
                 </div>
 
             </div>
@@ -715,16 +715,16 @@ html, body {
                         <span style="font-size:11px;color:var(--muted);">Active</span>
                     </div>
                     <div class="stat-value"><?php echo $approved_users; ?></div>
-                    <div class="stat-label">Approved</div>
+                    <div class="stat-label">Active customers</div>
                 </div>
 
                 <div class="card stat-card stat-amber">
                     <div class="stat-top">
                         <div class="stat-icon-wrap icon-amber"><i class="fas fa-hourglass-half"></i></div>
-                        <span style="font-size:11px;color:var(--muted);">Review</span>
+                        <span style="font-size:11px;color:var(--muted);">Active</span>
                     </div>
                     <div class="stat-value"><?php echo $pending_users; ?></div>
-                    <div class="stat-label">Pending Review</div>
+                    <div class="stat-label">Legacy registrations (active)</div>
                 </div>
 
                 <div class="card stat-card stat-red">
@@ -807,27 +807,27 @@ html, body {
                                         <?php echo number_format((int)($row['loyalty_points'] ?? 0)); ?> pts
                                     </span>
                                 </td>
-                                <td><span class="badge badge-<?php echo $row['status']; ?>"><?php echo ucfirst($row['status']); ?></span></td>
+                                <td><span class="badge badge-<?php echo $row['status']; ?>"><?php echo in_array($row['status'], ['approved','pending'], true) ? 'Active' : 'Disabled'; ?></span></td>
                                 <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
                                 <td>
                                     <div style="display: flex; gap: 6px;">
-                                        <?php if ($row['status'] !== 'approved'): ?>
-                                            <form method="POST" style="display: inline;" onsubmit="return confirm('Approve this customer account?');">
+                                        <?php if ($row['status'] === 'denied'): ?>
+                                            <form method="POST" style="display: inline;" onsubmit="return confirm('Reactivate this customer account?');">
                                                 <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($row['user_id']); ?>">
                                                 <input type="hidden" name="action" value="approve">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['user_status_csrf']); ?>">
-                                                <button type="submit" class="btn-action btn-enable" title="Approve account">
-                                                    <i class="fas fa-check"></i> <?php echo $row['status'] === 'denied' ? 'Approve Instead' : 'Approve'; ?>
+                                                <button type="submit" class="btn-action btn-enable" title="Reactivate account">
+                                                    <i class="fas fa-check"></i> Reactivate
                                                 </button>
                                             </form>
                                         <?php endif; ?>
                                         <?php if ($row['status'] !== 'denied'): ?>
-                                            <form method="POST" style="display: inline;" onsubmit="return confirm('Deny this customer account?');">
+                                            <form method="POST" style="display: inline;" onsubmit="return confirm('Disable this customer account?');">
                                                 <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($row['user_id']); ?>">
                                                 <input type="hidden" name="action" value="deny">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['user_status_csrf']); ?>">
-                                                <button type="submit" class="btn-action btn-disable" title="Deny account">
-                                                    <i class="fas fa-times"></i> <?php echo $row['status'] === 'approved' ? 'Deny Instead' : 'Deny'; ?>
+                                                <button type="submit" class="btn-action btn-disable" title="Disable account">
+                                                    <i class="fas fa-times"></i> Disable
                                                 </button>
                                             </form>
                                         <?php endif; ?>

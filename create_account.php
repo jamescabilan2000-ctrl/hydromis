@@ -2,10 +2,15 @@
 session_start();
 require_once 'config/database.php';
 require_once 'config/storage_service.php';
+require_once __DIR__.'/config/customer_address.php';
+require_once __DIR__.'/config/gmail_service.php';
+ensure_customer_email_schema($conn);
 
 $error = '';
 $success = false;
 $new_user_id = '';
+$verificationPending = !empty($_SESSION['pending_customer_registration']);
+$emailReady = false;
 $orderSetupKeys = ['order_type', 'container', 'container_size', 'quantity', 'fulfillment', 'addons'];
 $orderSetup = [];
 foreach ($orderSetupKeys as $key) {
@@ -13,6 +18,18 @@ foreach ($orderSetupKeys as $key) {
     if (is_scalar($value) && $value !== '') $orderSetup[$key] = substr((string)$value, 0, 120);
 }
 $orderSetupQuery = http_build_query($orderSetup);
+if (($_POST['next'] ?? $_GET['next'] ?? '') === 'cart') {
+    $orderSetup['next'] = 'cart';
+    $orderSetupQuery = http_build_query($orderSetup);
+}
+
+if ($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['verify_email_submit'])) {
+    $pending=$_SESSION['pending_customer_registration']??null;
+    $code=preg_replace('/\D+/','',(string)($_POST['verification_code']??''));
+    if(!$pending||time()>(int)($pending['expires']??0)){$error='The verification code expired. Please register again.';unset($_SESSION['pending_customer_registration']);$verificationPending=false;}
+    elseif(!hash_equals((string)$pending['code_hash'],hash('sha256',$code))){$error='The verification code is incorrect.';$verificationPending=true;}
+    else{foreach($pending['fields'] as $key=>$value)$_POST[$key]=$value;$_POST['create_submit']='1';$emailReady=true;unset($_SESSION['pending_customer_registration']);$verificationPending=false;}
+}
 
 // Handle Account Creation
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
@@ -22,8 +39,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
     $address = $street_number . ', ' . $barangay; // Combine for storage
     $contact_input = trim((string)($_POST['contact_number'] ?? ''));
     $contact_number = $contact_input;
+    $email = normalize_gmail((string)($_POST['email'] ?? ''));
+
+    if(!$emailReady){
+        if(!valid_gmail($email)){$error='Enter a valid Gmail address ending in @gmail.com.';}
+        else{
+            $emailLookup=sensitive_lookup($email);$dup=$conn->prepare('SELECT user_id FROM users WHERE email_lookup=? LIMIT 1');$dup->bind_param('s',$emailLookup);$dup->execute();
+            if($dup->get_result()->num_rows>0)$error='This Gmail address is already registered. Please log in instead.';
+            else{$code=(string)random_int(100000,999999);if(send_customer_otp($email,$code,'registration')){$_SESSION['pending_customer_registration']=['code_hash'=>hash('sha256',$code),'expires'=>time()+600,'fields'=>['full_name'=>$full_name,'barangay'=>$barangay,'street_number'=>$street_number,'contact_number'=>$contact_number,'email'=>$email]+$orderSetup];$verificationPending=true;}else{$error='Unable to send the Gmail verification code. Ask the administrator to configure Gmail SMTP.';}}
+        }
+    }
     
-    if (empty($full_name) || empty($barangay) || empty($street_number) || empty($contact_number)) {
+    if (!$emailReady) {
+        // Wait for Gmail ownership verification before creating the account.
+    } elseif (empty($full_name) || empty($barangay) || empty($street_number) || empty($contact_number) || empty($email)) {
         $error = 'All fields are required!';
     } elseif (!preg_match('/^[\p{L} ]+$/u', $full_name)) {
         $error = 'Full name can contain letters and spaces only.';
@@ -54,12 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                 $encrypted_name = encrypt_sensitive($full_name);
                 $encrypted_address = encrypt_sensitive($address);
                 $encrypted_contact = encrypt_sensitive($contact_number);
-                $insertUser = $conn->prepare("INSERT INTO users (user_id, full_name, address, contact_number, contact_lookup, status) VALUES (?, ?, ?, ?, ?, 'pending')");
+                $encrypted_email = encrypt_sensitive($email);
+                $email_lookup = sensitive_lookup($email);
+                $insertUser = $conn->prepare("INSERT INTO users (user_id, full_name, address, contact_number, contact_lookup, email, email_lookup, email_verified_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'approved')");
                 if (!$insertUser) {
                     error_log('Customer registration prepare failed: ' . $conn->error);
                     $error = 'Account registration is temporarily unavailable. Please try again.';
                 } else {
-                    $insertUser->bind_param('sssss', $user_id, $encrypted_name, $encrypted_address, $encrypted_contact, $contact_lookup);
+                    $insertUser->bind_param('sssssss', $user_id, $encrypted_name, $encrypted_address, $encrypted_contact, $contact_lookup, $encrypted_email, $email_lookup);
                 }
             }
         }
@@ -539,7 +570,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                     <div class="digital-pass">
                         <div class="pass-top"><div class="pass-brand"><span class="pass-logo"><img src="imagess/hydromis-logo-v2.png?v=20260802" alt="HydroMIS logo"></span> HydroMIS</div><span class="pass-type">Customer Access Pass</span></div>
                         <div class="pass-customer-name"><?php echo htmlspecialchars($_POST['full_name']); ?></div>
-                        <p class="pass-login-guide">Customer ID<strong><?php echo htmlspecialchars($new_user_id); ?></strong>Use this mobile number to log in<strong><?php echo htmlspecialchars($contact_number); ?></strong></p>
+                        <p class="pass-login-guide">Customer ID<strong><?php echo htmlspecialchars($new_user_id); ?></strong>Verified Gmail for login<strong><?php echo htmlspecialchars($email); ?></strong></p>
                         <div class="qr-frame">
                             <img id="customerQrImage" src="download_qr.php?inline=1&amp;user_id=<?php echo rawurlencode($new_user_id); ?>" alt="HydroMIS customer QR code for <?php echo htmlspecialchars($_POST['full_name']); ?>">
                         </div>
@@ -553,9 +584,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                     </div>
 
                     <div class="success-actions-grid">
-                        <a href="user/scan_qr.php<?php echo $orderSetupQuery ? '?' . htmlspecialchars($orderSetupQuery) : ''; ?>" class="btn-action home-action"><i class="fas fa-right-to-bracket"></i> Log in to continue your order</a>
+                        <a href="<?php echo ($orderSetup['next'] ?? '') === 'cart' ? 'user/cart.php' : 'user/scan_qr.php' . ($orderSetupQuery ? '?' . htmlspecialchars($orderSetupQuery) : ''); ?>" class="btn-action home-action"><i class="fas fa-arrow-right"></i> <?php echo ($orderSetup['next'] ?? '') === 'cart' ? 'Continue to checkout' : 'Log in to continue your order'; ?></a>
                     </div>
                 </div>
+            <?php elseif ($verificationPending): ?>
+                <div class="form-intro"><h2>Verify your Gmail</h2><p>We sent a six-digit code to <strong><?=htmlspecialchars($_SESSION['pending_customer_registration']['fields']['email']??'your Gmail')?></strong>. It expires in 10 minutes.</p></div>
+                <?php if($error):?><div class="error-message"><i class="fas fa-exclamation-circle mr-2"></i><?=htmlspecialchars($error)?></div><?php endif;?>
+                <form method="post" class="registration-form"><input type="hidden" name="verify_email_submit" value="1"><div class="form-group"><label for="verification_code"><i class="fas fa-envelope-circle-check mr-2"></i>Verification code *</label><input class="form-control" id="verification_code" name="verification_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" required autofocus></div><button type="submit" class="btn-submit"><i class="fas fa-shield-check mr-2"></i> Verify Gmail &amp; Create Account</button></form>
+                <div class="back-link"><a href="create_account.php"><i class="fas fa-arrow-left mr-2"></i> Start again</a></div>
             <?php else: ?>
                 <!-- Registration Form -->
                 <div class="form-intro">
@@ -575,6 +611,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                     <?php endforeach; ?>
                     
                     <div class="form-group">
+                        <label for="email"><i class="fas fa-envelope mr-2"></i>Gmail Address *</label>
+                        <input type="email" class="form-control" name="email" id="email" placeholder="yourname@gmail.com" autocomplete="email" pattern="[A-Za-z0-9.!#$%&amp;'*+/=?^_`{|}~-]+@gmail\.com" maxlength="190" required value="<?=htmlspecialchars($_POST['email']??'')?>">
+                        <small class="field-help">We’ll send a verification code to confirm this Gmail belongs to you.</small>
+                    </div>
+
+                    <div class="form-group">
                         <label for="full_name"><i class="fas fa-user mr-2"></i>Full Name *</label>
                         <input type="text" class="form-control" name="full_name" id="full_name" placeholder="e.g. Juan Dela Cruz" autocomplete="name" pattern="[A-Za-zÀ-ÖØ-öø-ÿ ]+" title="Use letters and spaces only." maxlength="100" required value="<?php echo isset($_POST['full_name']) ? htmlspecialchars($_POST['full_name']) : ''; ?>">
                     </div>
@@ -583,40 +625,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_submit'])) {
                         <label for="barangay"><i class="fas fa-map-marker-alt mr-2"></i>Barangay *</label>
                         <select class="form-control" name="barangay" id="barangay" required>
                             <option value="">Select your barangay</option>
-                            <option value="BagongBanwa Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'BagongBanwa Island') ? 'selected' : ''; ?>>BagongBanwa Island</option>
-                            <option value="Banlasan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Banlasan') ? 'selected' : ''; ?>>Banlasan</option>
-                            <option value="Batasan Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Batasan Island') ? 'selected' : ''; ?>>Batasan Island</option>
-                            <option value="BilangBilangan Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'BilangBilangan Island') ? 'selected' : ''; ?>>BilangBilangan Island</option>
-                            <option value="Bosongon" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Bosongon') ? 'selected' : ''; ?>>Bosongon</option>
-                            <option value="Buenos Aires" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Buenos Aires') ? 'selected' : ''; ?>>Buenos Aires</option>
-                            <option value="Bunacan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Bunacan') ? 'selected' : ''; ?>>Bunacan</option>
-                            <option value="Cabulijan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Cabulijan') ? 'selected' : ''; ?>>Cabulijan</option>
-                            <option value="Cahayag" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Cahayag') ? 'selected' : ''; ?>>Cahayag</option>
-                            <option value="Cawayanan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Cawayanan') ? 'selected' : ''; ?>>Cawayanan</option>
-                            <option value="Centro" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Centro') ? 'selected' : ''; ?>>Centro</option>
-                            <option value="Genonocan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Genonocan') ? 'selected' : ''; ?>>Genonocan</option>
-                            <option value="Guiwanon" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Guiwanon') ? 'selected' : ''; ?>>Guiwanon</option>
-                            <option value="Ilijan Norte" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Ilijan Norte') ? 'selected' : ''; ?>>Ilijan Norte</option>
-                            <option value="Ilijan Sur" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Ilijan Sur') ? 'selected' : ''; ?>>Ilijan Sur</option>
-                            <option value="Libertad" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Libertad') ? 'selected' : ''; ?>>Libertad</option>
-                            <option value="Macaas" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Macaas') ? 'selected' : ''; ?>>Macaas</option>
-                            <option value="Matabao" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Matabao') ? 'selected' : ''; ?>>Matabao</option>
-                            <option value="Mocaboc Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Mocaboc Island') ? 'selected' : ''; ?>>Mocaboc Island</option>
-                            <option value="Panadtaran" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Panadtaran') ? 'selected' : ''; ?>>Panadtaran</option>
-                            <option value="Panaytayon" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Panaytayon') ? 'selected' : ''; ?>>Panaytayon</option>
-                            <option value="Pandan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pandan') ? 'selected' : ''; ?>>Pandan</option>
-                            <option value="Pangapasan Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pangapasan Island') ? 'selected' : ''; ?>>Pangapasan Island</option>
-                            <option value="Pinayagan Norte" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pinayagan Norte') ? 'selected' : ''; ?>>Pinayagan Norte</option>
-                            <option value="Pinayagan Sur" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pinayagan Sur') ? 'selected' : ''; ?>>Pinayagan Sur</option>
-                            <option value="Pooc Occidental" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pooc Occidental') ? 'selected' : ''; ?>>Pooc Occidental</option>
-                            <option value="Pooc Oriental" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Pooc Oriental') ? 'selected' : ''; ?>>Pooc Oriental</option>
-                            <option value="Potohan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Potohan') ? 'selected' : ''; ?>>Potohan</option>
-                            <option value="Talenceras" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Talenceras') ? 'selected' : ''; ?>>Talenceras</option>
-                            <option value="Tan-awan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Tan-awan') ? 'selected' : ''; ?>>Tan-awan</option>
-                            <option value="Tinangnan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Tinangnan') ? 'selected' : ''; ?>>Tinangnan</option>
-                            <option value="Ubojan" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Ubojan') ? 'selected' : ''; ?>>Ubojan</option>
-                            <option value="Ubay Island" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Ubay Island') ? 'selected' : ''; ?>>Ubay Island</option>
-                            <option value="Villanueva" <?php echo (isset($_POST['barangay']) && $_POST['barangay'] == 'Villanueva') ? 'selected' : ''; ?>>Villanueva</option>
+                            <?php foreach(customer_barangays() as $barangayOption): ?>
+                            <option value="<?= htmlspecialchars($barangayOption, ENT_QUOTES, 'UTF-8') ?>" <?= ($_POST['barangay'] ?? '') === $barangayOption ? 'selected' : '' ?>><?= htmlspecialchars($barangayOption, ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
 

@@ -2,7 +2,9 @@
 require_once 'check_auth.php';
 require_once '../config/database.php';
 require_once '../config/inventory_service.php';
+require_once '../config/payment_logger.php';
 ensure_inventory_schema($conn);
+ensure_payment_log_schema($conn);
 
 $conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) DEFAULT 'cash'");
 $conn->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_reference VARCHAR(255)");
@@ -57,13 +59,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     $transaction_id = sanitize($_POST['transaction_id']);
     $action = sanitize($_POST['action']);
     $redirect = 'payments.php';
+    $paymentBeforeResult = $conn->query("SELECT p.user_id,p.amount,p.payment_method,p.payment_status,u.full_name FROM payments p LEFT JOIN users u ON u.user_id=p.user_id WHERE p.payment_id='$payment_id' LIMIT 1");
+    $paymentBefore = $paymentBeforeResult ? $paymentBeforeResult->fetch_assoc() : null;
     
     if ($action == 'verify') {
-        $conn->query("UPDATE payments SET payment_status = 'paid' WHERE payment_id = '$payment_id'");
-        $conn->query("UPDATE transactions SET payment_status = 'paid', payment_date = NOW() WHERE transaction_id = '$transaction_id'");
         $orderResult = $conn->query("SELECT status,fulfillment_method FROM transactions WHERE transaction_id='$transaction_id' LIMIT 1");
         $order = $orderResult ? $orderResult->fetch_assoc() : null;
-        if ($order && ($order['status'] ?? '') === 'pending') {
+        if ($order && ($order['fulfillment_method'] ?? '') === 'pickup') {
+            $_SESSION['staff_flash'] = 'Pickup orders do not need payment verification. Payment is recorded when the order is collected.';
+            $_SESSION['staff_flash_type'] = 'info';
+        } else {
+            $conn->query("UPDATE payments SET payment_status = 'paid' WHERE payment_id = '$payment_id'");
+            $conn->query("UPDATE transactions SET payment_status = 'paid', payment_date = NOW() WHERE transaction_id = '$transaction_id'");
+            log_payment_event($conn, ['payment_id'=>$payment_id,'transaction_id'=>$transaction_id,'user_id'=>$paymentBefore['user_id']??null,'customer_name'=>$paymentBefore['full_name']??null,'action'=>'verified','old_status'=>$paymentBefore['payment_status']??null,'new_status'=>'paid','payment_method'=>$paymentBefore['payment_method']??null,'amount'=>$paymentBefore['amount']??0,'notes'=>'Payment verified by station staff.']);
+        }
+        if ($order && ($order['fulfillment_method'] ?? '') !== 'pickup' && ($order['status'] ?? '') === 'pending') {
             $staffId = (string)($_SESSION['admin_id'] ?? $_SESSION['staff_id'] ?? $_SESSION['user_id'] ?? 'STAFF');
             [$approved, $approvalMessage] = approve_or_cancel_order_for_stock($conn, $transaction_id, $staffId);
             $_SESSION['staff_flash'] = $approved
@@ -81,15 +91,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     } elseif ($action == 'reject') {
         $conn->query("UPDATE payments SET payment_status = 'failed' WHERE payment_id = '$payment_id'");
         $conn->query("UPDATE transactions SET payment_status = 'failed' WHERE transaction_id = '$transaction_id'");
+        log_payment_event($conn, ['payment_id'=>$payment_id,'transaction_id'=>$transaction_id,'user_id'=>$paymentBefore['user_id']??null,'customer_name'=>$paymentBefore['full_name']??null,'action'=>'rejected','old_status'=>$paymentBefore['payment_status']??null,'new_status'=>'failed','payment_method'=>$paymentBefore['payment_method']??null,'amount'=>$paymentBefore['amount']??0,'notes'=>'Payment rejected by station staff.']);
     }
     
     header('Location: ' . $redirect);
     exit();
 }
 
-$payments = $conn->query("SELECT p.payment_id, p.transaction_id, p.transaction_id AS order_id, p.amount, p.payment_status AS status, p.created_at, p.payment_method, p.payment_reference, p.payment_proof, p.gcash_number, p.maya_number, p.notes, u.full_name, u.contact_number
+$payments = $conn->query("SELECT p.payment_id, p.transaction_id, p.transaction_id AS order_id, p.user_id, p.amount, p.payment_status AS status, p.created_at, p.payment_method, p.payment_reference, p.payment_proof, p.gcash_number, p.maya_number, p.notes, u.full_name, u.contact_number, COALESCE(t.fulfillment_method,'delivery') AS fulfillment_method
     FROM payments p
     LEFT JOIN users u ON p.user_id = u.user_id
+    LEFT JOIN transactions t ON p.transaction_id = t.transaction_id
     WHERE p.transaction_id NOT LIKE 'RWD-%' AND p.transaction_id NOT LIKE 'DEMO-%'
     ORDER BY p.created_at DESC");
 

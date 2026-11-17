@@ -2,7 +2,6 @@
 require_once 'check_auth.php';
 require_once '../config/database.php';
 require_once '../config/order_status.php';
-require_once '../config/cap_request.php';
 require_once '../config/system_settings.php';
 
 $systemLogo = system_logo_path($conn);
@@ -58,11 +57,46 @@ $conn->query("CREATE TABLE IF NOT EXISTS rider_users (
 )");
 $ensure_column('rider_users', 'age', 'INT');
 $ensure_column('rider_users', 'address', 'TEXT');
+$ensure_column('rider_users', 'last_seen_at', 'DATETIME NULL');
 $ensure_column('transactions', 'rider_id', 'VARCHAR(50)');
 $ensure_column('transactions', 'delivery_status', "VARCHAR(30) DEFAULT 'pending'");
+$ensure_column('transactions', 'rider_assignment_status', "VARCHAR(30) DEFAULT 'unassigned'");
+$ensure_column('transactions', 'rider_assignment_responded_at', 'DATETIME NULL');
+$conn->query("UPDATE transactions SET rider_assignment_status='accepted'
+    WHERE COALESCE(rider_id, assigned_rider) IS NOT NULL
+      AND COALESCE(rider_assignment_status,'unassigned')='unassigned'");
 $ensure_column('transactions', 'approved_by', 'VARCHAR(50) NULL');
 $transactions_has_assigned_rider = $column_exists('transactions', 'assigned_rider');
 $transaction_rider_expr = $transactions_has_assigned_rider ? "COALESCE(t.rider_id, t.assigned_rider)" : "t.rider_id";
+$busy_rider_expr = $transactions_has_assigned_rider ? "COALESCE(busy.rider_id, busy.assigned_rider)" : "busy.rider_id";
+
+if (($_GET['ajax'] ?? '') === 'rider_statuses') {
+    header('Content-Type: application/json');
+    $statuses = [];
+    $statusResult = $conn->query("SELECT ru.rider_id, ru.full_name,
+        CASE WHEN ru.last_seen_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE) THEN 1 ELSE 0 END AS is_online,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM transactions busy
+            WHERE {$busy_rider_expr} = ru.rider_id
+              AND busy.status='approved'
+              AND COALESCE(busy.fulfillment_method,'delivery')='delivery'
+              AND COALESCE(busy.delivery_status,'pending') <> 'delivered'
+              AND COALESCE(busy.rider_assignment_status,'accepted') IN ('pending','accepted')
+        ) THEN 0 ELSE 1 END AS is_available
+        FROM rider_users ru WHERE ru.status='active' ORDER BY ru.full_name");
+    if ($statusResult) {
+        while ($riderStatus = $statusResult->fetch_assoc()) {
+            $statuses[] = [
+                'rider_id' => (string)$riderStatus['rider_id'],
+                'full_name' => (string)$riderStatus['full_name'],
+                'is_online' => (bool)$riderStatus['is_online'],
+                'is_available' => (bool)$riderStatus['is_available'],
+            ];
+        }
+    }
+    echo json_encode(['ok' => true, 'riders' => $statuses]);
+    exit;
+}
 $conn->query("CREATE TABLE IF NOT EXISTS feedback_ratings (
     id INT PRIMARY KEY AUTO_INCREMENT,
     transaction_id VARCHAR(255) NOT NULL,
@@ -96,6 +130,47 @@ $conn->query("CREATE TABLE IF NOT EXISTS rider_notifications (
     INDEX idx_rider_id (rider_id),
     INDEX idx_is_read (is_read)
 )");
+$conn->query("CREATE TABLE IF NOT EXISTS staff_notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_key VARCHAR(190) NOT NULL UNIQUE,
+    transaction_id VARCHAR(50) NOT NULL,
+    rider_id VARCHAR(50) NULL,
+    notification_type VARCHAR(40) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_staff_notification_unread (is_read, created_at)
+)");
+
+// Persist one alert for unanswered assignments and overdue active deliveries.
+$conn->query("INSERT IGNORE INTO staff_notifications
+    (event_key,transaction_id,rider_id,notification_type,title,message)
+    SELECT CONCAT('unanswered:',t.transaction_id,':',COALESCE(t.rider_id,'')),t.transaction_id,t.rider_id,
+      'assignment_unanswered','Rider has not responded',
+      CONCAT('Rider ',COALESCE(t.rider_id,'(unknown)'),' has not accepted order ',t.transaction_id,' after 5 minutes.')
+    FROM transactions t
+    WHERE t.status='approved' AND t.rider_assignment_status='pending'
+      AND t.updated_at <= DATE_SUB(NOW(),INTERVAL 5 MINUTE)");
+$conn->query("INSERT IGNORE INTO staff_notifications
+    (event_key,transaction_id,rider_id,notification_type,title,message)
+    SELECT CONCAT('overdue:',t.transaction_id,':',COALESCE(t.rider_id,'')),t.transaction_id,t.rider_id,
+      'delivery_overdue','Delivery still not completed',
+      CONCAT('Rider ',COALESCE(t.rider_id,'(unknown)'),' has not completed order ',t.transaction_id,' after 60 minutes on the way.')
+    FROM transactions t
+    WHERE t.status='approved' AND t.delivery_status IN ('on_way','on_the_way')
+      AND t.updated_at <= DATE_SUB(NOW(),INTERVAL 60 MINUTE)");
+
+if (($_GET['ajax'] ?? '') === 'staff_notifications') {
+    header('Content-Type: application/json');
+    $alerts=[];
+    $alertResult=$conn->query("SELECT id,transaction_id,rider_id,notification_type,title,message,created_at FROM staff_notifications WHERE is_read=0 ORDER BY id ASC LIMIT 20");
+    $lastAlertId=0;
+    if ($alertResult) while ($alert=$alertResult->fetch_assoc()) { $alerts[]=$alert; $lastAlertId=(int)$alert['id']; }
+    if ($lastAlertId>0) $conn->query("UPDATE staff_notifications SET is_read=1 WHERE is_read=0 AND id<=$lastAlertId");
+    echo json_encode(['ok'=>true,'notifications'=>$alerts]);
+    exit;
+}
 
 $demo_pending_check = $conn->query("SELECT transaction_id FROM transactions WHERE transaction_id LIKE 'DEMO-%' LIMIT 1");
 if (!$demo_pending_check || $demo_pending_check->num_rows === 0) {
@@ -185,7 +260,18 @@ if (!$demo_pending_check || $demo_pending_check->num_rows === 0) {
             $_SESSION['staff_flash'] = 'Pickup orders do not require a rider.';
             $_SESSION['staff_flash_type'] = 'warning';
         } elseif ($rider_id !== '') {
-            $rider_check = $conn->query("SELECT full_name FROM rider_users WHERE rider_id = '$rider_id' AND status = 'active' LIMIT 1");
+            $rider_check = $conn->query("SELECT ru.full_name FROM rider_users ru
+                WHERE ru.rider_id = '$rider_id' AND ru.status = 'active'
+                  AND ru.last_seen_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)
+                  AND NOT EXISTS (
+                    SELECT 1 FROM transactions busy
+                    WHERE COALESCE(busy.rider_id, busy.assigned_rider) = ru.rider_id
+                      AND busy.transaction_id <> '$transaction_id'
+                      AND busy.status = 'approved'
+                      AND COALESCE(busy.fulfillment_method,'delivery') = 'delivery'
+                      AND COALESCE(busy.delivery_status,'pending') <> 'delivered'
+                      AND COALESCE(busy.rider_assignment_status,'accepted') IN ('pending','accepted')
+                  ) LIMIT 1");
             if ($rider_check && $rider_check->num_rows > 0) {
                 $rider_info = $rider_check->fetch_assoc();
                 $assignment_sets = ["rider_id = '$rider_id'"];
@@ -193,14 +279,16 @@ if (!$demo_pending_check || $demo_pending_check->num_rows === 0) {
                     $assignment_sets[] = "assigned_rider = '$rider_id'";
                 }
                 $assignment_sets[] = "delivery_status = 'pending'";
+                $assignment_sets[] = "rider_assignment_status = 'pending'";
+                $assignment_sets[] = "rider_assignment_responded_at = NULL";
                 $assignment_sets[] = "status = 'approved'";
                 $assignment_sets[] = "approved_by = '{$staff_id}'";
                 $sql = "UPDATE transactions SET " . implode(', ', $assignment_sets) . " WHERE transaction_id = '$transaction_id' AND status = 'approved' AND payment_status = 'paid' AND COALESCE(fulfillment_method,'delivery') = 'delivery'";
                 $assignment_notification = ['rider_id' => $rider_id, 'transaction_id' => $transaction_id];
-                $_SESSION['staff_flash'] = "Assigned {$rider_info['full_name']} to transaction {$transaction_id}. Rider notified.";
+                $_SESSION['staff_flash'] = "Assignment request sent to {$rider_info['full_name']} for transaction {$transaction_id}.";
                 $_SESSION['staff_flash_type'] = 'success';
             } else {
-                $_SESSION['staff_flash'] = 'Selected rider is not available.';
+                $_SESSION['staff_flash'] = 'Selected rider must be online and available, with no active or pending delivery.';
                 $_SESSION['staff_flash_type'] = 'warning';
             }
         } else {
@@ -308,7 +396,17 @@ $weekOrders = array_sum(array_column($analyticsDays, 'orders'));
 $weekRevenue = array_sum(array_column($analyticsDays, 'revenue'));
 
 $rider_list = [];
-$rider_result = $conn->query("SELECT rider_id, full_name, age, address, contact_number FROM rider_users WHERE status = 'active' ORDER BY full_name ASC");
+$rider_result = $conn->query("SELECT ru.rider_id, ru.full_name, ru.age, ru.address, ru.contact_number, ru.last_seen_at,
+    CASE WHEN ru.last_seen_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE) THEN 1 ELSE 0 END AS is_online,
+    CASE WHEN EXISTS (
+        SELECT 1 FROM transactions busy
+        WHERE COALESCE(busy.rider_id, busy.assigned_rider) = ru.rider_id
+          AND busy.status='approved'
+          AND COALESCE(busy.fulfillment_method,'delivery')='delivery'
+          AND COALESCE(busy.delivery_status,'pending') <> 'delivered'
+          AND COALESCE(busy.rider_assignment_status,'accepted') IN ('pending','accepted')
+    ) THEN 0 ELSE 1 END AS is_available
+    FROM rider_users ru WHERE ru.status = 'active' ORDER BY is_online DESC, is_available DESC, ru.full_name ASC");
 if ($rider_result) {
     while ($r = $rider_result->fetch_assoc()) $rider_list[] = $r;
 }
@@ -319,10 +417,13 @@ $approved_trans = $conn->query("
         {$transaction_rider_expr} AS effective_rider_id,
         u.full_name, u.contact_number, u.address,
         ru.full_name AS rider_name, ru.age AS rider_age,
-        ru.address AS rider_address, ru.contact_number AS rider_contact,
+        ru.address AS rider_address, ru.contact_number AS rider_contact, ru.last_seen_at AS rider_last_seen_at,
         COALESCE(rl.rider_latitude, 0) as rider_latitude,
         COALESCE(rl.rider_longitude, 0) as rider_longitude,
-        rl.last_update as gps_last_update
+        rl.last_update as gps_last_update,
+        COALESCE((SELECT SUM(ti.quantity) FROM transaction_items ti WHERE ti.transaction_id=t.transaction_id AND ti.container_size LIKE 'cup%'),0) AS cup_quantity,
+        COALESCE((SELECT SUM(ti.line_total) FROM transaction_items ti WHERE ti.transaction_id=t.transaction_id AND ti.container_size LIKE 'cup%'),0) AS cup_subtotal,
+        (SELECT GROUP_CONCAT(CONCAT(CASE ti.container_size WHEN 'cup-slim' THEN 'Slim Cup' WHEN 'cup-round' THEN 'Round Cup' ELSE 'Cup' END, ' × ', ti.quantity) ORDER BY ti.id SEPARATOR ', ') FROM transaction_items ti WHERE ti.transaction_id=t.transaction_id AND ti.container_size LIKE 'cup%') AS cup_details
     FROM transactions t
     JOIN users u ON t.user_id = u.user_id
     LEFT JOIN rider_users ru ON {$transaction_rider_expr} = ru.rider_id
@@ -337,7 +438,10 @@ $approved_trans = $conn->query("
 $approved_operations = $approved_trans ? $approved_trans->num_rows : 0;
 
 $pickup_trans = $conn->query("
-    SELECT t.*, u.full_name, u.contact_number, u.email, u.address
+    SELECT t.*, u.full_name, u.contact_number, u.email, u.address,
+      COALESCE((SELECT SUM(ti.quantity) FROM transaction_items ti WHERE ti.transaction_id=t.transaction_id AND ti.container_size LIKE 'cup%'),0) AS cup_quantity,
+      COALESCE((SELECT SUM(ti.line_total) FROM transaction_items ti WHERE ti.transaction_id=t.transaction_id AND ti.container_size LIKE 'cup%'),0) AS cup_subtotal,
+      (SELECT GROUP_CONCAT(CONCAT(CASE ti.container_size WHEN 'cup-slim' THEN 'Slim Cup' WHEN 'cup-round' THEN 'Round Cup' ELSE 'Cup' END, ' × ', ti.quantity) ORDER BY ti.id SEPARATOR ', ') FROM transaction_items ti WHERE ti.transaction_id=t.transaction_id AND ti.container_size LIKE 'cup%') AS cup_details
     FROM transactions t
     JOIN users u ON t.user_id = u.user_id
     WHERE t.status = 'approved'
@@ -1145,7 +1249,6 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
         <div class="analytics-period-value" data-period="day" style="display:flex;flex-direction:column;gap:6px;"><label style="color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase;">Select day</label><input type="date" name="analytics_date" value="<?php echo htmlspecialchars($analytics_date); ?>" style="min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);"></div>
         <div class="analytics-period-value" data-period="month" style="display:flex;flex-direction:column;gap:6px;"><label style="color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase;">Select month</label><input type="month" name="analytics_month" value="<?php echo htmlspecialchars($analytics_month); ?>" style="min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);"></div>
         <div class="analytics-period-value" data-period="year" style="display:flex;flex-direction:column;gap:6px;"><label style="color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase;">Select year</label><input type="number" min="2020" max="<?php echo date('Y')+1; ?>" name="analytics_year" value="<?php echo $analytics_year; ?>" style="width:110px;min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);"></div>
-        <button type="submit" class="btn btn-primary btn-sm" style="min-height:40px;"><i class="fas fa-chart-line"></i> Apply</button>
         <span style="margin-left:auto;align-self:center;color:var(--muted);font-size:12px;"><i class="fas fa-calendar"></i> <?php echo htmlspecialchars($analytics_label); ?></span>
       </form>
       <?php endif; ?>
@@ -1209,6 +1312,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
           <div class="analytics-metric"><i class="fas fa-chart-line"></i><div><strong><?php echo number_format($weekOrders / max(1,$analytics_divisor), 1); ?></strong><span>Average orders per day</span></div></div>
         </div>
       </section>
+
       <?php endif; ?>
 
       <?php if ($delivery_operations_view): ?>
@@ -1229,21 +1333,35 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
               <?php while ($row = $approved_trans->fetch_assoc()):
                 $ds = $row['delivery_status'] ?: 'pending';
                 $has_rider = !empty($row['effective_rider_id']);
+                $assignment_status = strtolower((string)($row['rider_assignment_status'] ?? ($has_rider ? 'accepted' : 'unassigned')));
+                $delivery_address_text = trim((string)($row['delivery_address'] ?? ''));
+                $is_pin_placeholder = in_array(strtolower($delivery_address_text), ['delivery to selected map pin','delivery to the selected map pin','deliver to the selected map pin'], true);
+                if ($delivery_address_text === '') $delivery_address_text = (string)($row['address'] ?? 'No address provided');
+                $registered_address_text = trim((string)($row['address'] ?? ''));
+                $pin_has_registered_address = $is_pin_placeholder && $registered_address_text !== '';
                 $badge_class = 'badge-pending';
                 $status_label = ucfirst(str_replace('_', ' ', $ds));
                 if ($ds === 'delivered')                               { $badge_class = 'badge-delivered'; $status_label = 'Delivered'; }
                 elseif ($ds === 'on_way' || $ds === 'on_the_way')     { $badge_class = 'badge-on_way'; $status_label = 'On the Way'; }
-                elseif ($ds === 'assigned' || $has_rider)             { $badge_class = 'badge-assigned'; $status_label = 'Assigned'; }
+                elseif ($has_rider && $assignment_status === 'pending') { $badge_class = 'badge-pending'; $status_label = 'Awaiting Rider'; }
+                elseif ($ds === 'assigned' || $has_rider)             { $badge_class = 'badge-assigned'; $status_label = 'Accepted'; }
               ?>
               <div class="delivery-item">
                 <div class="delivery-top">
                   <div>
                     <div class="delivery-id"><?php echo htmlspecialchars($row['transaction_id']); ?></div>
                     <div class="delivery-cust"><?php echo htmlspecialchars($row['full_name']); ?></div>
+                    <div class="delivery-rider" style="margin-top:5px;flex-wrap:wrap;">
+                      <span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($row['contact_number'] ?: 'No contact number'); ?></span>
+                      <span><i class="fas fa-location-dot"></i> <span class="staff-pin-address"<?php if ($is_pin_placeholder && !$pin_has_registered_address): ?> data-lat="<?php echo htmlspecialchars((string)$row['delivery_latitude']); ?>" data-lng="<?php echo htmlspecialchars((string)$row['delivery_longitude']); ?>"<?php endif; ?>><?php echo htmlspecialchars($pin_has_registered_address ? $registered_address_text . ' · Pinned location' : ($is_pin_placeholder ? 'Finding pinned address…' : $delivery_address_text)); ?></span></span>
+                    </div>
                     <div class="delivery-rider">
                       <?php if ($row['rider_name']): ?>
                         <span class="rider-online"><i class="fas fa-motorcycle"></i></span>
                         <span><?php echo htmlspecialchars($row['rider_name']); ?></span>
+                        <span style="font-size:10px;color:<?php echo !empty($row['rider_last_seen_at']) && strtotime($row['rider_last_seen_at']) >= time()-120 ? 'var(--green)' : 'var(--muted)'; ?>;">
+                          <?php echo !empty($row['rider_last_seen_at']) && strtotime($row['rider_last_seen_at']) >= time()-120 ? 'Online' : 'Offline'; ?>
+                        </span>
                         <?php if (($ds === 'on_way' || $ds === 'on_the_way') && $row['gps_last_update']): ?>
                           <span style="color:var(--green);font-size:11px;margin-left:4px;"><i class="fas fa-satellite-dish"></i> GPS</span>
                         <?php endif; ?>
@@ -1259,13 +1377,14 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                 </div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px 16px;margin:14px 0;padding:13px;border:1px solid rgba(148,163,184,.16);border-radius:12px;background:rgba(15,23,42,.24);font-size:12px;">
                   <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase">Gallons ordered</span><strong><?= (int)($row['quantity'] ?? 0) ?></strong></div>
-                  <?php $staff_caps = saved_cap_details((string)($row['notes'] ?? '')); ?>
-                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Caps requested</span><strong><?= $staff_caps['quantity'] > 0 ? $staff_caps['quantity'] . ' caps' : 'No caps requested' ?></strong></div>
-                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cap price / unit</span><strong><?= format_currency($staff_caps['price']) ?></strong></div>
-                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Caps subtotal</span><strong><?= format_currency($staff_caps['subtotal']) ?></strong></div>
+                  <?php $staff_cup_quantity=(int)($row['cup_quantity'] ?? 0); $staff_cup_subtotal=(float)($row['cup_subtotal'] ?? 0); ?>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cups ordered</span><strong><?= $staff_cup_quantity > 0 ? $staff_cup_quantity . ' cup' . ($staff_cup_quantity === 1 ? '' : 's') : 'No cups ordered' ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cup type</span><strong><?= htmlspecialchars($row['cup_details'] ?: '—') ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cup price / unit</span><strong><?= format_currency($staff_cup_quantity > 0 ? $staff_cup_subtotal / $staff_cup_quantity : 0) ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cups subtotal</span><strong><?= format_currency($staff_cup_subtotal) ?></strong></div>
                   </div>
                 <?php $paymentVerified = ($row['payment_status'] ?? '') === 'paid'; ?>
-                <?php if (!empty($rider_list) && $ds !== 'delivered' && $paymentVerified): ?>
+                <?php if (!empty($rider_list) && $ds !== 'delivered' && $paymentVerified && !$has_rider): ?>
                 <form method="POST" class="assign-row">
                   <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($row['transaction_id']); ?>">
                   <input type="hidden" name="action" value="assign_rider">
@@ -1273,13 +1392,17 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                     <option value="">— Select rider —</option>
                     <?php foreach ($rider_list as $rider): ?>
                     <option value="<?php echo htmlspecialchars($rider['rider_id']); ?>"
+                      data-rider-name="<?php echo htmlspecialchars($rider['full_name']); ?>"
+                      <?php echo empty($rider['is_available']) || empty($rider['is_online']) ? 'disabled' : ''; ?>
                       <?php echo (($row['effective_rider_id'] ?? '') === $rider['rider_id']) ? 'selected' : ''; ?>>
-                      <?php echo htmlspecialchars($rider['full_name']); ?>
+                      <?php echo htmlspecialchars($rider['full_name']); ?> — <?php echo !empty($rider['is_online']) ? 'Online' : 'Offline'; ?> / <?php echo !empty($rider['is_available']) ? 'Available' : 'Busy'; ?><?php echo !empty($rider['is_online']) && !empty($rider['is_available']) ? ' 🟢' : ''; ?>
                     </option>
                     <?php endforeach; ?>
                   </select>
                   <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-user-check"></i> Assign</button>
                 </form>
+                <?php elseif ($has_rider && $ds !== 'delivered'): ?>
+                <div style="font-size:12px;color:var(--muted);"><i class="fas fa-user-clock"></i> <?php echo $assignment_status === 'pending' ? 'Waiting for rider approval' : 'Rider accepted this delivery'; ?></div>
                 <?php elseif (!$paymentVerified): ?>
                 <form method="POST" class="assign-row" onsubmit="return confirm('Verify payment for this order?');">
                   <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($row['transaction_id']); ?>">
@@ -1317,7 +1440,7 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                   <div>
                     <div class="delivery-id"><?php echo htmlspecialchars($pickup['transaction_id']); ?></div>
                     <div class="delivery-cust"><?php echo htmlspecialchars($pickup['full_name']); ?></div>
-                    <div class="delivery-rider"><span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($pickup['contact_number'] ?: 'No contact number'); ?></span></div>
+                    <div class="delivery-rider" style="flex-wrap:wrap;"><span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($pickup['contact_number'] ?: 'No contact number'); ?></span><span><i class="fas fa-envelope"></i> <?php echo htmlspecialchars($pickup['email'] ?: 'No email'); ?></span><span><i class="fas fa-location-dot"></i> <?php echo htmlspecialchars($pickup['address'] ?: 'No address provided'); ?></span></div>
                   </div>
                   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
                     <span class="badge badge-pending">Preparing</span>
@@ -1328,11 +1451,12 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                   <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Order</span><strong><?php echo htmlspecialchars(($pickup['water_type'] === 'nowater' ? 'No-Water' : 'Regular Water') . ' · ' . (int)$pickup['quantity'] . ' gallon' . ((int)$pickup['quantity'] === 1 ? '' : 's')); ?></strong></div>
                   <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Price / Unit</span><strong><?php echo format_currency($pickup['price_per_unit']); ?></strong></div>
                   <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Container</span><strong><?php echo htmlspecialchars(ucwords(str_replace('-', ' ', (string)($pickup['container_size'] ?: 'Not specified'))) . ' · ' . ucfirst((string)($pickup['container_status'] ?: 'existing'))); ?></strong></div>
-                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Payment</span><strong><?php echo htmlspecialchars(strtoupper((string)$pickup['payment_method']) . ' · ' . ucfirst((string)$pickup['payment_status'])); ?></strong></div>
-                  <?php $staff_caps = saved_cap_details((string)($pickup['notes'] ?? '')); ?>
-                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Caps requested</span><strong><?= $staff_caps['quantity'] > 0 ? $staff_caps['quantity'] . ' caps' : 'No caps requested' ?></strong></div>
-                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cap price / unit</span><strong><?= format_currency($staff_caps['price']) ?></strong></div>
-                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Caps subtotal</span><strong><?= format_currency($staff_caps['subtotal']) ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Payment</span><strong><?php echo ($pickup['payment_status'] ?? '') === 'paid' ? 'Paid' : 'Pay on collection · No verification needed'; ?></strong></div>
+                  <?php $pickup_cup_quantity=(int)($pickup['cup_quantity'] ?? 0); $pickup_cup_subtotal=(float)($pickup['cup_subtotal'] ?? 0); ?>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cups ordered</span><strong><?= $pickup_cup_quantity > 0 ? $pickup_cup_quantity . ' cup' . ($pickup_cup_quantity === 1 ? '' : 's') : 'No cups ordered' ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cup type</span><strong><?= htmlspecialchars($pickup['cup_details'] ?: '—') ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cup price / unit</span><strong><?= format_currency($pickup_cup_quantity > 0 ? $pickup_cup_subtotal / $pickup_cup_quantity : 0) ?></strong></div>
+                  <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Cups subtotal</span><strong><?= format_currency($pickup_cup_subtotal) ?></strong></div>
                   <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Customer ID</span><strong><?php echo htmlspecialchars($pickup['user_id']); ?></strong></div>
                   <div><span style="display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.06em;">Ordered</span><strong><?php echo date('M d, Y · h:i A', strtotime($pickup['created_at'])); ?></strong></div>
                 </div>
@@ -1493,13 +1617,74 @@ function tick() {
 tick();
 setInterval(tick, 1000);
 
+async function refreshRiderStatuses() {
+  try {
+    const response = await fetch('dashboard.php?ajax=rider_statuses', {cache:'no-store', credentials:'same-origin'});
+    if (!response.ok) return;
+    const data = await response.json();
+    if (!data.ok) return;
+    const riders = new Map((data.riders || []).map(rider => [String(rider.rider_id), rider]));
+    document.querySelectorAll('select.assign-select').forEach(select => {
+      Array.from(select.options).forEach(option => {
+        if (!option.value) return;
+        const rider = riders.get(option.value);
+        if (!rider) {
+          option.disabled = true;
+          return;
+        }
+        const name = option.dataset.riderName || rider.full_name;
+        const readyMark = rider.is_online && rider.is_available ? ' 🟢' : '';
+        option.textContent = `${name} — ${rider.is_online ? 'Online' : 'Offline'} / ${rider.is_available ? 'Available' : 'Busy'}${readyMark}`;
+        option.disabled = !rider.is_online || !rider.is_available;
+        if (option.selected && option.disabled) select.value = '';
+      });
+    });
+  } catch (error) {
+    console.warn('Unable to refresh rider availability.', error);
+  }
+}
+refreshRiderStatuses();
+setInterval(refreshRiderStatuses, 10000);
+
+async function resolvePinnedAddresses() {
+  const targets = Array.from(document.querySelectorAll('.staff-pin-address[data-lat][data-lng]'));
+  await Promise.all(targets.map(async target => {
+    const lat = Number(target.dataset.lat), lon = Number(target.dataset.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      target.textContent = 'Pinned location unavailable';
+      return;
+    }
+    try {
+      const url = new URL('https://photon.komoot.io/reverse');
+      url.search = new URLSearchParams({lat:lat.toFixed(5), lon:lon.toFixed(5), limit:'1', lang:'en'});
+      const response = await fetch(url, {credentials:'omit', referrerPolicy:'no-referrer'});
+      if (!response.ok) throw new Error('Address lookup failed');
+      const properties = (await response.json()).features?.[0]?.properties || {};
+      const parts = [properties.name, properties.street, properties.district, properties.locality, properties.city, properties.county, properties.state]
+        .filter(value => typeof value === 'string' && value.trim());
+      const address = [...new Set(parts)].join(', ');
+      target.textContent = address || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    } catch (error) {
+      target.textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    }
+  }));
+}
+resolvePinnedAddresses();
+
 const analyticsPeriod = document.getElementById('analyticsPeriod');
+const analyticsPeriodForm = document.getElementById('analyticsPeriodForm');
 function syncAnalyticsPeriodFields() {
   document.querySelectorAll('.analytics-period-value').forEach(field => {
     field.style.display = field.dataset.period === analyticsPeriod?.value ? 'flex' : 'none';
   });
 }
-analyticsPeriod?.addEventListener('change', syncAnalyticsPeriodFields);
+analyticsPeriod?.addEventListener('change', () => {
+  syncAnalyticsPeriodFields();
+  analyticsPeriodForm?.requestSubmit();
+});
+analyticsPeriodForm?.querySelectorAll('input[type="date"],input[type="month"],input[type="number"]').forEach(input => {
+  input.addEventListener('change', () => analyticsPeriodForm.requestSubmit());
+});
 syncAnalyticsPeriodFields();
 
 // Auto-dismiss flash after 5s

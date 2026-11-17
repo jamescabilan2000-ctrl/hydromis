@@ -100,7 +100,7 @@ class OrderTrackingMap {
      */
     async loadOrderLocation() {
         try {
-            const response = await fetch(`../api/delivery_tracker.php?request=get_rider_location&transaction_id=${this.transactionId}`);
+            const response = await fetch(`../api/delivery_tracker.php?request=get_rider_location&transaction_id=${encodeURIComponent(this.transactionId)}`);
             const result = await response.json();
 
             if (result.success) {
@@ -119,6 +119,11 @@ class OrderTrackingMap {
      */
     updateMap(data) {
         if (!data) return;
+        if (!data.rider_location) {
+            if (this.leafletMap && this.riderMarker) this.leafletMap.removeLayer(this.riderMarker);
+            if (this.leafletMap && this.polyline) this.leafletMap.removeLayer(this.polyline);
+            return;
+        }
 
         const riderLat = parseFloat(data.rider_location.latitude);
         const riderLng = parseFloat(data.rider_location.longitude);

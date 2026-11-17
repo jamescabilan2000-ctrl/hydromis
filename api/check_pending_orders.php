@@ -80,11 +80,52 @@ if ($total_pending === 10) {
 $pickup_res = $conn->query("SELECT COUNT(*) AS total FROM transactions WHERE status = 'approved' AND fulfillment_method = 'pickup' AND COALESCE(delivery_status, 'pending') <> 'delivered'");
 $pickup_count = $pickup_res ? (int)($pickup_res->fetch_assoc()['total'] ?? 0) : 0;
 
-$delivery_res = $conn->query("SELECT COUNT(*) AS total FROM transactions WHERE status = 'approved' AND COALESCE(fulfillment_method, 'delivery') = 'delivery' AND COALESCE(NULLIF(delivery_status, ''), 'pending') = 'pending' AND transaction_id NOT LIKE 'RWD-%' AND COALESCE(description, '') NOT LIKE 'Reward Redemption - %'");
+$delivery_res = $conn->query("SELECT COUNT(*) AS total FROM transactions WHERE status = 'approved' AND COALESCE(fulfillment_method, 'delivery') = 'delivery' AND COALESCE(NULLIF(delivery_status, ''), 'pending') <> 'delivered' AND transaction_id NOT LIKE 'RWD-%' AND COALESCE(description, '') NOT LIKE 'Reward Redemption - %'");
 $delivery_count = $delivery_res ? (int)($delivery_res->fetch_assoc()['total'] ?? 0) : 0;
 
 $rewards_res = $conn->query("SELECT COUNT(*) AS total FROM reward_claims WHERE claim_status = 'pending'");
 $rewards_count = $rewards_res ? (int)($rewards_res->fetch_assoc()['total'] ?? 0) : 0;
+
+// Shared rider exception/response feed for every staff page.
+$conn->query("CREATE TABLE IF NOT EXISTS staff_notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_key VARCHAR(190) NOT NULL UNIQUE,
+    transaction_id VARCHAR(50) NOT NULL,
+    rider_id VARCHAR(50) NULL,
+    notification_type VARCHAR(40) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_staff_notification_unread (is_read, created_at)
+)");
+$conn->query("INSERT IGNORE INTO staff_notifications (event_key,transaction_id,rider_id,notification_type,title,message)
+    SELECT CONCAT('unanswered:',t.transaction_id,':',COALESCE(t.rider_id,'')),t.transaction_id,t.rider_id,
+      'assignment_unanswered','Rider has not responded',
+      CONCAT('Rider ',COALESCE(t.rider_id,'(unknown)'),' has not accepted order ',t.transaction_id,' after 5 minutes.')
+    FROM transactions t
+    WHERE t.status='approved' AND t.rider_assignment_status='pending'
+      AND t.updated_at <= DATE_SUB(NOW(),INTERVAL 5 MINUTE)");
+$conn->query("INSERT IGNORE INTO staff_notifications (event_key,transaction_id,rider_id,notification_type,title,message)
+    SELECT CONCAT('overdue:',t.transaction_id,':',COALESCE(t.rider_id,'')),t.transaction_id,t.rider_id,
+      'delivery_overdue','Delivery still not completed',
+      CONCAT('Rider ',COALESCE(t.rider_id,'(unknown)'),' has not completed order ',t.transaction_id,' after 60 minutes on the way.')
+    FROM transactions t
+    WHERE t.status='approved' AND t.delivery_status IN ('on_way','on_the_way')
+      AND t.updated_at <= DATE_SUB(NOW(),INTERVAL 60 MINUTE)");
+
+$staff_notifications = [];
+$staff_alert_result = $conn->query("SELECT id,transaction_id,rider_id,notification_type,title,message,created_at FROM staff_notifications WHERE is_read=0 ORDER BY id ASC LIMIT 20");
+$last_staff_alert_id = 0;
+if ($staff_alert_result) {
+    while ($alert = $staff_alert_result->fetch_assoc()) {
+        $staff_notifications[] = $alert;
+        $last_staff_alert_id = (int)$alert['id'];
+    }
+}
+if ($last_staff_alert_id > 0) {
+    $conn->query("UPDATE staff_notifications SET is_read=1 WHERE is_read=0 AND id<=$last_staff_alert_id");
+}
 
 echo json_encode([
     'success' => true,
@@ -92,6 +133,7 @@ echo json_encode([
     'pickup_count' => $pickup_count,
     'delivery_count' => $delivery_count,
     'rewards_count' => $rewards_count,
+    'staff_notifications' => $staff_notifications,
     'pending_orders' => $pending_orders,
     'server_time' => date('Y-m-d H:i:s')
 ]);

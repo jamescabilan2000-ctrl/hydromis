@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     contact_number VARCHAR(20) NOT NULL,
     email VARCHAR(255) UNIQUE,
     qr_code_path VARCHAR(255),
-    status ENUM('pending', 'approved', 'denied') DEFAULT 'pending',
+    status ENUM('pending', 'approved', 'denied') DEFAULT 'approved',
     loyalty_points INT DEFAULT 0,
     points_year INT DEFAULT YEAR(CURDATE()),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -34,6 +34,12 @@ CREATE TABLE IF NOT EXISTS transactions (
     container_size VARCHAR(30),
     container_status VARCHAR(20),
     fulfillment_method VARCHAR(20),
+    delivery_address VARCHAR(1024) NULL,
+    delivery_latitude DECIMAL(10,8) NULL,
+    delivery_longitude DECIMAL(11,8) NULL,
+    delivery_address VARCHAR(1024) NULL,
+    delivery_latitude DECIMAL(10,8) NULL,
+    delivery_longitude DECIMAL(11,8) NULL,
     qr_priority TINYINT(1) NOT NULL DEFAULT 0,
     inventory_item_id INT,
     inventory_reserved TINYINT(1) NOT NULL DEFAULT 0,
@@ -46,6 +52,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     rider_id VARCHAR(50),
     status ENUM('pending', 'approved', 'denied') DEFAULT 'pending',
     delivery_status ENUM('pending', 'preparing', 'on_way', 'delivered') DEFAULT 'pending',
+    rider_assignment_status VARCHAR(30) DEFAULT 'unassigned',
+    rider_assignment_responded_at DATETIME NULL,
     approved_by VARCHAR(255),
     assigned_rider VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -100,6 +108,7 @@ CREATE TABLE IF NOT EXISTS rider_users (
     address TEXT,
     contact_number VARCHAR(20),
     status VARCHAR(20) DEFAULT 'active',
+    last_seen_at DATETIME NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -129,6 +138,19 @@ CREATE TABLE IF NOT EXISTS rider_notifications (
     is_read TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_rider_notification (rider_id, is_read)
+);
+
+CREATE TABLE IF NOT EXISTS staff_notifications (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    event_key VARCHAR(190) UNIQUE NOT NULL,
+    transaction_id VARCHAR(50) NOT NULL,
+    rider_id VARCHAR(50),
+    notification_type VARCHAR(40) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_staff_notification_unread (is_read, created_at)
 );
 
 CREATE TABLE IF NOT EXISTS rider_messages (

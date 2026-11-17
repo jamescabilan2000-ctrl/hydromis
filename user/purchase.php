@@ -86,8 +86,8 @@ if ($result->num_rows > 0) {
     exit;
 }
 
-// Purchasing is available only after an administrator approves the account.
-if (strtolower((string)($scanned_data['status'] ?? 'pending')) !== 'approved') {
+// Registration is immediately active; disabled accounts remain blocked.
+if (!in_array(strtolower((string)($scanned_data['status'] ?? '')), ['approved', 'pending'], true)) {
     $accountStatus = strtolower((string)($scanned_data['status'] ?? 'pending'));
     header('Location: scan_qr.php?approval_required=' . urlencode($accountStatus));
     exit;
@@ -106,6 +106,9 @@ $activeOrderStmt->execute();
 $activeOrder = $activeOrderStmt->get_result()->fetch_assoc();
 if ($edit_transaction_id !== '') {
     if ($activeOrder && hash_equals((string)$activeOrder['transaction_id'], $edit_transaction_id) && strtolower((string)$activeOrder['status']) === 'pending') {
+        if (str_starts_with((string)$activeOrder['description'], 'Cart order:')) {
+            header('Location: track_order.php?user_id=' . urlencode($user_id)); exit;
+        }
         $editing_order = $activeOrder;
     } else {
         header('Location: track_order.php?user_id=' . urlencode($user_id) . '&active_order=1');

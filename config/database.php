@@ -117,7 +117,9 @@ class DBCompatConnection {
         // Connect directly to the configured database. Shared-host database
         // users normally cannot create databases, and attempting to do so on
         // each page request prevents the public pages from loading.
-        $this->mysqli = new mysqli($host, $user, $pass, $db, (int) $port);
+        // mysqli emits a PHP warning even with MYSQLI_REPORT_OFF. Capture the
+        // connection error below so HTML warnings never corrupt JSON responses.
+        $this->mysqli = @new mysqli($host, $user, $pass, $db, (int) $port);
 
         if ($this->mysqli->connect_errno) {
             $this->connect_error = $this->mysqli->connect_error;
@@ -292,6 +294,20 @@ class DBCompatConnection {
         $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS assigned_rider VARCHAR(50) NULL");
         $this->query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS approved_by VARCHAR(50) NULL");
 
+        $this->query("CREATE TABLE IF NOT EXISTS transaction_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            transaction_id VARCHAR(50) NOT NULL,
+            container_size VARCHAR(30) NOT NULL,
+            container_status VARCHAR(20) NOT NULL,
+            quantity INT NOT NULL DEFAULT 1,
+            unit_price DECIMAL(10,2) NOT NULL DEFAULT 0,
+            line_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_transaction_items_transaction (transaction_id),
+            CONSTRAINT fk_transaction_items_transaction FOREIGN KEY (transaction_id)
+                REFERENCES transactions(transaction_id) ON DELETE CASCADE
+        )");
+
         $this->query("CREATE TABLE IF NOT EXISTS rider_users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             rider_id VARCHAR(50) UNIQUE NOT NULL,
@@ -427,6 +443,7 @@ class DBCompatConnection {
             ['transactions', 'container_status', 'VARCHAR(20) NULL'],
             ['transactions', 'fulfillment_method', 'VARCHAR(20) NULL'],
             ['transactions', 'delivery_latitude', 'DECIMAL(10,8) NULL'],
+            ['transactions', 'delivery_address', 'VARCHAR(1024) NULL'],
             ['transactions', 'delivery_longitude', 'DECIMAL(11,8) NULL'],
             ['transactions', 'qr_priority', 'TINYINT(1) NOT NULL DEFAULT 0'],
             ['transactions', 'inventory_item_id', 'INT NULL'],
@@ -448,6 +465,8 @@ class DBCompatConnection {
         $securityColumns = [
             ['users', 'username_lookup', 'CHAR(64) NULL'],
             ['users', 'contact_lookup', 'CHAR(64) NULL'],
+            ['users', 'email_lookup', 'CHAR(64) NULL'],
+            ['users', 'email_verified_at', 'DATETIME NULL'],
             ['rider_users', 'username_lookup', 'CHAR(64) NULL'],
             ['rider_users', 'contact_lookup', 'CHAR(64) NULL'],
             ['admin_users', 'username_lookup', 'CHAR(64) NULL']
@@ -534,6 +553,11 @@ if ($conn->connect_error) {
         return;
     }
     http_response_code(503);
+    if (str_contains(str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? '')), '/api/')) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => false, 'error' => 'The database is temporarily unavailable.']);
+        exit;
+    }
     header('Content-Type: text/html; charset=UTF-8');
     echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>HydroMIS unavailable</title></head><body style="font-family:Arial,sans-serif;margin:48px;color:#10263a"><h1>HydroMIS is temporarily unavailable</h1><p>The database connection could not be established. Please verify the database username, password, and user privileges in the hosting control panel, then try again.</p></body></html>';
     exit;
@@ -556,4 +580,7 @@ enforce_annual_loyalty_reset($conn);
 
 require_once __DIR__ . '/activity_logger.php';
 auto_log_system_request($conn);
+
+require_once __DIR__ . '/maintenance.php';
+hydromis_enforce_maintenance($conn);
 ?>

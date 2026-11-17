@@ -19,6 +19,13 @@ function hydromis_database_config(?string $directory = null): array {
             if (is_array($local)) $config = array_replace($config, $local);
         }
     }
+    // Optional workstation override. Never apply it to remote HTTP requests.
+    $xampp = $directory . '/database.xampp.php';
+    $localRequest = PHP_SAPI === 'cli' || in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
+    if ($localRequest && is_file($xampp)) {
+        $local = require $xampp;
+        if (is_array($local)) $config = array_replace($config, $local);
+    }
     $config['driver'] = 'mysql';
     return $config;
 }

@@ -32,7 +32,7 @@
                         <p><?php echo (($transaction['payment_method'] ?? '') === 'cash') ? 'Staff will mark cash as paid after collection.' : 'Staff will verify your uploaded proof of payment.'; ?></p>
                     </div>
                     <div class="success-actions">
-                        <a href="track_order.php" class="btn btn-primary"><i class="fas fa-search"></i> Track Transaction</a>
+                        <a href="<?= isset($_SESSION['checkout_receipts'][$payment_transaction_id]) ? 'order_receipt.php?transaction_id=' . rawurlencode($payment_transaction_id) : 'track_order.php' ?>" class="btn btn-primary"><i class="fas fa-receipt"></i> View order receipt</a>
                         <a href="payment.php" class="btn btn-secondary"><i class="fas fa-plus"></i> New Payment</a>
                     </div>
                 </div>
@@ -68,6 +68,8 @@
                 </div>
 
                 <form method="POST" enctype="multipart/form-data" id="paymentForm">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['customer_order_csrf'], ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['customer_order_csrf'], ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="transaction_id" value="<?php echo htmlspecialchars($transaction['transaction_id'] ?? ''); ?>">
                     <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($transaction['user_id'] ?? ''); ?>">
                     <!-- Amount & Description -->
