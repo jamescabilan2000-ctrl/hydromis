@@ -121,7 +121,7 @@
         submitted=true;
         const errors=[];
         for(const field of fields){if(field.type!=='file')field.value=field.value.trim();if(!show(field))errors.push({field,text:field.validationMessage});}
-        for(const quantity of document.querySelectorAll('.controls input[name="quantity"]'))if(quantity.value!==quantity.defaultValue)errors.push({field:quantity,text:'Update the changed product quantity before placing your order.'});
+        for(const quantity of document.querySelectorAll('.cart-items-grid .controls input[name="quantity"]'))if(quantity.value!==quantity.defaultValue)errors.push({field:quantity,text:'Update the changed product quantity before placing your order.'});
         const fulfillment=[...document.querySelectorAll('input[name="fulfillment"]')];const selected=fulfillment.find(input=>input.checked),saved=fulfillment.find(input=>input.defaultChecked);
         if(selected&&saved&&selected.value!==saved.value)errors.push({field:selected,text:'Update the delivery option before placing your order.'});
         if(errors.length){confirmed=false;event.preventDefault();summary(errors);return;}
