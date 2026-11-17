@@ -443,12 +443,13 @@ if (!$approved_trans) {
             COALESCE(NULLIF(t.rider_id,''), NULLIF(t.assigned_rider,'')) AS effective_rider_id,
             COALESCE(u.full_name,'Customer') AS full_name,
             u.contact_number, u.address,
-            NULL AS rider_name, NULL AS rider_age, NULL AS rider_address,
-            NULL AS rider_contact, NULL AS rider_last_seen_at,
+            ru.full_name AS rider_name, ru.age AS rider_age, ru.address AS rider_address,
+            ru.contact_number AS rider_contact, ru.last_seen_at AS rider_last_seen_at,
             0 AS rider_latitude, 0 AS rider_longitude, NULL AS gps_last_update,
             0 AS cup_quantity, 0 AS cup_subtotal, NULL AS cup_details
         FROM transactions t
         LEFT JOIN users u ON t.user_id = u.user_id
+        LEFT JOIN rider_users ru ON COALESCE(NULLIF(t.rider_id,''), NULLIF(t.assigned_rider,'')) = ru.rider_id
         WHERE t.status = 'approved'
           AND COALESCE(t.fulfillment_method,'delivery') = 'delivery'
           AND COALESCE(NULLIF(t.delivery_status,''),'pending') <> 'delivered'
@@ -1388,6 +1389,10 @@ tbody tr:hover { background: rgba(255,255,255,.025); }
                         <?php if (($ds === 'on_way' || $ds === 'on_the_way') && $row['gps_last_update']): ?>
                           <span style="color:var(--green);font-size:11px;margin-left:4px;"><i class="fas fa-satellite-dish"></i> GPS</span>
                         <?php endif; ?>
+                      <?php elseif ($has_rider): ?>
+                        <span class="rider-online"><i class="fas fa-motorcycle"></i></span>
+                        <span><?php echo htmlspecialchars((string)$row['effective_rider_id']); ?></span>
+                        <span style="font-size:10px;color:var(--muted);">Rider profile unavailable</span>
                       <?php else: ?>
                         <span class="rider-unassigned"><i class="fas fa-user-slash"></i> Unassigned</span>
                       <?php endif; ?>
