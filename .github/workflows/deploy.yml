@@ -23,6 +23,7 @@ jobs:
         env:
           MYSQL_LOCAL_PHP: ${{ secrets.MYSQL_LOCAL_PHP }}
           HYDROMIS_ENCRYPTION_KEY: ${{ secrets.HYDROMIS_ENCRYPTION_KEY }}
+          GMAIL_LOCAL_PHP: ${{ secrets.GMAIL_LOCAL_PHP }}
         run: |
           deploy_dir="$RUNNER_TEMP/hydromis-deploy"
           mkdir -p "$deploy_dir"
@@ -48,6 +49,11 @@ jobs:
             exit 1
           fi
           printf '%s' "$HYDROMIS_ENCRYPTION_KEY" > "$deploy_dir/config/.encryption_key"
+          if [[ "$GMAIL_LOCAL_PHP" == "<?php"* ]]; then
+            printf '%s' "$GMAIL_LOCAL_PHP" > "$deploy_dir/config/gmail.local.php"
+          else
+            echo 'GMAIL_LOCAL_PHP is not configured; Gmail verification will remain unavailable.' >&2
+          fi
 
       - name: Deploy files through FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
