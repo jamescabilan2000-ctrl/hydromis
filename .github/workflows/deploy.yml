@@ -1,7 +1,9 @@
 name: Deploy HydroMIS to FTP
 
 on:
-  # Automatic publishing paused while revisions are developed in XAMPP.
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
