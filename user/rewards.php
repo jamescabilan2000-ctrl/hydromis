@@ -428,7 +428,7 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
         }
 
         .rewards-back-form { margin: 0 0 18px; }
-        .rewards-back-btn { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: #1769aa; font: inherit; font-size: 13px; font-weight: 500; line-height: 1.4; cursor: pointer; }
+        .rewards-back-btn { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: #1769aa; font: inherit; font-size: 13px; font-weight: 500; line-height: 1.4; text-decoration: none; cursor: pointer; }
         .rewards-back-btn i { font-size: 12px; }
         @media (hover: hover) {
             .rewards-back-btn:hover { background: #eef7fc; }
@@ -1318,10 +1318,9 @@ $has_approved_free_delivery = count(array_filter($redemption_history, fn($item) 
             <?php $user_id = $selected_user['user_id']; ?>
 
             <div class="dashboard-card">
-                <form method="POST" action="scan_qr.php" class="rewards-back-form">
-                    <input type="hidden" name="qr_data" value="<?php echo htmlspecialchars(json_encode(['user_id' => (string)$user_id]), ENT_QUOTES, 'UTF-8'); ?>">
-                    <button type="submit" class="rewards-back-btn"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Welcome</button>
-                </form>
+                <div class="rewards-back-form">
+                    <a href="../home.php" class="rewards-back-btn"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Welcome</a>
+                </div>
                 <section class="rewards-hero" aria-labelledby="rewards-title">
                     <button type="button" class="history-trigger <?php echo $has_approved_reward ? 'has-approved' : (!empty($redemption_history) ? 'has-history' : ''); ?>" id="historyTrigger" aria-label="View recent redemptions" title="Recent redemptions"><i class="fas fa-clock-rotate-left"></i></button>
                     <div class="rewards-water-bubbles" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
